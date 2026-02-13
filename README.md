@@ -1,33 +1,15 @@
-<h1>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/nf-core-taxprofiler_logo_custom_dark.png">
-    <img alt="nf-core/taxprofiler" src="docs/images/nf-core-taxprofiler_logo_custom_light.png">
-  </picture>
-</h1>
-
-[![Open in GitHub Codespaces](https://img.shields.io/badge/Open_In_GitHub_Codespaces-black?labelColor=grey&logo=github)](https://github.com/codespaces/new/nf-core/taxprofiler)
-[![GitHub Actions CI Status](https://github.com/nf-core/taxprofiler/actions/workflows/nf-test.yml/badge.svg)](https://github.com/nf-core/taxprofiler/actions/workflows/nf-test.yml)
-[![GitHub Actions Linting Status](https://github.com/nf-core/taxprofiler/actions/workflows/linting.yml/badge.svg)](https://github.com/nf-core/taxprofiler/actions/workflows/linting.yml)[![AWS CI](https://img.shields.io/badge/CI%20tests-full%20size-FF9900?labelColor=000000&logo=Amazon%20AWS)](https://nf-co.re/taxprofiler/results)[![Cite with Zenodo](http://img.shields.io/badge/DOI-10.5281/zenodo.7728364-1073c8?labelColor=000000)](https://doi.org/10.5281/zenodo.7728364)
-[![nf-test](https://img.shields.io/badge/unit_tests-nf--test-337ab7.svg)](https://www.nf-test.com)
-
-[![Nextflow](https://img.shields.io/badge/version-%E2%89%A525.04.2-green?style=flat&logo=nextflow&logoColor=white&color=%230DC09D&link=https%3A%2F%2Fnextflow.io)](https://www.nextflow.io/)
-[![nf-core template version](https://img.shields.io/badge/nf--core_template-3.5.1-green?style=flat&logo=nfcore&logoColor=white&color=%2324B064&link=https%3A%2F%2Fnf-co.re)](https://github.com/nf-core/tools/releases/tag/3.5.1)
-[![run with conda](http://img.shields.io/badge/run%20with-conda-3EB049?labelColor=000000&logo=anaconda)](https://docs.conda.io/en/latest/)
-[![run with docker](https://img.shields.io/badge/run%20with-docker-0db7ed?labelColor=000000&logo=docker)](https://www.docker.com/)
-[![run with singularity](https://img.shields.io/badge/run%20with-singularity-1d355c.svg?labelColor=000000)](https://sylabs.io/docs/)
-[![Launch on Seqera Platform](https://img.shields.io/badge/Launch%20%F0%9F%9A%80-Seqera%20Platform-%234256e7)](https://cloud.seqera.io/launch?pipeline=https://github.com/nf-core/taxprofiler)
-
-[![Get help on Slack](http://img.shields.io/badge/slack-nf--core%20%23taxprofiler-4A154B?labelColor=000000&logo=slack)](https://nfcore.slack.com/channels/taxprofiler)[![Follow on Bluesky](https://img.shields.io/badge/bluesky-%40nf__core-1185fe?labelColor=000000&logo=bluesky)](https://bsky.app/profile/nf-co.re)[![Follow on Mastodon](https://img.shields.io/badge/mastodon-nf__core-6364ff?labelColor=FFFFFF&logo=mastodon)](https://mstdn.science/@nf_core)[![Watch on YouTube](http://img.shields.io/badge/youtube-nf--core-FF0000?labelColor=000000&logo=youtube)](https://www.youtube.com/c/nf-core)
-
-[![Cite Preprint](https://img.shields.io/badge/Cite%20Us!-Cite%20Preprint-orange)](https://doi.org/10.1101/2023.10.20.563221)
-
 ## Introduction
 
-**nf-core/taxprofiler** is a bioinformatics best-practice analysis pipeline for taxonomic classification and profiling of shotgun short- and long-read metagenomic data. It allows for in-parallel taxonomic identification of reads or taxonomic abundance estimation with multiple classification and profiling tools against multiple databases, and produces standardised output tables for facilitating results comparison between different tools and databases.
+**zellerlab/flexprofiler** is a bioinformatics best-practice analysis pipeline for (microbiome) taxonomic classification and profiling of shotgun and 16S metagenomic data. It allows for in-parallel taxonomic identification of reads or taxonomic abundance estimation with multiple classification and profiling tools against multiple databases, and produces standardised output tables for facilitating results comparison between different tools and databases.
+It aims to enable microbiome profiling not only of single datasets but also of collections of studies for meta-analisis.
+
+**zellerlab/flexprofiler** is an adaptation of [**nf-core/taxprofiler**](https://github.com/nf-core/taxprofiler) for the needs of the Zeller lab.
+Many features of **nf-core/taxprofiler** that are not needed for the Zeller lab have been removed for simplicity, and support for 16S sequencing data and meta-analyses has been added.
+This is not strictly a fork of **nf-core/taxprofiler**, as the two pipelines are planned to diverge consistently with their different intended use.
+We plan to contribute to **nf-core** modules or other components of more general interest, and to implement relevent **nf-core** developments in this pipeline on an irregular schedule.
+
 
 ## Pipeline summary
-
-![](docs/images/taxprofiler_tube.png)
 
 1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) or [`falco`](https://github.com/smithlabcode/falco) as an alternative option)
 2. Performs optional read pre-processing
@@ -82,7 +64,7 @@ That includes directories or `.tar.gz` archives containing databases for the too
 Now, you can run the pipeline using:
 
 ```bash
-nextflow run nf-core/taxprofiler \
+nextflow run zellerlab/flexprofiler \
    -profile <docker/singularity/.../institute> \
    --input samplesheet.csv \
    --databases databases.csv \
@@ -103,59 +85,14 @@ For more details about the output files and reports, please refer to the
 
 ## Credits
 
-nf-core/taxprofiler was originally written by James A. Fellows Yates, Sofia Stamouli, Moritz E. Beber, Lili Andersson-Li, and the nf-core/taxprofiler team.
+**zellerlab/flexprofiler** is developped and maintained by Saul Pierotti.
+**nf-core/taxprofiler** was originally written by James A. Fellows Yates, Sofia Stamouli, Moritz E. Beber, Lili Andersson-Li, and the nf-core/taxprofiler team.
+We refer the reader to [the pipeline page](https://github.com/nf-core/taxprofiler) for further credits.
 
 ### Team
 
-- [James A. Fellows Yates](https://github.com/jfy133)
-- [Sofia Stamouli](https://github.com/sofstam)
-- [Moritz E. Beber](https://github.com/Midnighter)
-- [Lili Andersson-Li](https://github.com/LilyAnderssonLee)
-
-We thank the following people for their contributions to the development of this pipeline:
-
-- [Lauri Mesilaakso](https://github.com/ljmesi)
-- [Tanja Normark](https://github.com/talnor)
-- [Maxime Borry](https://github.com/maxibor)
-- [Thomas A. Christensen II](https://github.com/MillironX)
-- [Jianhong Ou](https://github.com/jianhong)
-- [Rafal Stepien](https://github.com/rafalstepien)
-- [Mahwash Jamy](https://github.com/mjamy)
-- [Alex Caswell](https://github.com/AlexHoratio)
-- [Aidan Epstein](https://github.com/epstein6)
-
-### Acknowledgments
-
-We also are grateful for the feedback and comments from:
-
-- The general [nf-core/community](https://nf-co.re/community)
-
-And specifically to
-
-- [Alex Hübner](https://github.com/alexhbnr)
-
-❤️ also goes to [Zandra Fagernäs](https://github.com/ZandraFagernas) for the logo.
-
-## Contributions and Support
-
-If you would like to contribute to this pipeline, please see the [contributing guidelines](.github/CONTRIBUTING.md).
-
-For further information or help, don't hesitate to get in touch on the [Slack `#taxprofiler` channel](https://nfcore.slack.com/channels/taxprofiler) (you can join with [this invite](https://nf-co.re/join/slack)).
+- [Saul Pierotti](https://github.com/saulpierotti)
 
 ## Citations
 
-If you use nf-core/taxprofiler for your analysis, please cite it using the following doi: [10.1101/2023.10.20.563221](https://doi.org/10.1101/2023.10.20.563221).
-
-> Stamouli, S., Beber, M. E., Normark, T., Christensen II, T. A., Andersson-Li, L., Borry, M., Jamy, M., nf-core community, & Fellows Yates, J. A. (2023). nf-core/taxprofiler: Highly parallelised and flexible pipeline for metagenomic taxonomic classification and profiling. In bioRxiv (p. 2023.10.20.563221). https://doi.org/10.1101/2023.10.20.563221
-
-For the latest version of the code, cite the Zenodo doi: [10.5281/zenodo.7728364](https://doi.org/10.5281/zenodo.7728364)
-
 An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.
-
-You can cite the `nf-core` publication as follows:
-
-> **The nf-core framework for community-curated bioinformatics pipelines.**
->
-> Philip Ewels, Alexander Peltzer, Sven Fillinger, Harshil Patel, Johannes Alneberg, Andreas Wilm, Maxime Ulysse Garcia, Paolo Di Tommaso & Sven Nahnsen.
->
-> _Nat Biotechnol._ 2020 Feb 13. doi: [10.1038/s41587-020-0439-x](https://dx.doi.org/10.1038/s41587-020-0439-x).
