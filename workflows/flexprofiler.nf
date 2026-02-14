@@ -49,7 +49,7 @@ include { CAT_FASTQ as MERGE_RUNS       } from '../modules/nf-core/cat/fastq/mai
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-workflow TAXPROFILER {
+workflow FLEXPROFILER {
     take:
     samplesheet // channel: samplesheet read in from --input
     databases // channel: databases from --databases

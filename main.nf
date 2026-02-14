@@ -15,7 +15,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-include { TAXPROFILER             } from './workflows/taxprofiler'
+include { FLEXPROFILER             } from './workflows/flexprofiler'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_taxprofiler_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_taxprofiler_pipeline'
 /*
@@ -44,7 +44,7 @@ workflow {
     //
     // WORKFLOW: Run main workflow
     //
-    NFCORE_TAXPROFILER(
+    ZELLERLAB_FLEXPROFILER(
         PIPELINE_INITIALISATION.out.samplesheet,
         PIPELINE_INITIALISATION.out.databases,
     )
@@ -58,7 +58,7 @@ workflow {
         params.outdir,
         params.monochrome_logs,
         params.hook_url,
-        NFCORE_TAXPROFILER.out.multiqc_report,
+        ZELLERLAB_FLEXPROFILER.out.multiqc_report,
     )
 }
 
@@ -72,7 +72,7 @@ workflow {
 //
 // WORKFLOW: Run main analysis pipeline depending on type of input
 //
-workflow NFCORE_TAXPROFILER {
+workflow ZELLERLAB_FLEXPROFILER {
     take:
     samplesheet // channel: samplesheet read in from --input
     databases   // channel: databases in from --databases
@@ -82,11 +82,11 @@ workflow NFCORE_TAXPROFILER {
     //
     // WORKFLOW: Run pipeline
     //
-    TAXPROFILER(
+    FLEXPROFILER(
         samplesheet,
         databases,
     )
 
     emit:
-    multiqc_report = TAXPROFILER.out.multiqc_report // channel: /path/to/multiqc_report.html
+    multiqc_report = FLEXPROFILER.out.multiqc_report // channel: /path/to/multiqc_report.html
 }
