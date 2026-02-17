@@ -1,3 +1,5 @@
+# zellerlab/flexprofiler
+
 ## Introduction
 
 **zellerlab/flexprofiler** is a bioinformatics best-practice analysis pipeline for (microbiome) taxonomic classification and profiling of shotgun and 16S metagenomic data. It allows for in-parallel taxonomic identification of reads or taxonomic abundance estimation with multiple classification and profiling tools against multiple databases, and produces standardised output tables for facilitating results comparison between different tools and databases.
@@ -8,6 +10,19 @@ Many features of **nf-core/taxprofiler** that are not needed for the Zeller lab 
 This is not strictly a fork of **nf-core/taxprofiler**, as the two pipelines are planned to diverge consistently with their different intended use.
 We plan to contribute to **nf-core** modules or other components of more general interest, and to implement relevent **nf-core** developments in this pipeline on an irregular schedule.
 
+## Database download
+
+To use **zellerlab/flexprofiler** you need the databases that the profiling tools that you want to run require.
+These can be downloaded using [this script](utils/fetch_databases.sh), which requires as argument the a path where the databases will be downloaded.
+The script also generates a `flexprofiler_databases.csv` file in the local directory, which can be used in input for the pipeline.
+
+```bash
+fetch_databases.sh <out_database_path>
+```
+
+> [!ZELLERLAB]
+> Most likely you do not need to download the databases as this has already been done for you in a centralised location.
+> Databases have been already set up for the LUMC SHARK cluster.
 
 ## Pipeline summary
 
