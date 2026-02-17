@@ -20,9 +20,10 @@ The script also generates a `flexprofiler_databases.csv` file in the local direc
 fetch_databases.sh <out_database_path>
 ```
 
-> [!ZELLERLAB]
-> Most likely you do not need to download the databases as this has already been done for you in a centralised location.
-> Databases have been already set up for the LUMC SHARK cluster.
+> [!IMPORTANT]
+> If you are a member of the Zeller lab, most likely you do not need to download the databases as this has already been done for you in a centralised location.
+> Databases have been already set up for the following compute environments:
+> - LUMC SHARK cluster
 
 ## Pipeline summary
 
