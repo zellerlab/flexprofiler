@@ -10,51 +10,21 @@ Many features of **nf-core/taxprofiler** that are not needed for the Zeller lab 
 This is not strictly a fork of **nf-core/taxprofiler**, as the two pipelines are planned to diverge consistently with their different intended use.
 We plan to contribute to **nf-core** modules or other components of more general interest, and to implement relevent **nf-core** developments in this pipeline on an irregular schedule.
 
-## Database download
+## Pipeline simplified overview
 
-To use **zellerlab/flexprofiler** you need the databases that the profiling tools that you want to run require.
-These can be downloaded using [this script](utils/fetch_databases.sh), which requires as argument the a path where the databases will be downloaded.
-The script also generates a `flexprofiler_databases.csv` file in the local directory, which can be used in input for the pipeline.
+1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
+2. Read pre-processing
+   - Adapter clipping and merging: [fastp](https://github.com/OpenGene/fastp)
+   - Host-read removal: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/)
+3. Performs taxonomic classification and/or profiling using one or more of:
+   - [mOTUs](https://motus-tool.org/)
+4. Standardises output tables ([`Taxpasta`](https://taxpasta.readthedocs.io))
+5. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
 
-```bash
-fetch_databases.sh <out_database_path>
-```
-
-> [!IMPORTANT]
-> If you are a member of the Zeller lab, most likely you do not need to download the databases as this has already been done for you in a centralised location.
-> Databases have been already set up for the following compute environments with corresponding profiles:
-> - LUMC SHARK cluster (nextflow profile name: `zellerlab_shark`)
->
-> You just need to use the correct profile in the nextflow run so that they are loaded correctly, for example:
->```bash
->nextflow run zellerlab/flexprofiler -profile zellerlab_shark
->```
-
-## Pipeline summary
-
-1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) or [`falco`](https://github.com/smithlabcode/falco) as an alternative option)
-2. Performs optional read pre-processing
-   - Adapter clipping and merging (short-read: [fastp](https://github.com/OpenGene/fastp), [AdapterRemoval2](https://github.com/MikkelSchubert/adapterremoval); long-read: [porechop](https://github.com/rrwick/Porechop), [Porechop_ABI](https://github.com/bonsai-team/Porechop_ABI))
-   - Low complexity and quality filtering (short-read: [bbduk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/), [PRINSEQ++](https://github.com/Adrian-Cantu/PRINSEQ-plus-plus); long-read: [Filtlong](https://github.com/rrwick/Filtlong)), [Nanoq](https://github.com/esteinig/nanoq)
-   - Host-read removal (short-read: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/); long-read: [Minimap2](https://github.com/lh3/minimap2))
-   - Run merging
-3. Supports statistics metagenome coverage estimation ([Nonpareil](https://nonpareil.readthedocs.io/en/latest/)) and for host-read removal ([Samtools](http://www.htslib.org/))
-4. Performs taxonomic classification and/or profiling using one or more of:
-   - [Kraken2](https://ccb.jhu.edu/software/kraken2/)
-   - [MetaPhlAn](https://huttenhower.sph.harvard.edu/metaphlan/)
-   - [MALT](https://uni-tuebingen.de/fakultaeten/mathematisch-naturwissenschaftliche-fakultaet/fachbereiche/informatik/lehrstuehle/algorithms-in-bioinformatics/software/malt/)
-   - [DIAMOND](https://github.com/bbuchfink/diamond)
-   - [Centrifuge](https://ccb.jhu.edu/software/centrifuge/)
-   - [Kaiju](https://kaiju.binf.ku.dk/)
-   - [mOTUs](https://motu-tool.org/)
-   - [KrakenUniq](https://github.com/fbreitwieser/krakenuniq)
-   - [KMCP](https://github.com/shenwei356/kmcp)
-   - [ganon](https://pirovc.github.io/ganon/)
-5. Perform optional post-processing with:
-   - [bracken](https://ccb.jhu.edu/software/bracken/)
-6. Standardises output tables ([`Taxpasta`](https://taxpasta.readthedocs.io))
-7. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
-8. Plotting Kraken2, Centrifuge, Kaiju and MALT results ([`Krona`](https://hpc.nih.gov/apps/kronatools.html))
+> [!NOTE]
+> The pipeline contains in its code also additional profiling methods and execution parameters not documented here or in other documentation files, or marked with <UNSTABLE>.
+> These are experimental and should not be considered stable features of the pipeline.
+> Things may break - use at your own risk.
 
 ## Usage
 
@@ -90,13 +60,35 @@ nextflow run zellerlab/flexprofiler \
    --input samplesheet.csv \
    --databases databases.csv \
    --outdir <OUTDIR>  \
-   --run_kraken2 --run_metaphlan
+   --run_motus
 ```
 
 > [!WARNING]
 > Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).
 
-For more details and further functionality, please refer to the [usage documentation](https://nf-co.re/taxprofiler/usage) and the [parameter documentation](https://nf-co.re/taxprofiler/parameters).
+For more details and further functionality, please refer to the [usage documentation](docs/usage.md) and the [parameter documentation](docs/parameters.md).
+
+
+### Database download
+
+To use **zellerlab/flexprofiler** you need the databases that the profiling tools that you want to run require.
+These can be downloaded using [this script](utils/fetch_databases.sh), which requires as argument the a path where the databases will be downloaded.
+The script also generates a `flexprofiler_databases.csv` file in the local directory, which can be used in input for the pipeline.
+
+```bash
+fetch_databases.sh <out_database_path>
+```
+
+> [!IMPORTANT]
+> If you are a member of the Zeller lab, most likely you do not need to download the databases as this has already been done for you in a centralised location.
+> Databases have been already set up for the following compute environments with corresponding profiles:
+> - LUMC SHARK cluster (nextflow profile name: `zellerlab_shark`)
+>
+> You just need to use the correct profile in the nextflow run so that they are loaded correctly, for example:
+>```bash
+>nextflow run zellerlab/flexprofiler -profile zellerlab_shark <YOUR OTHER NEXTFLOW ARGUMENTS>
+>```
+
 
 ## Pipeline output
 
