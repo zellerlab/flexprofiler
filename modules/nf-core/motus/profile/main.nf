@@ -24,12 +24,13 @@ process MOTUS_PROFILE {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    // mOTUs 4 does not support anymore additional inputs formats except for FASTQ
+    // mOTUs 4 does not support anymore additional inputs formats except for FASTA,FASTQ
     def inputs = meta.single_end ? "-s $reads" : "-f ${reads[0]} -r ${reads[1]}"
     """
     # mOTUs 4 does not support anymore the -db flag to pass a custom database
     # the database path is hardcoded in the module, and this snippet overrides it to
     # point to the local work directory
+    rm -f motus_patch.py
     cat <<-'PATCH_EOF' > motus_patch.py
     import sys
     import pathlib
@@ -54,8 +55,9 @@ process MOTUS_PROFILE {
         -n $prefix \\
         -o ${prefix}.out \\
         2>| >(tee ${prefix}.log >&2)
-
-    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%")
+    
+    # no way to get the version number without triggering an exit code 2
+    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -71,7 +73,8 @@ process MOTUS_PROFILE {
     touch ${prefix}.out
     touch ${prefix}.log
 
-    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%")
+    # no way to get the version number without triggering an exit code 2
+    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
