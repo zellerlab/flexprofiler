@@ -55,7 +55,7 @@ process MOTUS_PROFILE {
         -o ${prefix}.out \\
         2>| >(tee ${prefix}.log >&2)
 
-    VERSION=$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%")
+    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%")
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -71,7 +71,7 @@ process MOTUS_PROFILE {
     touch ${prefix}.out
     touch ${prefix}.log
 
-    VERSION=$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%")
+    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%")
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
