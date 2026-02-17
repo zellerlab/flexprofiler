@@ -22,8 +22,13 @@ fetch_databases.sh <out_database_path>
 
 > [!IMPORTANT]
 > If you are a member of the Zeller lab, most likely you do not need to download the databases as this has already been done for you in a centralised location.
-> Databases have been already set up for the following compute environments:
-> - LUMC SHARK cluster
+> Databases have been already set up for the following compute environments with corresponding profiles:
+> - LUMC SHARK cluster (nextflow profile name: `zellerlab_shark`)
+>
+> You just need to use the correct profile in the nextflow run so that they are loaded correctly, for example:
+>```bash
+>nextflow run zellerlab/flexprofiler -profile zellerlab_shark
+>```
 
 ## Pipeline summary
 
