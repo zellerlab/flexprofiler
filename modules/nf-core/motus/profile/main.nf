@@ -24,30 +24,39 @@ process MOTUS_PROFILE {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def inputs = reads[0].getExtension() == 'bam' ?
-                    "-i ${reads}" :
-                    reads[0].getExtension() == 'mgc' ? "-m $reads" :
-                        meta.single_end ?
-                            "-s $reads" : "-f ${reads[0]} -r ${reads[1]}"
-    def refdb = db ? "-db ${db}" : ""
+    // mOTUs 4 does not support anymore additional inputs formats except for FASTQ
+    def inputs = meta.single_end ? "-s $reads" : "-f ${reads[0]} -r ${reads[1]}"
     """
-    motus profile \\
+    # mOTUs 4 does not support anymore the -db flag to pass a custom database
+    # the database path is hardcoded in the module, and this snippet overrides it to
+    # point to the local work directory
+    cat <<-'PATCH_EOF' > motus_patch.py
+        import sys
+        import pathlib
+        from motus.motus import main
+        import motus.mutils as m
+
+        m.DEFAULT_MOTUS_MGDB_PARENT_LOCATION = pathlib.Path(__file__).resolve().parent
+        m.DEFAULT_MOTUS_MGDB_LOCATION = m.DEFAULT_MOTUS_MGDB_PARENT_LOCATION.joinpath('db_mOTU')
+        m.DEFAULT_MOTUS_MGDB_LOCATION_MARKER = m.DEFAULT_MOTUS_MGDB_LOCATION.joinpath('db_mOTU.downloaded')
+        m.DEFAULT_MOTUS_ANNODB_LOCATION = m.DEFAULT_MOTUS_MGDB_LOCATION.joinpath('mOTUsv4.0.annotation.db')
+        m.DEFAULT_MOTUS_ANNODB_LOCATION_MARKER = m.DEFAULT_MOTUS_MGDB_LOCATION.joinpath('mOTUsv4.0.annotation.db.downloaded')
+
+        if __name__ == '__main__':
+            sys.argv[0] = sys.argv[0].removesuffix('.exe')
+            sys.exit(main())
+    PATCH_EOF
+
+    python motus_patch.py profile \\
         $args \\
         $inputs \\
-        $refdb \\
         -t $task.cpus \\
         -n $prefix \\
         -o ${prefix}.out \\
         2>| >(tee ${prefix}.log >&2)
 
-    ## mOTUs version number is not available from command line.
-    ## mOTUs save the version number in index database folder.
-    ## mOTUs will check the database version is same version as exec version.
-    if [ "$db" == "" ]; then
-        VERSION=\$(echo \$(motus -h 2>&1) | sed 's/^.*Version: //; s/References.*\$//')
-    else
-        VERSION=\$(grep motus $db/db_mOTU_versions | sed 's/motus\\t//g')
-    fi
+    VERSION=$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%")
+
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         motus: \$VERSION
@@ -57,21 +66,13 @@ process MOTUS_PROFILE {
     stub:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def inputs = reads[0].getExtension() == 'bam' ?
-                    "-i ${reads}" :
-                    reads[0].getExtension() == 'mgc' ? "-m $reads" :
-                        meta.single_end ?
-                            "-s $reads" : "-f ${reads[0]} -r ${reads[1]}"
-    def refdb = db ? "-db ${db}" : ""
+    def inputs = meta.single_end ? "-s $reads" : "-f ${reads[0]} -r ${reads[1]}"
     """
     touch ${prefix}.out
     touch ${prefix}.log
 
-    if [ "$db" == "" ]; then
-        VERSION=\$(echo \$(motus -h 2>&1) | sed 's/^.*Version: //; s/References.*\$//')
-    else
-        VERSION=\$(grep motus $db/db_mOTU_versions | sed 's/motus\\t//g')
-    fi
+    VERSION=$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%")
+
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         motus: \$VERSION
