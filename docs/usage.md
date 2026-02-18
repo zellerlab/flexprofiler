@@ -1,12 +1,8 @@
-# nf-core/taxprofiler: Usage
-
-## :warning: Please read this documentation on the nf-core website: [https://nf-co.re/taxprofiler/usage](https://nf-co.re/taxprofiler/usage)
-
-> _Documentation of pipeline parameters is generated automatically from the pipeline schema and can no longer be found in markdown files._
+# zellerlab/flexprofiler: Usage
 
 ## Introduction
 
-nf-core/taxprofiler is a pipeline for highly-parallelised taxonomic classification and profiling of shotgun metagenomic data across multiple tools simultaneously. In addition to multiple classification and profiling tools, at the same time it allows you to performing taxonomic classification and profiling across multiple databases and settings per tool, as well as produces standardised output tables to allow immediate cross comparison of results between tools.
+zellerlab/flexprofiler is a pipeline for highly-parallelised taxonomic classification and profiling of shotgun metagenomic data across multiple tools simultaneously. In addition to multiple classification and profiling tools, at the same time it allows you to performing taxonomic classification and profiling across multiple databases and settings per tool, as well as produces standardised output tables to allow immediate cross comparison of results between tools.
 
 In addition to this page, you can find additional usage information on the following pages:
 
@@ -15,24 +11,24 @@ In addition to this page, you can find additional usage information on the follo
 
 ## General Usage
 
-To run nf-core/taxprofiler, at a minimum two you require two inputs:
+To run zellerlab/flexprofiler, at a minimum you require two inputs:
 
 - a sequencing read samplesheet
 - a database samplesheet
 
 Both contain metadata and paths to the data of your input samples and databases.
 
-When running nf-core/taxprofiler, every step and tool is 'opt in'. To run a given classifier or profiler you must make sure to supply both a database in your `<database>.csv` and supply `--run_<profiler>` flag to your command. Omitting either will result in the profiling tool not executing.
+When running zellerlab/flexprofiler, every step and tool is 'opt in'. To run a given classifier or profiler you must make sure to supply both a database in your `<database>.csv` and supply `--run_<profiler>` flag to your command. Omitting either will result in the profiling tool not executing.
 
-nf-core/taxprofiler also includes optional pre-processing (adapter clipping, merge running etc.) or post-processing (visualisation) steps. These are also opt in with a `--perform_<step>` flag. In some cases, the pre- and post-processing steps may also require additional files. Please check the parameters tab of this documentation for more information.
+zellerlab/flexprofiler also includes optional pre-processing (adapter clipping, merge running etc.) or post-processing (visualisation) steps. These are also opt in with a `--perform_<step>` flag. In some cases, the pre- and post-processing steps may also require additional files. Please check the parameters tab of this documentation for more information.
 
-Please see the rest of this page for information about how to prepare input samplesheets and databases and how to run Nextflow pipelines. See the [parameters](https://nf-co.re/taxprofiler/parameters) documentation for more information about specific options the pipeline also offers.
+Please see the rest of this page for information about how to prepare input samplesheets and databases and how to run Nextflow pipelines. See the [parameters](docs/parameters.md) documentation for more information about specific options the pipeline also offers.
 
 ## Samplesheet inputs
 
-nf-core/taxprofiler can accept as input raw or preprocessed single- or paired-end short-read (e.g. Illumina) FASTQ files, long-read FASTQ files (e.g. Oxford Nanopore), or FASTA sequences (available for a subset of profilers). For PACBIO_SMRT data, please convert BAM files to FASTQ format before input.
+zellerlab/flexprofiler can accept as input raw or preprocessed single- or paired-end short-read (e.g. Illumina) FASTQ files, long-read FASTQ files (e.g. Oxford Nanopore), or FASTA sequences (available for a subset of profilers). For PACBIO_SMRT data, please convert BAM files to FASTQ format before input.
 
-You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 6 columns, and a header row as shown in the examples below. Furthermore, nf-core/taxprofiler also requires a second comma-separated file of 3 columns with a header row as in the examples below.
+You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 6 columns, and a header row as shown in the examples below. Furthermore, zellerlab/flexprofiler also requires a second comma-separated file of 3 columns with a header row as in the examples below.
 
 This samplesheet is then specified on the command line as follows:
 
@@ -103,12 +99,12 @@ FASTA input will not go through any preprocessing steps, and will go directly to
 
 ### Full database sheet
 
-nf-core/taxprofiler supports multiple databases being classified/profiled against in parallel for each tool.
+zellerlab/flexprofiler supports multiple databases being classified/profiled against in parallel for each tool.
 
 Databases can be supplied either in the form of a compressed `.tar.gz` archive of a directory containing all relevant database files or the path to a directory on the filesystem.
 
 :::warning
-nf-core/taxprofiler does not provide any databases by default, nor does it currently generate them for you. This must be performed manually by the user. See bottom of this section for more information of the expected database files, or the [building databases](usage/tutorials#retrieving-databases-or-building-custom-databases) tutorial.
+zellerlab/flexprofiler does not provide any databases by default, nor does it currently generate them for you. This must be performed manually by the user. See bottom of this section for more information of the expected database files, or the [building databases](usage/tutorials#retrieving-databases-or-building-custom-databases) tutorial.
 :::
 
 The pipeline takes the paths and specific classification/profiling parameters of the tool of these databases as input via a four (or five) column comma-separated sheet.
@@ -116,7 +112,7 @@ The pipeline takes the paths and specific classification/profiling parameters of
 The optional `db_type` column allows to use specific database/parameters against specific data types. By specifying if a database is for short-or long-reads (or even both), the samples sequenced with Illumina are combined with the short-read databases and the samples sequenced with Nanopore are combined with long-read databases. If `db_type` is not provided, it is assumed the database and parameters are applicable for both short- and long-read data.
 
 :::warning
-To allow user freedom, nf-core/taxprofiler does not check for mandatory or the validity of non-file database parameters for correct execution of the tool - excluding options offered via pipeline level parameters! Please validate your database parameters (cross-referencing [parameters](https://nf-co.re/taxprofiler/parameters), and the given tool documentation) before submitting the database sheet! For example, if you don't use the default read length - Bracken will require `-r <read_length>` in the `db_params` column.
+To allow user freedom, zellerlab/flexprofiler does not check for mandatory or the validity of non-file database parameters for correct execution of the tool - excluding options offered via pipeline level parameters!
 :::
 
 An example database sheet can look as follows, where 7 tools are being used, and `malt` and `kraken2` will be used against two databases each. Since the `db_type` column is missing, it is therefore assumed that the database and parameters are suitable for both short- and long-read data.
@@ -154,7 +150,7 @@ kmcp,db1,;-I 20,short,/<path>/<to>/kmcp/test-db-kmcp.tar.gz
 ```
 
 :::warning
-For Bracken and KMCP, which are two step profilers, nf-core/taxprofiler has a special way of passing parameters to each steps!
+For Bracken and KMCP, which are two step profilers, zellerlab/flexprofiler has a special way of passing parameters to each steps!
 
 For Bracken, if you wish to supply any parameters to both the Kraken or Bracken steps or just the Bracken step, you **must** have a _semi-colon_ `;` list in the `db_params` column. This allows you to specify the Kraken2 parameters before and Bracken parameters after the `;`. This is particularly important if you supply a Bracken database with a non-default read length parameter. If you do not have any parameters to specify, you can leave this column empty. If you wish to provide settings to _just_ the Kraken2 step of the Bracken profiling, you can supply a normal string to the column without a semi-colon. If you wish to supply parameters to only Bracken (and keep default Kraken2 parameters), then you supply a string to the column starting with `;` and the Bracken parameters _after_.
 
@@ -167,7 +163,7 @@ Column specifications are as follows:
 
 | Column      | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tool`      | Taxonomic profiling tool (supported by nf-core/taxprofiler) that the database has been indexed for [required]. Please note that `bracken` also implies running `kraken2` on the same database.                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `tool`      | Taxonomic profiling tool (supported by zellerlab/flexprofiler) that the database has been indexed for [required]. Please note that `bracken` also implies running `kraken2` on the same database.                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `db_name`   | A unique name per tool for the particular database [required]. Please note that names need to be unique across both `kraken2` and `bracken` as well, even if re-using the same database.                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `db_params` | Any parameters of the given taxonomic classifier/profiler that you wish to specify that the taxonomic classifier/profiling tool should use when profiling against this specific database. Can be empty to use taxonomic classifier/profiler defaults. Must not be surrounded by quotes [required]. We generally do not recommend specifying parameters here that turn on/off saving of output files or specifying particular file extensions - this should be already addressed via pipeline parameters. For Bracken databases, must at a minimum contain a `;` separating Kraken2 from Bracken parameters. |
 | `db_type`   | An optional column to distinguish between short- and long-read databases. If the column is empty, the pipeline will assume all databases (and their settings specified in `db_params`!) will be applicable for both short and long read data. Possible values: `long`, `short`, or `short;long`. If the `db_type` column is missing from the database.csv, it will take the default value short;long                                                                                                                                                                                                        |
@@ -177,7 +173,7 @@ Column specifications are as follows:
 You can also specify the same database directory/file twice (ensuring unique `db_name`s) and specify different parameters for each database to compare the effect of different parameters during classification/profiling.
 :::
 
-nf-core/taxprofiler will automatically decompress and extract any compressed archives for you.
+zellerlab/flexprofiler will automatically decompress and extract any compressed archives for you.
 
 The optional `db_type` column enables the use of specific databases or parameters for different data types. By specifying if a database is for short-reads, long-reads, or both, Illumina samples are combined with short-read databases, while Nanopore samples are combined with long-read databases.
 
@@ -187,6 +183,9 @@ Click the links in the list below for short quick-reference tutorials how to gen
 
 The (uncompressed) database paths (`db_path`) for each tool are expected to contain:
 
+- [**mOTUs**:](usage/tutorials.md#motus-custom-database) the directory `db_mOTU/` that is downloaded via `motus downloadMGDB`.
+  - Note that you must use `motus downloadMGDB` and if installed via `conda`, will be placed in a specific `site-package` directory in the conda environment. For more details see the [mOTUs database tutorial](usage/tutorials.md#motus-custom-database).
+<!--
 - [**Bracken**:](usage/tutorials.md#bracken-custom-database) output of the combined `kraken2-build` and `bracken-build` process.
 - [**Centrifuge**:](usage/tutorials.md#centrifuge-custom-database) output of `centrifuge-build`.
 - [**DIAMOND**:](usage/tutorials.md#diamond-custom-database) output of `diamond makedb`.
@@ -195,22 +194,21 @@ The (uncompressed) database paths (`db_path`) for each tool are expected to cont
 - [**KrakenUniq**:](usage/tutorials.md#krakenuniq-custom-database) output of `krakenuniq-build` command(s).
 - [**MALT**](usage/tutorials.md#malt-custom-database) output of `malt-build`.
 - [**MetaPhlAn**:](usage/tutorials.md#metaphlan-custom-database) output of with `metaphlan --install` or downloaded from links on the [MetaPhlAn wiki](https://github.com/biobakery/MetaPhlAn/wiki/MetaPhlAn-4#customizing-the-database).
-- [**mOTUs**:](usage/tutorials.md#motus-custom-database) the directory `db_mOTU/` that is downloaded via `motus downloadDB`.
-  - Note that you must use `motus downloadDB` and if installed via `conda`, will be placed in a specific `site-package` directory in the conda environment. For more details see the [mOTUs database tutorial](usage/tutorials.md#motus-custom-database).
 - [**ganon**:](usage/tutorials.md#ganon-custom-database) output of `ganon build` or `ganon build-custom`.
 - [**KMCP**:](usage/tutorials.md#kmcp-custom-database) output of `kmcp index`. Note: `kmcp index` uses the output of an upstream `kmcp compute` step.
+-->
 
 ## Running the pipeline
 
 The typical command for running the pipeline is as follows:
 
 ```bash
-nextflow run nf-core/taxprofiler --input samplesheet.csv --databases databases.csv --outdir <OUTDIR> -profile docker --run_<TOOL1> --run_<TOOL2>
+nextflow run zellerlab/flexprofiler --input samplesheet.csv --databases databases.csv --outdir <OUTDIR> -profile docker --run_<TOOL1> --run_<TOOL2>
 ```
 
 This will launch the pipeline with the `docker` configuration profile. See below for more information about profiles.
 
-When running nf-core/taxprofiler, every step and tool is 'opt in'. To run a given classifier/profiler you must make sure to supply both a database in your `<database>.csv` and supply `--run_<profiler>` flag to your command. Omitting either will result in the classification/profiling tool not executing. If you wish to perform pre-processing (adapter clipping, merge running etc.) or post-processing (visualisation) steps, these are also opt in with a `--perform_<step>` flag. In some cases, the pre- and post-processing steps may also require additional files. Please check the parameters tab of this documentation for more information.
+When running zellerlab/flexprofiler, every step and tool is 'opt in'. To run a given classifier/profiler you must make sure to supply both a database in your `<database>.csv` and supply `--run_<profiler>` flag to your command. Omitting either will result in the classification/profiling tool not executing. If you wish to perform pre-processing (adapter clipping, merge running etc.) or post-processing (visualisation) steps, these are also opt in with a `--perform_<step>` flag. In some cases, the pre- and post-processing steps may also require additional files. Please check the parameters tab of this documentation for more information.
 
 Note that the pipeline will create the following files in your working directory:
 
@@ -232,7 +230,7 @@ Pipeline settings can be provided in a `yaml` or `json` file via `-params-file <
 The above pipeline run specified with a params file in yaml format:
 
 ```bash
-nextflow run nf-core/taxprofiler -profile docker -params-file params.yaml
+nextflow run zellerlab/flexprofiler -profile docker -params-file params.yaml
 ```
 
 with:
@@ -243,15 +241,13 @@ outdir: './results/'
 <...>
 ```
 
-You can also generate such `YAML`/`JSON` files via [nf-core/launch](https://nf-co.re/launch).
-
 ### Sequencing quality control
 
-[`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your reads. It provides information about the quality score distribution across your reads, per base sequence content (%A/T/G/C), adapter contamination and overrepresented sequences. nf-core taxprofiler offers [`falco`](https://github.com/smithlabcode/falco) as an drop-in replacement, with supposedly better improvement particularly for long reads.
+[`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your reads. It provides information about the quality score distribution across your reads, per base sequence content (%A/T/G/C), adapter contamination and overrepresented sequences. zellerlab/flexprofiler offers [`falco`](https://github.com/smithlabcode/falco) as an drop-in replacement, with supposedly better improvement particularly for long reads.
 
 ### Preprocessing Steps
 
-nf-core/taxprofiler offers four main preprocessing steps for preprocessing raw sequencing reads:
+zellerlab/flexprofiler offers four main preprocessing steps for preprocessing raw sequencing reads:
 
 - [**Read processing**](#read-processing): adapter clipping and pair-merging.
 - [**Redundancy estimation**](#redundancy-estimation): short-read metagenome coverage estimation.
@@ -286,7 +282,7 @@ Metagenome 'coverage' or sequencing complexity estimations of short-read dataset
 
 This turns on checking of read redundancy in a sequencing library using [Nonpareil](https://nonpareil.readthedocs.io/en/latest/), to provide an estimation of whether you have sequenced enough to capture all possible genomes present in your metagenomic sample (with the assumption that once you've sequenced enough, you will keep sequencing PCR amplicons rather than unique reads).
 
-This is only suitable for short-read, and in nf-core/taxprofiler specifically, FASTQ files.
+This is only suitable for short-read, and in zellerlab/flexprofiler specifically, FASTQ files.
 
 Nonpareil is performed on processed reads (i.e. after fastp or AdapterRemoval). This will run on either the first read of each read pair (as recommended by the authors), or on merged reads.
 
@@ -322,7 +318,7 @@ There are currently three options for short-read complexity filtering: [`bbduk`]
 
 There are two options for long-read quality filtering: [`Filtlong`](https://github.com/rrwick/Filtlong) and [`nanoq`](https://github.com/esteinig/nanoq), with `nanoq` being the default option.
 
-The tools offer different algorithms and parameters for removing low complexity reads and quality filtering. We therefore recommend reviewing the pipeline's [parameter documentation](https://nf-co.re/taxprofiler/parameters) and the documentation of the tools (see links above) to decide on optimal methods and parameters for your dataset.
+The tools offer different algorithms and parameters for removing low complexity reads and quality filtering. We therefore recommend reviewing the pipeline's [parameter documentation](docs/parameters.md) and the documentation of the tools (see links above) to decide on optimal methods and parameters for your dataset.
 
 You can optionally save the FASTQ output of the run merging with the `--save_complexityfiltered_reads`. If running with `fastp`, complexity filtering happens inclusively within the earlier shortread preprocessing step. Therefore there will not be an independent pipeline step for complexity filtering, and no independent FASTQ file (i.e. `--save_complexityfiltered_reads` will be ignored) - your complexity filtered reads will also be in the `fastp/` folder in the same file(s) as the preprocessed read.
 
@@ -336,9 +332,9 @@ Removal of possible-host reads from FASTQ files prior classification/profiling c
 
 Similarly to complexity filtering, host-removal can be useful for runtime optimisation and reduction in misclassified reads. It is not always necessary to report classification of reads from a host when you already know the host of the sample, therefore you can gain a run-time and computational advantage by removing these prior typically resource-heavy classification/profiling with more efficient methods. Furthermore, particularly with human samples, you can reduce the number of false positives during classification/profiling that occur due to host-sequence contamination in reference genomes on public databases.
 
-nf-core/taxprofiler currently offers host-removal via alignment against a reference genome with Bowtie2 for short reads and minimap2 for long reads, and the use of the unaligned reads for downstream classification/profiling.
+zellerlab/flexprofiler currently offers host-removal via alignment against a reference genome with Bowtie2 for short reads and minimap2 for long reads, and the use of the unaligned reads for downstream classification/profiling.
 
-You can supply your reference genome in FASTA format with `--hostremoval_reference`. You can also optionally supply a directory containing pre-indexed Bowtie2 index files with `--shortread_hostremoval_index` or a minimap2 `.mmi` file for `--longread_hostremoval_index`, however nf-core/taxprofiler will generate these for you if necessary. Pre-supplying the index directory or files can greatly speed up the process, and these can be re-used.
+You can supply your reference genome in FASTA format with `--hostremoval_reference`. You can also optionally supply a directory containing pre-indexed Bowtie2 index files with `--shortread_hostremoval_index` or a minimap2 `.mmi` file for `--longread_hostremoval_index`, however zellerlab/flexprofiler will generate these for you if necessary. Pre-supplying the index directory or files can greatly speed up the process, and these can be re-used.
 
 :::tip
 If you have multiple taxa or sequences you wish to remove (e.g., the host genome and then also PhiX - common quality-control reagent during sequencing) you can simply concatenate the FASTAs of each taxa or sequences into a single reference file.
@@ -368,15 +364,23 @@ For advice as to which tool to run in your context, please see the documentation
 If you would like to change this behaviour, please contact us on the [nf-core slack](https://nf-co.re/join) and we can discuss this.
 :::
 
-Not all tools currently have dedicated tips, suggestions and/or recommendations, however we welcome further contributions for existing and additional tools via pull requests to the [nf-core/taxprofiler repository](https://github.com/nf-core/taxprofiler)!
+Not all tools currently have dedicated tips, suggestions and/or recommendations, however we welcome further contributions for existing and additional tools via pull requests to the [zellerlab/flexprofiler repository](https://github.com/zellerlab/flexprofiler)!
 
+##### mOTUs
+
+mOTUs v4 has a number of breaking changes compared to v3, in particular:
+- The taxonomy is based on GDBM and not NCBI
+- Many command line options have been removed
+- Input BAM files are not accepted anymore, only FASTQs
+
+<!--
 ##### Bracken
 
 You must make sure to also activate Kraken2 to run Bracken in the pipeline.
 
 It is unclear whether Bracken is suitable for running long reads, as it makes certain assumptions about read lengths. Furthermore, during testing we found issues where Bracken would fail on the long-read test data.
 
-Therefore currently nf-core/taxprofiler does not run Bracken on data specified as being sequenced with `OXFORD_NANOPORE` in the input samplesheet.
+Therefore currently zellerlab/flexprofiler does not run Bracken on data specified as being sequenced with `OXFORD_NANOPORE` in the input samplesheet.
 
 Bracken currently does support reporting of abundance stats for multiple taxonomic levels at once (by default, it only reports species level hits).
 You can change the reported taxonomic level by using Bracken's `-l` parameter (see Step 3 of the [Bracken documentation](https://ccb.jhu.edu/software/bracken/index.shtml?t=manual)).
@@ -429,7 +433,7 @@ Currently, no specific tips or suggestions.
 
 ##### MALT
 
-MALT does not support paired-end reads alignment (unlike other tools), therefore nf-core/taxprofiler aligns these as independent files if read-merging is skipped. If you skip merging, you can sum or average the results of the counts of the pairs.
+MALT does not support paired-end reads alignment (unlike other tools), therefore zellerlab/flexprofiler aligns these as independent files if read-merging is skipped. If you skip merging, you can sum or average the results of the counts of the pairs.
 
 Krona can only be run on MALT output if path to Krona taxonomy database supplied to `--krona_taxonomy_directory`. Therefore if you do not supply the a Krona directory, Krona plots will not be produced for MALT.
 
@@ -437,25 +441,21 @@ Krona can only be run on MALT output if path to Krona taxonomy database supplied
 
 MetaPhlAn4 is compatible with the MetaPhlAn3 database by adding the `--mpa3` into `db_params` of the `database.csv`.
 
-##### mOTUs
-
-mOTUs currently does not accept FASTA files as input, therefore no output will be produced for these input files.
-
 ##### ganon
 
 It is unclear whether ganon is suitable for running long reads - during testing we found issues where ganon would fail on the long-read test data.
 
-Therefore currently nf-core/taxprofiler does not run ganon on data specified as being sequenced with `OXFORD_NANOPORE` in the input samplesheet.
+Therefore currently zellerlab/flexprofiler does not run ganon on data specified as being sequenced with `OXFORD_NANOPORE` in the input samplesheet.
 
 ##### KMCP
 
-KMCP is only suitable for short-read metagenomic profiling, with much lower sensitivity on long-read datasets. Therefore, nf-core/taxprofiler does not currently run KMCP on data specified as being sequenced with `OXFORD_NANOPORE` in the input samplesheet.
+KMCP is only suitable for short-read metagenomic profiling, with much lower sensitivity on long-read datasets. Therefore, zellerlab/flexprofiler does not currently run KMCP on data specified as being sequenced with `OXFORD_NANOPORE` in the input samplesheet.
 
 #### Post Processing
 
 ##### Visualisation
 
-nf-core/taxprofiler supports generation of Krona interactive pie chart plots for the following compatible tools.
+zellerlab/flexprofiler supports generation of Krona interactive pie chart plots for the following compatible tools.
 
 - Kraken2
 - Centrifuge
@@ -468,7 +468,7 @@ MALT KRONA plots cannot be generated automatically, you must also specify a Kron
 
 ##### Multi-Table Generation
 
-The main multiple-sample table from nf-core/taxprofiler is from a dedicated standalone tool originally developed for the pipeline - [Taxpasta](https://taxpasta.readthedocs.io/en/latest/). When providing `--run_profile_standardisation`, every classifier/profiler and database combination will get a standardised and (if present) multi-sample taxon table in the [`taxpasta/`](https://nf-co.re/taxprofiler/output) directory. These tables are structured in the same way, to facilitate comparison between the results of the classifier/profiler. If multiple samples are provided, `taxpasta merge` will be executed, whereas if only a single sample is provided, `taxpasta standardise` will be executed - the file naming scheme will be the same for both.
+The main multiple-sample table from zellerlab/flexprofiler is from a dedicated standalone tool originally developed for the pipeline - [Taxpasta](https://taxpasta.readthedocs.io/en/latest/). When providing `--run_profile_standardisation`, every classifier/profiler and database combination will get a standardised and (if present) multi-sample taxon table in the [`taxpasta/`](https://nf-co.re/taxprofiler/output) directory. These tables are structured in the same way, to facilitate comparison between the results of the classifier/profiler. If multiple samples are provided, `taxpasta merge` will be executed, whereas if only a single sample is provided, `taxpasta standardise` will be executed - the file naming scheme will be the same for both.
 
 In addition to per-sample profiles and standardised Taxpasta output, the pipeline also supports generation of 'native' multi-sample taxonomic profiles (i.e., those generated by the taxonomic profiling tools themselves or additional utility scripts provided by the tool authors), when providing `--run_profile_standardisation` to your pipeline.
 
@@ -485,20 +485,21 @@ The following tools will produce multi-sample taxon tables:
 - **ganon** (via the `ganon table` command)
 
 Note that the multi-sample tables from the 'native' tools in each folders are [not inter-operable](https://taxpasta.readthedocs.io/en/latest/tutorials/getting-started/) with each other as they can have different formats and can contain additional and different data. In this case we refer you to use the standardised and merged output from Taxpasta, as described above.
+-->
 
 ### Updating the pipeline
 
 When you run the above command, Nextflow automatically pulls the pipeline code from GitHub and stores it as a cached version. When running the pipeline after this, it will always use the cached version if available - even if the pipeline has been updated since. To make sure that you're running the latest version of the pipeline, make sure that you regularly update the cached version of the pipeline:
 
 ```bash
-nextflow pull nf-core/taxprofiler
+nextflow pull zellerlab/flexprofiler
 ```
 
 ### Reproducibility
 
 It is a good idea to specify the pipeline version when running the pipeline on your data. This ensures that a specific version of the pipeline code and software are used when you run your pipeline. If you keep using the same tag, you'll be running the same version of the pipeline, even if there have been changes to the code since.
 
-First, go to the [nf-core/taxprofiler releases page](https://github.com/nf-core/taxprofiler/releases) and find the latest pipeline version - numeric only (eg. `1.3.1`). Then specify this when running the pipeline with `-r` (one hyphen) - eg. `-r 1.3.1`. Of course, you can switch to another version by changing the number after the `-r` flag.
+First, go to the [zellerlab/flexprofiler releases page](https://github.com/zellerlab/flexprofiler/releases) and find the latest pipeline version - numeric only (eg. `1.3.1`). Then specify this when running the pipeline with `-r` (one hyphen) - eg. `-r 1.3.1`. Of course, you can switch to another version by changing the number after the `-r` flag.
 
 This version number will be logged in reports when you run the pipeline, so that you'll know what you used when you look back in the future. For example, at the bottom of the MultiQC reports.
 

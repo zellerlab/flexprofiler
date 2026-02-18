@@ -18,13 +18,8 @@ We plan to contribute to **nf-core** modules or other components of more general
    - Host-read removal: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/)
 3. Performs taxonomic classification and/or profiling using one or more of:
    - [mOTUs](https://motus-tool.org/)
-4. Standardises output tables ([`Taxpasta`](https://taxpasta.readthedocs.io))
+4. Standardises output tables (tool-specific and [`Taxpasta`](https://taxpasta.readthedocs.io))
 5. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
-
-> [!NOTE]
-> The pipeline contains in its code also additional profiling methods and execution parameters not documented here or in other documentation files, or marked with <UNSTABLE>.
-> These are experimental and should not be considered stable features of the pipeline.
-> Things may break - use at your own risk.
 
 ## Usage
 

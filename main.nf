@@ -1,11 +1,9 @@
 #!/usr/bin/env nextflow
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    nf-core/taxprofiler
+    zellerlab/flexprofiler
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Github : https://github.com/nf-core/taxprofiler
-    Website: https://nf-co.re/taxprofiler
-    Slack  : https://nfcore.slack.com/channels/taxprofiler
+    Github : https://github.com/zellerlab/flexprofiler
 ----------------------------------------------------------------------------------------
 */
 
@@ -16,8 +14,8 @@
 */
 
 include { FLEXPROFILER             } from './workflows/flexprofiler'
-include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_nfcore_taxprofiler_pipeline'
-include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_nfcore_taxprofiler_pipeline'
+include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
+include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
