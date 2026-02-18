@@ -3,9 +3,9 @@ process MOTUS_MERGE {
     label 'process_single'
 
     conda "${moduleDir}/environment.yml"
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/motus:3.1.0--pyhdfd78af_0':
-        'biocontainers/motus:3.1.0--pyhdfd78af_0' }"
+    //container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    //    'https://depot.galaxyproject.org/singularity/motus:3.1.0--pyhdfd78af_0':
+    //    'biocontainers/motus:3.1.0--pyhdfd78af_0' }"
 
     input:
     tuple val(meta), path(input)
@@ -23,19 +23,36 @@ process MOTUS_MERGE {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def cmd_input = input.size() > 1 ? "-i ${input.join(',')}" : input.isDirectory() ? "-d ${input}" : "-i ${input}"
-    def suffix = task.ext.args?.contains("-B") ? "biom" : "txt"
     """
-    motus \\
-        merge \\
-        -db $db \\
-        ${cmd_input} \\
-        $args \\
-        -o ${prefix}.${suffix}
+    # mOTUs 4 does not support anymore the -db flag to pass a custom database
+    # the database path is hardcoded in the module, and this snippet overrides it to
+    # point to the local work directory
+    rm -f motus_patch.py
+    cat <<-'PATCH_EOF' > motus_patch.py
+    import sys
+    import pathlib
+    from motus.motus import main
+    import motus.mutils as m
 
-    ## Take version from the mOTUs/profile module output, as cannot reconstruct
-    ## version without having database staged in this directory.
-    VERSION=\$(cat ${profile_version_yml} | grep '/*motus:.*' | sed 's/.*otus: //g')
+    m.DEFAULT_MOTUS_MGDB_PARENT_LOCATION = pathlib.Path(__file__).resolve().parent
+    m.DEFAULT_MOTUS_MGDB_LOCATION = m.DEFAULT_MOTUS_MGDB_PARENT_LOCATION.joinpath('db_mOTU')
+    m.DEFAULT_MOTUS_MGDB_LOCATION_MARKER = m.DEFAULT_MOTUS_MGDB_LOCATION.joinpath('db_mOTU.downloaded')
+    m.DEFAULT_MOTUS_ANNODB_LOCATION = m.DEFAULT_MOTUS_MGDB_LOCATION.joinpath('mOTUsv4.0.annotation.db')
+    m.DEFAULT_MOTUS_ANNODB_LOCATION_MARKER = m.DEFAULT_MOTUS_MGDB_LOCATION.joinpath('mOTUsv4.0.annotation.db.downloaded')
+
+    if __name__ == '__main__':
+        sys.argv[0] = sys.argv[0].removesuffix('.exe')
+        sys.exit(main())
+    PATCH_EOF
+
+    python motus_patch.py \\
+        merge \\
+        ${input} \\
+        $args \\
+        -o ${prefix}.txt
+
+    # no way to get the version number without triggering an exit code 2
+    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
@@ -46,13 +63,11 @@ process MOTUS_MERGE {
     stub:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def cmd_input = input.size() > 1 ? "-i ${input.join(',')}" : input.isDirectory() ? "-d ${input}" : "-i ${input}"
-    def suffix = task.ext.args?.contains("-B") ? "biom" : "txt"
-
     """
     touch ${prefix}.txt
 
-    VERSION=\$(cat ${profile_version_yml} | grep '/*motus:.*' | sed 's/.*otus: //g')
+    # no way to get the version number without triggering an exit code 2
+    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
