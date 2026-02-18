@@ -12,7 +12,7 @@ We plan to contribute to **nf-core** modules or other components of more general
 
 ## Pipeline simplified overview
 
-1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
+1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
 2. Read pre-processing
    - Adapter clipping and merging: [fastp](https://github.com/OpenGene/fastp)
    - Host-read removal: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/)
@@ -20,6 +20,9 @@ We plan to contribute to **nf-core** modules or other components of more general
    - [mOTUs](https://motus-tool.org/)
 4. Standardises output tables (tool-specific and [`Taxpasta`](https://taxpasta.readthedocs.io))
 5. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+
+## For Zellerlab internal users
+A set of pre-configured options used internally in the group is documented (here)[docs/zellerlab.md].
 
 ## Usage
 
@@ -87,9 +90,8 @@ fetch_databases.sh <out_database_path>
 
 ## Pipeline output
 
-To see the results of an example test run with a full size dataset refer to the [results](https://nf-co.re/taxprofiler/results) tab on the nf-core website pipeline page.
 For more details about the output files and reports, please refer to the
-[output documentation](https://nf-co.re/taxprofiler/output).
+[output documentation](docs/output.md).
 
 ## Credits
 

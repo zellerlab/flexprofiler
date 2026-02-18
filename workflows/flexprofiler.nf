@@ -8,7 +8,7 @@ include { MULTIQC                       } from '../modules/nf-core/multiqc/main'
 include { paramsSummaryMap              } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc          } from '../subworkflows/nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML        } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { methodsDescriptionText        } from '../subworkflows/local/utils_nfcore_taxprofiler_pipeline'
+include { methodsDescriptionText        } from '../subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -27,7 +27,7 @@ include { SHORTREAD_HOSTREMOVAL         } from '../subworkflows/local/shortread_
 include { LONGREAD_HOSTREMOVAL          } from '../subworkflows/local/longread_hostremoval'
 include { SHORTREAD_COMPLEXITYFILTERING } from '../subworkflows/local/shortread_complexityfiltering'
 include { PROFILING                     } from '../subworkflows/local/profiling'
-include { VISUALIZATION_KRONA           } from '../subworkflows/local/visualization_krona'
+//include { VISUALIZATION_KRONA           } from '../subworkflows/local/visualization_krona'
 include { STANDARDISATION_PROFILES      } from '../subworkflows/local/standardisation_profiles'
 
 /*
@@ -285,16 +285,16 @@ workflow FLEXPROFILER {
     /*
         SUBWORKFLOW: VISUALIZATION_KRONA
     */
-    if (params.run_krona) {
-        VISUALIZATION_KRONA(PROFILING.out.classifications, PROFILING.out.profiles, ch_final_dbs)
-        ch_versions = ch_versions.mix(VISUALIZATION_KRONA.out.versions)
-    }
+    //if (params.run_krona) {
+    //    VISUALIZATION_KRONA(PROFILING.out.classifications, PROFILING.out.profiles, ch_final_dbs)
+    //    ch_versions = ch_versions.mix(VISUALIZATION_KRONA.out.versions)
+    //}
 
     /*
         SUBWORKFLOW: PROFILING STANDARDISATION
     */
     if (params.run_profile_standardisation) {
-        STANDARDISATION_PROFILES(PROFILING.out.classifications, PROFILING.out.profiles, ch_final_dbs, PROFILING.out.motus_version)
+        STANDARDISATION_PROFILES(PROFILING.out.classifications, PROFILING.out.profiles, ch_final_dbs)
         ch_versions = ch_versions.mix(STANDARDISATION_PROFILES.out.versions)
     }
 
@@ -326,7 +326,7 @@ workflow FLEXPROFILER {
         .mix(topic_versions_string)
         .collectFile(
             storeDir: "${params.outdir}/pipeline_info",
-            name: 'nf_core_' + 'taxprofiler_software_' + 'mqc_' + 'versions.yml',
+            name: 'zellerlab_' + 'flexprofiler_software_' + 'mqc_' + 'versions.yml',
             sort: true,
             newLine: true,
         )
