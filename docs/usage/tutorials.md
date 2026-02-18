@@ -1,10 +1,35 @@
-# nf-core/taxprofiler: Tutorials
+# zellerlab/flexprofiler: Tutorials
 
-This page provides a range of tutorials to help give you a bit more guidance on how to set up nf-core/taxprofiler runs in the wild.
+This page provides a range of tutorials to help give you a bit more guidance on how to set up zellerlab/flexprofiler runs in the wild.
+An example run with mock data will be implemented here in due course.
 
+## mOTUs custom database
+
+mOTUs does not provide the ability to construct custom databases. Therefore we recommend to use the the prebuilt database of marker genes provided by the developers.
+
+To download the mOTUs database first install mOTUs as detailed in the (tool page)[https://github.com/motu-tool/mOTUs].
+Once mOTUs is installed download the database with:
+
+```bash
+motus downloadMGDB
+```
+
+Then find the path to the downloaded database on your system with:
+
+```bash
+python -c "import motus.mutils as m; print(m.DEFAULT_MOTUS_MGDB_LOCATION)"
+```
+
+Then supply the `db_mOTU/` path to your zellerlab/flexprofiler database input sheet.
+
+:::warning
+**Do not change the directory name of the resulting database if moving to a central location** The database name of `db_mOTU/` is hardcoded in the mOTUs tool
+:::
+
+<!--
 ## Simple Tutorial
 
-In this tutorial we will run you through a simple set up of a small nf-core/taxprofiler run.
+In this tutorial we will run you through a simple set up of a small zellerlab/flexprofiler run.
 It assumes that you have basic knowledge of metagenomic classification input and output files.
 
 ### Preparation
@@ -27,12 +52,12 @@ The tutorial will use Docker, however you can simply replace references to `dock
 First we will make a directory to run the whole tutorial in.
 
 ```bash
-mkdir taxprofiler-tutorial
-cd taxprofiler-tutorial/
+mkdir flexprofiler-tutorial
+cd flexprofiler-tutorial/
 ```
 
 We will use very small short-read (pre-subset) metagenomes used for testing.
-nf-core/taxprofiler accepts FASTQ or FASTA files as input formats, however we will use FASTQ here as the more common format in taxonomic classification.
+zellerlab/flexprofiler accepts FASTQ or FASTA files as input formats, however we will use FASTQ here as the more common format in taxonomic classification.
 You can download these metagenomes with the following command.
 
 ```bash
@@ -52,14 +77,14 @@ curl -O https://raw.githubusercontent.com/nf-core/test-datasets/taxprofiler/data
 curl -O https://raw.githubusercontent.com/nf-core/test-datasets/taxprofiler/data/database/kaiju/kaiju.tar.gz
 ```
 
-To demonstrate that nf-core/taxprofiler can also accept databases as uncompressed folders, we can extract one of them.
+To demonstrate that zellerlab/flexprofiler can also accept databases as uncompressed folders, we can extract one of them.
 
 ```bash
 tar -xzf kaiju.tar.gz
 ```
 
 :::note
-You must provide these databases pre-built to the pipeline, nf-core/taxprofiler neither comes with default databases nor can generate databases for you.
+You must provide these databases pre-built to the pipeline, zellerlab/flexprofiler neither comes with default databases nor can generate databases for you.
 For guidance on how to build databases, see the [Retrieving databases or building custom databases](#retrieving-databases-or-building-custom-databases) tutorial.
 :::
 
@@ -75,7 +100,7 @@ curl -O https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/819/615/GCF_000819615.1
 
 #### Sample sheet
 
-You provide the sequencing data FASTQ files to nf-core/taxprofiler via a input 'sample sheet' `.csv` file.
+You provide the sequencing data FASTQ files to zellerlab/flexprofiler via a input 'sample sheet' `.csv` file.
 This is a 6 column table, that includes sample and library names, instrument platform, and paths to the sequencing data.
 
 Open a text editor, and create a file called `samplesheet.csv`.
@@ -117,7 +142,7 @@ Furthermore, while the Kraken2 and Centrifuge databases have been supplied as `.
 Now that we have the sequencing reads (in FASTQ format), the databases (directory or `.tar.gz`), and a reference genome (FASTA, optionally gzipped), we can now run them with the pipeline. The following command will perform short read quality control, remove contaminant reads, merge multiple libraries for each sample, run the three profilers, and finally generate standardised profiles.
 
 ```bash
-nextflow run nf-core/taxprofiler -r 1.1.0 -profile docker \
+nextflow run zellerlab/flexprofiler -r 1.1.0 -profile docker \
 --input samplesheet.csv --databases database.csv --outdir ./results \
 --perform_shortread_qc \
 --perform_shortread_hostremoval --hostremoval_reference GCF_000819615.1_ViralProj14015_genomic.fna.gz \
@@ -128,12 +153,12 @@ nextflow run nf-core/taxprofiler -r 1.1.0 -profile docker \
 
 :::info
 With all Docker containers pre-downloaded, this run took 2 minutes and 31 seconds on a laptop running Ubuntu 22.04.2 with 32 GB RAM and 16 CPUs.
-If you are running nf-core/taxprofiler for the first time, expect this command to take longer as Nextflow will have to download each software container for each step of the pipeline.
+If you are running zellerlab/flexprofiler for the first time, expect this command to take longer as Nextflow will have to download each software container for each step of the pipeline.
 :::
 
 To break down each line of the command:
 
-- Tell Nextflow to run nf-core/taxprofiler with the particular version and using the Docker container system
+- Tell Nextflow to run zellerlab/flexprofiler with the particular version and using the Docker container system
 - Specify the input and outputs, i.e., paths to the `samplesheet.csv`, `database.csv`, and directory where to save the results
 - Turn on basic quality control of input reads: adapter clipping, length filtering, etc
 - Turn on the removal of host or contaminant reads, and specify the path to reference genome of this
@@ -147,40 +172,6 @@ The pipeline runs occasionally fail due to a particular step of the pipeline req
 :::
 
 The pipeline run can be represented (in a simplified format!) as follows
-
-```mermaid
-graph LR
-0([FASTQs]) --> X[FastQC] --> A[FastP] --> Y[FastQC] --> B[BowTie2]
-0([FASTQs]) --> X[FastQC] --> A[FastP] --> Y[FastQC] --> B[BowTie2]
-
-3([Reference FASTA]) -----> B
-
-2([Databases]) -------> D[Kraken2]
-2([Databases]) -------> E[Centrifuge]
-2([Databases]) -------> E[Centrifuge]
-2([Databases]) -------> F[Kaiju]
-
-B--> C[Run Merging]
-B--> C[Run Merging]
-C --> D[Kraken2]
-C --> E[Centrifuge]
-C --> F[Kaiju]
-
-D --> G[combinekreports]
-E --> H[combinekreports]
-F --> I[Kaiju2Table]
-
-D ---> J[TAXPASTA]
-E ---> J[TAXPASTA]
-F ---> J[TAXPASTA]
-
-X ---> K[MultiQC]
-A ---> K[MultiQC]
-B ---> K[MultiQC]
-D ---> K[MultiQC]
-E ---> K[MultiQC]
-F ---> K[MultiQC]
-```
 
 :::tip{title=""}
 We hope you see the benefit of using pipelines for such a task!
@@ -219,20 +210,21 @@ Within each classifier results directory, there will be one directory and 'combi
 :::
 
 :::info
-For read-preprocessing steps, only log files are stored in the `results/` directories by default. Refer to the parameters tab of the [nf-core/taxprofiler documentation](https://nf-co.re/taxprofiler/) for more options.
+For read-preprocessing steps, only log files are stored in the `results/` directories by default. Refer to the parameters tab of the [zellerlab/flexprofiler documentation](docs/parameters.md) for more options.
 :::
 
 The general 'workflow' of going through the results will typically be reviewing the `multiqc/multiqc_report.html` file to get general statistics of the entire run, particularly of the preprocessing.
 You would then use the taxon tables in the `taxpasta/` directory for downstream analysis, but referring to the classifier specific results directories when you require more detailed information on each classification.
 
-Detailed descriptions of all results files can be found in the output tab of the [nf-core/taxprofiler documentation](https://nf-co.re/taxprofiler/).
+Detailed descriptions of all results files can be found in the output tab of the [zellerlab/flexprofiler documentation](docs/output.md).
+
 
 ### Clean up
 
 Once you have completed the tutorial, you can run the following command to delete all downloaded and output files.
 
 ```bash
-rm -r taxprofiler-tutorial/
+rm -r flexprofiler-tutorial/
 ```
 
 :::warning
@@ -410,7 +402,7 @@ kraken2-build --build --db <YOUR_DB_NAME>
 kraken2-build --clean --db <YOUR_DB_NAME>
 ```
 
-You can then add the `<YOUR_DB_NAME>/` path to your nf-core/taxprofiler database input sheet.
+You can then add the `<YOUR_DB_NAME>/` path to your zellerlab/flexprofiler database input sheet.
 
 <details markdown="1">
 <summary>Expected files in database directory</summary>
@@ -470,7 +462,7 @@ To build a MALT database, you need the FASTA files to include, and an (unzipped)
 malt-build -i <path>/<to>/<fasta>/*.{fna,fa,fasta} -a2t <path>/<to>/<map>.db -d <YOUR_DB_NAME>/  -s DNA
 ```
 
-You can then add the `<YOUR_DB_NAME>/` path to your nf-core/taxprofiler database input sheet.
+You can then add the `<YOUR_DB_NAME>/` path to your zellerlab/flexprofiler database input sheet.
 
 :::warning
 MALT generates very large database files and requires large amounts of RAM. You can reduce both by increasing the step size `-st` (with a reduction in sensitivity).
@@ -508,14 +500,14 @@ To perform this task, ensure that you have installed `MetaPhlAn` on your machine
 metaphlan --install --bowtie2db <YOUR_DB_NAME>/
 ```
 
-You can then add the `<YOUR_DB_NAME>/` path to your nf-core/taxprofiler database input sheet.
+You can then add the `<YOUR_DB_NAME>/` path to your zellerlab/flexprofiler database input sheet.
 
 :::warning
 It is generally not recommended to modify this database yourself, thus this is currently not supported in the pipeline. However, it is possible to customise the existing database by adding your own marker genomes following the instructions [here](https://github.com/biobakery/MetaPhlAn/wiki/MetaPhlAn-4#customizing-the-database).
 :::
 
 :::note
-If using your own database is relevant for you, please contact the nf-core/taxprofiler developers on the [nf-core slack](https://nf-co.re/join) and we will investigate supporting this.
+If using your own database is relevant for you, please contact the zellerlab/flexprofiler developers on the [nf-core slack](https://nf-co.re/join) and we will investigate supporting this.
 :::
 
 <details markdown="1">
@@ -536,28 +528,6 @@ If using your own database is relevant for you, please contact the nf-core/taxpr
 
 More information on the MetaPhlAn database can be found [here](https://github.com/biobakery/MetaPhlAn/wiki/MetaPhlAn-4#Pre-requisites).
 
-### mOTUs custom database
-
-mOTUs does not provide the ability to construct custom databases. Therefore we recommend to use the the prebuilt database of marker genes provided by the developers.
-
-:::warning
-**Do not change the directory name of the resulting database if moving to a central location** The database name of `db_mOTU/` is hardcoded in the mOTUs tool
-:::
-
-To do this you need to have `mOTUs` installed on your machine.
-
-```bash
-motus downloadDB
-```
-
-Then supply the `db_mOTU/` path to your nf-core/taxprofiler database input sheet.
-
-:::warning
-The `db_mOTU/` directory may be downloaded to somewhere in your Python's `site-package` directory. You will have to find this yourself as the exact location varies depends on installation method.
-:::
-
-More information on the mOTUs database can be found [here](https://motu-tool.org/installation.html).
-
 #### ganon custom database
 
 To build a custom ganon database you need two components: the FASTA files you wish to include, and the file extension of those FASTA files.
@@ -572,7 +542,7 @@ You can optionally include your own taxonomy files, however `ganon build-custom`
 ganon build-custom --threads 4 --input *.fa --db-prefix <YOUR_DB_NAME>
 ```
 
-You can then add the `<YOUR_DB_NAME>/` path to your nf-core/taxprofiler database input sheet.
+You can then add the `<YOUR_DB_NAME>/` path to your zellerlab/flexprofiler database input sheet.
 
 :::tip
 `ganon build-custom` can be multi-threaded with `-t` to speed up building.
@@ -603,7 +573,7 @@ kmcp compute -k 21 -n 10 -l 150 -O <OUTDIR_NAME>  <path>/<to>/<fasta>/*.{fna,fa,
 kmcp index -I <OUTDIR_NAME>/ --threads 8 --num-hash 1 --false-positive-rate 0.3 --out-dir <YOUR_DB_NAME>/
 ```
 
-You can then add the `<YOUR_DB_NAME>/` path to your nf-core/taxprofiler database input sheet.
+You can then add the `<YOUR_DB_NAME>/` path to your zellerlab/flexprofiler database input sheet.
 
 <details markdown="1">
 <summary>Expected files in database directory</summary>
@@ -617,3 +587,4 @@ You can then add the `<YOUR_DB_NAME>/` path to your nf-core/taxprofiler database
 </details>
 
 More information on custom KMCP database construction can be found [here](https://bioinf.shenwei.me/kmcp/database/#building-custom-databases).
+-->

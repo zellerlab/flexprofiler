@@ -47,7 +47,7 @@ process MOTUS_MERGE {
 
     python motus_patch.py \\
         merge \\
-        ${input} \\
+        -i ${input} \\
         $args \\
         -o ${prefix}.txt
 

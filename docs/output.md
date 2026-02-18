@@ -1,4 +1,4 @@
-# nf-core/taxprofiler: Output
+# zellerlab/flexprofiler: Output
 
 ## Introduction
 
@@ -27,7 +27,9 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 - [SAMtools stats](#samtools-stats) - Statistics from host removal
 - [SAMtools fastq](#samtools-fastq) - Converts unmapped BAM file to fastq format (minimap2 only)
 - [Analysis Ready Reads](#analysis-ready-reads) - Optional results directory containing the final processed reads used as input for classification/profiling.
-- [Bracken](#bracken) - Taxonomic classifier using k-mers and abundance estimations
+- [mOTUs](#motus) - Tool for marker gene-based OTU (mOTU) profiling.
+<!--
+[//]:- [Bracken](#bracken) - Taxonomic classifier using k-mers and abundance estimations
 - [Kraken2](#kraken2) - Taxonomic classifier using exact k-mer matches
 - [KrakenUniq](#krakenuniq) - Taxonomic classifier that combines the k-mer-based classification and the number of unique k-mers found in each species
 - [Centrifuge](#centrifuge) - Taxonomic classifier that uses a novel indexing scheme based on the Burrows-Wheeler transform (BWT) and the Ferragina-Manzini (FM) index.
@@ -35,18 +37,20 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 - [Diamond](#diamond) - Sequence aligner for protein and translated DNA searches.
 - [MALT](#malt) - Sequence alignment and analysis tool designed for processing high-throughput sequencing data, especially in the context of metagenomics
 - [MetaPhlAn](#metaphlan) - Genome-level marker gene based taxonomic classifier
-- [mOTUs](#motus) - Tool for marker gene-based OTU (mOTU) profiling.
 - [KMCP](#kmcp) - Taxonomic classifier that utilizes genome coverage information by splitting the reference genomes into chunks and stores k-mers in a modified and optimized COBS index for fast alignment-free sequence searching.
 - [ganon](#ganon) - Taxonomic classifier and profile that uses Interleaved Bloom Filters as indices based on k-mers/minimizers.
 - [TAXPASTA](#taxpasta) - Tool to standardise taxonomic profiles as well as merge profiles across samples from the same database and classifier/profiler.
+-->
 - [MultiQC](#multiqc) - Aggregate report describing results and QC from the whole pipeline
 - [Pipeline information](#pipeline-information) - Report metrics generated during the workflow execution
 
-![](images/taxprofiler_tube.png)
+<!--
+![](images/flexprofiler_tube.png)
+-->
 
 ### untar
 
-untar is used in nf-core/taxprofiler to decompress various input files ending in `.tar.gz`. This process is mainly used for decompressing input database archive files.
+untar is used in zellerlab/flexprofiler to decompress various input files ending in `.tar.gz`. This process is mainly used for decompressing input database archive files.
 
 <details markdown="1">
 <summary>Output files</summary>
@@ -74,7 +78,7 @@ This directory will only be present if `--save_untarred_databases` is supplied. 
 
 [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your sequenced reads. It provides information about the quality score distribution across your reads, per base sequence content (%A/T/G/C), adapter contamination and overrepresented sequences. For further reading and documentation see the [FastQC help pages](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/).
 
-If preprocessing is turned on, nf-core/taxprofiler runs FastQC/Falco twice -once before and once after adapter removal/read merging, to allow evaluation of the performance of these preprocessing steps. Note in the General Stats table, the columns of these two instances of FastQC/Falco are placed next to each other to make it easier to evaluate. However, the columns of the actual preprocessing steps (i.e, fastp, AdapterRemoval, and Porechop) will be displayed _after_ the two FastQC/Falco columns, even if they were run 'between' the two FastQC/Falco jobs in the pipeline itself.
+If preprocessing is turned on, zellerlab/flexprofiler runs FastQC/Falco twice -once before and once after adapter removal/read merging, to allow evaluation of the performance of these preprocessing steps. Note in the General Stats table, the columns of these two instances of FastQC/Falco are placed next to each other to make it easier to evaluate. However, the columns of the actual preprocessing steps (i.e, fastp, AdapterRemoval, and Porechop) will be displayed _after_ the two FastQC/Falco columns, even if they were run 'between' the two FastQC/Falco jobs in the pipeline itself.
 
 :::info
 Falco produces identical output to FastQC but in the `falco/` directory.
@@ -84,7 +88,7 @@ Falco produces identical output to FastQC but in the `falco/` directory.
 
 [fastp](https://github.com/OpenGene/fastp) is a FASTQ pre-processing tool for quality control, trimmming of adapters, quality filtering and other features.
 
-It is used in nf-core/taxprofiler for adapter trimming of short-reads.
+It is used in zellerlab/flexprofiler for adapter trimming of short-reads.
 
 <details markdown="1">
 <summary>Output files</summary>
@@ -96,7 +100,7 @@ It is used in nf-core/taxprofiler for adapter trimming of short-reads.
 
 </details>
 
-By default nf-core/taxprofiler will only provide the `<sample_id>.fastp.fastq.gz` file if fastp is selected. The file `<sample_id>.merged.fastq.gz` will be available in the output folder if you provide the argument ` --shortread_qc_mergepairs` (optionally retaining un-merged pairs when in combination with `--shortread_qc_includeunmerged`).
+By default zellerlab/flexprofiler will only provide the `<sample_id>.fastp.fastq.gz` file if fastp is selected. The file `<sample_id>.merged.fastq.gz` will be available in the output folder if you provide the argument ` --shortread_qc_mergepairs` (optionally retaining un-merged pairs when in combination with `--shortread_qc_includeunmerged`).
 
 You can change the default value for low complexity filtering by using the argument `--shortread_complexityfilter_fastp_threshold`.
 
@@ -118,7 +122,7 @@ You can change the default value for low complexity filtering by using the argum
 
 </details>
 
-By default nf-core/taxprofiler will only provide the `.settings` file if AdapterRemoval is selected.
+By default zellerlab/flexprofiler will only provide the `.settings` file if AdapterRemoval is selected.
 
 You will only find the `.fastq` files in the results directory if you provide ` --save_preprocessed_reads`. If this is selected, you may receive different combinations of `.fastq` files for each sample depending on the input types - e.g. whether you have merged or not, or if you're supplying both single- and paired-end reads. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
 
@@ -190,7 +194,7 @@ You will only find the `.fastq` files in the results directory if you provide ` 
 
 [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/) stands for Decontamination Using Kmers. BBDuk was developed to combine most common data-quality-related trimming, filtering, and masking operations into a single high-performance tool.
 
-It is used in nf-core/taxprofiler for complexity filtering using different algorithms. This means that it will remove reads with low sequence diversity (e.g. mono- or dinucleotide repeats).
+It is used in zellerlab/flexprofiler for complexity filtering using different algorithms. This means that it will remove reads with low sequence diversity (e.g. mono- or dinucleotide repeats).
 
 <details markdown="1">
 <summary>Output files</summary>
@@ -201,7 +205,7 @@ It is used in nf-core/taxprofiler for complexity filtering using different algor
 
 </details>
 
-By default nf-core/taxprofiler will only provide the `.log` file if BBDuk is selected as the complexity filtering tool. You will only find the complexity filtered reads in your results directory if you provide ` --save_complexityfiltered_reads`. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
+By default zellerlab/flexprofiler will only provide the `.log` file if BBDuk is selected as the complexity filtering tool. You will only find the complexity filtered reads in your results directory if you provide ` --save_complexityfiltered_reads`. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
 
 :::warning
 The resulting `.fastq` files may _not_ always be the 'final' reads that go into taxprofiling, if you also run other steps such as host removal, run merging etc..
@@ -211,7 +215,7 @@ The resulting `.fastq` files may _not_ always be the 'final' reads that go into 
 
 [PRINSEQ++](https://github.com/Adrian-Cantu/PRINSEQ-plus-plus) is a C++ implementation of the [prinseq-lite.pl](https://prinseq.sourceforge.net/) program. It can be used to filter, reformat or trim genomic and metagenomic sequence data.
 
-It is used in nf-core/taxprofiler for complexity filtering using different algorithms. This means that it will remove reads with low sequence diversity (e.g. mono- or dinucleotide repeats).
+It is used in zellerlab/flexprofiler for complexity filtering using different algorithms. This means that it will remove reads with low sequence diversity (e.g. mono- or dinucleotide repeats).
 
 <details markdown="1">
 <summary>Output files</summary>
@@ -222,7 +226,7 @@ It is used in nf-core/taxprofiler for complexity filtering using different algor
 
 </details>
 
-By default nf-core/taxprofiler will only provide the `.log` file if PRINSEQ++ is selected as the complexity filtering tool. You will only find the complexity filtered `.fastq` files in your results directory if you supply ` --save_complexityfiltered_reads`. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
+By default zellerlab/flexprofiler will only provide the `.log` file if PRINSEQ++ is selected as the complexity filtering tool. You will only find the complexity filtered `.fastq` files in your results directory if you supply ` --save_complexityfiltered_reads`. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
 
 :::warning
 The resulting `.fastq` files may _not_ always be the 'final' reads that go into taxprofiling, if you also run other steps such as host removal, run merging etc..
@@ -266,7 +270,7 @@ You will only find the `.fastq` files in the results directory if you provide ` 
 
 [Bowtie 2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml) is an ultrafast and memory-efficient tool for aligning sequencing reads to long reference sequences. It is particularly good at aligning reads of about 50 up to 100s or 1,000s of characters, and particularly good at aligning to relatively long (e.g. mammalian) genomes.
 
-It is used with nf-core/taxprofiler to allow removal of 'host' (e.g. human) and/or other possible contaminant reads (e.g. Phi X) from short-read `.fastq` files prior to profiling.
+It is used with zellerlab/flexprofiler to allow removal of 'host' (e.g. human) and/or other possible contaminant reads (e.g. Phi X) from short-read `.fastq` files prior to profiling.
 
 <details markdown="1">
 <summary>Output files</summary>
@@ -281,7 +285,7 @@ It is used with nf-core/taxprofiler to allow removal of 'host' (e.g. human) and/
 
 </details>
 
-By default nf-core/taxprofiler will only provide the `.log` file if host removal is turned on. You will only have a `.bam` file if you specify `--save_hostremoval_bam`. This will contain _both_ mapped and unmapped reads. You will only get FASTQ files if you specify to save `--save_hostremoval_unmapped` - these contain only unmapped reads. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
+By default zellerlab/flexprofiler will only provide the `.log` file if host removal is turned on. You will only have a `.bam` file if you specify `--save_hostremoval_bam`. This will contain _both_ mapped and unmapped reads. You will only get FASTQ files if you specify to save `--save_hostremoval_unmapped` - these contain only unmapped reads. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
 
 :::info
 Unmapped reads in FASTQ are only found in this directory for short-reads, for long-reads see [`samtools/fastq/`](#samtools-fastq).
@@ -299,7 +303,7 @@ While there is a dedicated section in the MultiQC HTML for Bowtie2, these values
 
 [minimap2](https://github.com/lh3/minimap2) is an alignment tool suited to mapping long reads to reference sequences.
 
-It is used with nf-core/taxprofiler to allow removal of 'host' (e.g. human) or other possible contaminant reads from long-read `.fastq` files prior to taxonomic classification/profiling.
+It is used with zellerlab/flexprofiler to allow removal of 'host' (e.g. human) or other possible contaminant reads from long-read `.fastq` files prior to taxonomic classification/profiling.
 
 <details markdown="1">
 <summary>Output files</summary>
@@ -312,7 +316,7 @@ It is used with nf-core/taxprofiler to allow removal of 'host' (e.g. human) or o
 
 </details>
 
-By default, nf-core/taxprofiler will only provide the `.bam` file containing mapped and unmapped reads if saving of host removal for long reads is turned on via `--save_hostremoval_bam`.
+By default, zellerlab/flexprofiler will only provide the `.bam` file containing mapped and unmapped reads if saving of host removal for long reads is turned on via `--save_hostremoval_bam`.
 
 :::info
 minimap2 is not yet supported as a module in MultiQC and therefore there is no dedicated section in the MultiQC HTML. Rather, alignment statistics to host genome is reported via samtools stats module in MultiQC report.
@@ -376,7 +380,7 @@ In most cases you do not need to check this file, as it is rendered in the Multi
 
 ### Run Merging
 
-nf-core/taxprofiler offers the option to merge FASTQ files of multiple sequencing runs or libraries that derive from the same sample, as specified in the input samplesheet.
+zellerlab/flexprofiler offers the option to merge FASTQ files of multiple sequencing runs or libraries that derive from the same sample, as specified in the input samplesheet.
 
 This is the last possible preprocessing step, so if you have multiple runs or libraries (and run merging turned on), this will represent the final reads that will go into classification/profiling steps.
 
@@ -392,6 +396,24 @@ Note that you will only find samples that went through the run merging step in t
 
 This directory and its FASTQ files will only be present if you supply `--save_runmerged_reads`. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
 
+### mOTUs
+
+[mOTUS](https://github.com/motu-tool/mOTUs) is a taxonomic profiler that maps reads to a unique marker specific database and estimates the relative abundance of known and unknown species.
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `motus/`
+  - `<db_name>/`
+    - `<sample_id>.log`: A log file that contains summary statistics
+    - `<sample_id>.out`: A classification file that summarises taxonomic identifiers and their raw abundace in the profiled sample
+  - `motus_<db_name>_combined_reports.txt`: A combined profile of all samples aligned to a given database (as generated by `motus_merge`)
+
+</details>
+
+Normally `*_combined_reports.txt` is the most useful file for downstream analyses, but the per sample `.out` file can provide additional more specific information.
+
+<!--
 ### Bracken
 
 [Bracken](https://ccb.jhu.edu/software/bracken/) (Bayesian Reestimation of Abundance with Kraken) is a highly accurate statistical method that computes the abundance of species in DNA sequences from a metagenomics sample. Braken uses the taxonomy labels assigned by Kraken, a highly accurate metagenomics classification algorithm, to estimate the number of reads originating from each species present in a sample.
@@ -500,7 +522,7 @@ The most useful summary file is the `_combined_reports.txt` file which summarise
 
 ### DIAMOND
 
-[DIAMOND](https://github.com/bbuchfink/diamond) is a sequence aligner for translated DNA searches or protein sequences against a protein reference database such as NR. It is a replacement for the NCBI BLAST software tools.It has many key features and it is used as taxonomic classifier in nf-core/taxprofiler.
+[DIAMOND](https://github.com/bbuchfink/diamond) is a sequence aligner for translated DNA searches or protein sequences against a protein reference database such as NR. It is a replacement for the NCBI BLAST software tools.It has many key features and it is used as taxonomic classifier in zellerlab/flexprofiler.
 
 <details markdown="1">
 <summary>Output files</summary>
@@ -555,24 +577,6 @@ You will only receive the `.sam` and `.megan` files if you supply `--malt_save_r
 </details>
 
 The output contains a file named `*_combined_reports.txt`, which provides an overview of the classification results for all samples. The main taxonomic profiling file from MetaPhlAn is the `*_profile.txt` file. This provides the abundance estimates from MetaPhlAn however does not include raw counts by default. Additionally, it contains intermediate Bowtie2 output `.bowtie2out.txt`, which presents a condensed representation of the mapping results of your sequencing reads to MetaPhlAn's marker gene sequences. The alignments are listed in tab-separated columns, including Read ID and Marker Gene ID, with each alignment represented on a separate line.
-
-### mOTUs
-
-[mOTUS](https://github.com/motu-tool/mOTUs) is a taxonomic profiler that maps reads to a unique marker specific database and estimates the relative abundance of known and unknown species.
-
-<details markdown="1">
-<summary>Output files</summary>
-
-- `motus/`
-  - `<db_name>/`
-    - `<sample_id>.log`: A log file that contains summary statistics
-    - `<sample_id>.out`: A classification file that summarises taxonomic identifiers, by default at the rank of mOTUs (i.e., species level), and their relative abundances in the profiled sample.
-  - `motus_<db_name>_combined_reports.txt`: A combined profile of all samples aligned to a given database (as generated by `motus_merge`)
-
-</details>
-
-Normally `*_combined_reports.txt` is the most useful file for downstream analyses, but the per sample `.out` file can provide additional more specific information. By default, nf-core/taxprofiler is providing a column describing NCBI taxonomic ID as this is used in the taxpasta step. You can disable this column by activating the argument `--motus_remove_ncbi_ids`.
-You will receive the relative abundance instead of read counts if you provide the argument `--motus_use_relative_abundance`.
 
 ### KMCP
 
@@ -667,6 +671,7 @@ The following report files are used for the taxpasta step:
 :::warning
 Please aware the outputs of each tool's standardised profile _may not_ be directly comparable between each tool. Some may report raw read counts, whereas others may report abundance information. Please always refer to the list above, for which information is used for each tool.
 :::
+-->
 
 ### MultiQC
 
@@ -684,7 +689,7 @@ Please aware the outputs of each tool's standardised profile _may not_ be direct
 
 Results generated by MultiQC collate pipeline QC from supported tools e.g. FastQC. The pipeline has special steps which also allow the software versions to be reported in the MultiQC output for future traceability. For more information about how to use MultiQC reports, see <http://multiqc.info>.
 
-All tools in taxprofiler supported by MultiQC will have a dedicated section showing summary statistics of each tool based on information stored in log files.
+All tools in flexprofiler supported by MultiQC will have a dedicated section showing summary statistics of each tool based on information stored in log files.
 
 You can expect in the MultiQC reports either sections and/or general stats columns for the following tools:
 
@@ -713,7 +718,7 @@ You can expect in the MultiQC reports either sections and/or general stats colum
 :::info
 The 'General Stats' table by default will only show statistics referring to pre-processing steps, and will not display possible values from each classifier/profiler, unless turned on by the user within the 'Configure Columns' menu or via a custom MultiQC config file (`--multiqc_config`).
 
-For example, DIAMOND output does not have a dedicated section in the MultiQC HTML, only in the general stats table. To turn this on, copy the nf-core/taxprofiler [MultiQC config](https://github.com/nf-core/taxprofiler/blob/master/assets/multiqc_config.yml) and change the DIAMOND entry in `table_columns_visible:` to True.
+For example, DIAMOND output does not have a dedicated section in the MultiQC HTML, only in the general stats table. To turn this on, copy the zellerlab/flexprofiler [MultiQC config](https://github.com/zellerlab/flexprofiler/blob/master/assets/multiqc_config.yml) and change the DIAMOND entry in `table_columns_visible:` to True.
 :::
 
 ### Pipeline information

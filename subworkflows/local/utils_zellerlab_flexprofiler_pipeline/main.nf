@@ -55,21 +55,22 @@ workflow PIPELINE_INITIALISATION {
     // Validate parameters and generate parameter summary to stdout
     //
     before_text = """
--\033[2m----------------------------------------------------\033[0m-
-                                        \033[0;32m,--.\033[0;30m/\033[0;32m,-.\033[0m
-\033[0;34m        ___     __   __   __   ___     \033[0;32m/,-._.--~\'\033[0m
-\033[0;34m  |\\ | |__  __ /  ` /  \\ |__) |__         \033[0;33m}  {\033[0m
-\033[0;34m  | \\| |       \\__, \\__/ |  \\ |___     \033[0;32m\\`-._,-`-,\033[0m
-                                        \033[0;32m`._,._,\'\033[0m
-\033[0;35m  nf-core/taxprofiler ${workflow.manifest.version}\033[0m
--\033[2m----------------------------------------------------\033[0m-
+-\033[2m-----------------------------------------------\033[0m-
+\033[0;34m  _____    _ _           _       _         \033[0m
+\033[0;34m |__  /___| | | ___ _ __| | __ _| |__      \033[0m
+\033[0;34m   / // _ \\ | |/ _ \\ '__| |/ _` | '_ \\     \033[0m
+\033[0;34m  / /|  __/ | |  __/ |  | | (_| | |_) |    \033[0m
+\033[0;34m /____\\___|_|_|\\___|_|  |_|\\__,_|_.__/     \033[0m
+                                       
+\033[0;35m  zellerlab/flexprofiler ${workflow.manifest.version}\033[0m
+-\033[2m-----------------------------------------------\033[0m-
 """
-    after_text = """${workflow.manifest.doi ? "\n* The pipeline\n" : ""}${workflow.manifest.doi.tokenize(",").collect { doi -> "    https://doi.org/${doi.trim().replace('https://doi.org/','')}"}.join("\n")}${workflow.manifest.doi ? "\n" : ""}
+    after_text = """
 * The nf-core framework
     https://doi.org/10.1038/s41587-020-0439-x
 
 * Software dependencies
-    https://github.com/nf-core/taxprofiler/blob/master/CITATIONS.md
+    https://github.com/zellerlab/flexprofiler/blob/master/CITATIONS.md
 """
     command = "nextflow run ${workflow.manifest.name} -profile <docker/singularity/.../institute> --input samplesheet.csv --outdir <OUTDIR>"
 
@@ -111,47 +112,47 @@ workflow PIPELINE_INITIALISATION {
 
     // Preprocessing
     if (params.shortread_qc_includeunmerged && !params.shortread_qc_mergepairs) {
-        error("ERROR: [nf-core/taxprofiler] cannot include unmerged reads when merging is not turned on. Please specify --shortread_qc_mergepairs")
+        error("ERROR: [zellerlab/flexprofiler] cannot include unmerged reads when merging is not turned on. Please specify --shortread_qc_mergepairs")
     }
 
     if (params.shortread_qc_adapterlist) {
         def adapterlist = file(params.shortread_qc_adapterlist, checkIfExists: true)
         if (params.shortread_qc_tool == 'adapterremoval' && !(adapterlist.extension == 'txt')) {
-            error("[nf-core/taxprofiler] ERROR: AdapterRemoval2 adapter list requires a `.txt` format and extension. Check input: --shortread_qc_adapterlist ${params.shortread_qc_adapterlist}")
+            error("[zellerlab/flexprofiler] ERROR: AdapterRemoval2 adapter list requires a `.txt` format and extension. Check input: --shortread_qc_adapterlist ${params.shortread_qc_adapterlist}")
         }
         if (params.shortread_qc_tool == 'fastp' && !adapterlist.extension.matches(".*(fa|fasta|fna|fas)")) {
-            error("[nf-core/taxprofiler] ERROR: fastp adapter list requires a `.fasta` format and extension (or fa, fas, fna). Check input: --shortread_qc_adapterlist ${params.shortread_qc_adapterlist}")
+            error("[zellerlab/flexprofiler] ERROR: fastp adapter list requires a `.fasta` format and extension (or fa, fas, fna). Check input: --shortread_qc_adapterlist ${params.shortread_qc_adapterlist}")
         }
     }
 
     if (params.shortread_complexityfilter_tool == 'fastp' && (params.perform_shortread_qc == false || params.shortread_qc_tool != 'fastp')) {
-        error("ERROR: [nf-core/taxprofiler] cannot use fastp complexity filtering if preprocessing not turned on and/or tool is not fastp. Please specify --perform_shortread_qc and/or --shortread_qc_tool 'fastp'")
+        error("ERROR: [zellerlab/flexprofiler] cannot use fastp complexity filtering if preprocessing not turned on and/or tool is not fastp. Please specify --perform_shortread_qc and/or --shortread_qc_tool 'fastp'")
     }
     if (params.perform_shortread_hostremoval && !params.hostremoval_reference) {
-        error("ERROR: [nf-core/taxprofiler] --shortread_hostremoval requested but no --hostremoval_reference FASTA supplied. Check input.")
+        error("ERROR: [zellerlab/flexprofiler] --shortread_hostremoval requested but no --hostremoval_reference FASTA supplied. Check input.")
     }
     if (params.perform_shortread_hostremoval && !params.hostremoval_reference && params.shortread_hostremoval_index) {
-        error("ERROR: [nf-core/taxprofiler] --shortread_hostremoval_index provided but no --hostremoval_reference FASTA supplied. Check input.")
+        error("ERROR: [zellerlab/flexprofiler] --shortread_hostremoval_index provided but no --hostremoval_reference FASTA supplied. Check input.")
     }
     if (params.perform_longread_hostremoval && !params.hostremoval_reference && params.longread_hostremoval_index) {
-        error("ERROR: [nf-core/taxprofiler] --longread_hostremoval_index provided but no --hostremoval_reference FASTA supplied. Check input.")
+        error("ERROR: [zellerlab/flexprofiler] --longread_hostremoval_index provided but no --hostremoval_reference FASTA supplied. Check input.")
     }
     if (!params.shortread_qc_mergepairs && params.run_malt) {
-        log.warn("[nf-core/taxprofiler] MALT does not accept uncollapsed paired-reads. Pairs will be profiled as separate files.")
+        log.warn("[zellerlab/flexprofiler] MALT does not accept uncollapsed paired-reads. Pairs will be profiled as separate files.")
     }
 
     // Profiling
     if (params.run_bracken && !params.run_kraken2) {
-        error('ERROR: [nf-core/taxprofiler] You are attempting to run Bracken without running kraken2. This is not possible! Please set --run_kraken2 as well.')
+        error('ERROR: [zellerlab/flexprofiler] You are attempting to run Bracken without running kraken2. This is not possible! Please set --run_kraken2 as well.')
     }
     if (params.diamond_save_reads) {
-        log.warn("[nf-core/taxprofiler] DIAMOND only allows output of a single format. As --diamond_save_reads supplied, only aligned reads in SAM format will be produced, no taxonomic profiles will be available.")
+        log.warn("[zellerlab/flexprofiler] DIAMOND only allows output of a single format. As --diamond_save_reads supplied, only aligned reads in SAM format will be produced, no taxonomic profiles will be available.")
     }
     if (params.run_malt && params.run_krona && !params.krona_taxonomy_directory) {
-        log.warn("[nf-core/taxprofiler] Krona can only be run on MALT output if path to Krona taxonomy database supplied to --krona_taxonomy_directory. Krona will not be executed in this run for MALT.")
+        log.warn("[zellerlab/flexprofiler] Krona can only be run on MALT output if path to Krona taxonomy database supplied to --krona_taxonomy_directory. Krona will not be executed in this run for MALT.")
     }
     if ([params.taxpasta_add_name, params.taxpasta_add_rank, params.taxpasta_add_lineage, params.taxpasta_add_lineage, params.taxpasta_add_idlineage, params.taxpasta_add_ranklineage].any() && !params.taxpasta_taxonomy_dir) {
-        error('ERROR: [nf-core/taxprofiler] All --taxpasta_add_* parameters require a taxonomy supplied to --taxpasta_taxonomy_dir. However the latter parameter was not detected. Please check input.')
+        error('ERROR: [zellerlab/flexprofiler] All --taxpasta_add_* parameters require a taxonomy supplied to --taxpasta_taxonomy_dir. However the latter parameter was not detected. Please check input.')
     }
 
     emit:
