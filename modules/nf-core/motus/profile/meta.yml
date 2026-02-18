@@ -25,16 +25,13 @@ input:
         description: |
           List of input fastq/fasta files of size 1 and 2 for single-end and paired-end data,
           respectively.
-          Or the intermediate bam file mapped by bwa to the mOTUs database or
-          the output bam file from motus profile.
-          Or the intermediate mgc read counts table.
-        pattern: "*.{fastq,fq,fasta,fa,fastq.gz,fq.gz,fasta.gz,fa.gz,.bam,.mgc}"
+        pattern: "*.{fastq,fq,fasta,fa,fastq.gz,fq.gz,fasta.gz,fa.gz}"
         ontologies:
           - edam: http://edamontology.org/format_1930 # FASTQ
   - db:
       type: directory
       description: |
-        mOTUs database downloaded by `motus downloadDB`
+        mOTUs database downloaded by `motus downloadMGDB`
 output:
   out:
     - - meta:
@@ -44,7 +41,7 @@ output:
             e.g. [ id:'test', single_end:false ]
       - "*.out":
           type: file
-          description: Results with taxonomic classification of each read
+          description: The raw count table
           pattern: "*.out"
           ontologies: []
   bam:
