@@ -10,7 +10,6 @@ process MOTUS_MERGE {
     input:
     tuple val(meta), path(input)
     path db // to stop docker saying it can't find it... would have to have the module in upstream steps anyway
-    path profile_version_yml, stageAs: 'profile_version.yml'
 
     output:
     tuple val(meta), path("*.txt") , optional: true, emit: txt
