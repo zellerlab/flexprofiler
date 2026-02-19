@@ -20,12 +20,12 @@ echo $HEADER_STR > $HEAD_F
 
 # Edit this as required to fit the filenames of your samples
 find $INDIR -name "*_1.fastq.gz" > $FQ1
-find $INDIR -name "*_R1_001.fastq.gz" >> $FQ1
-cat $FQ1|sed -e 's/_1.fastq.gz/_2.fastq.gz/' -e 's/_R1_001.fastq.gz/_R2_001.fastq.gz/' > $FQ2
-cat $FQ1|sed -e 's%.*/%%' -e 's/_1.fastq.gz//' -e 's/_R1_001.fastq.gz//' > $SAMPLE
+cat $FQ1|sed -e 's/_1.fastq.gz/_2.fastq.gz/' > $FQ2
+cat $FQ1|sed -e 's%.*/%%' -e 's/_1.fastq.gz//' > $SAMPLE
 cat $FQ1|sed 's/^.*$/ILLUMINA/' > $PLATFORM
 cat $FQ1|sed 's/^.*$//' > $FASTA
-paste -d ',' $SAMPLE $SAMPLE $PLATFORM $FQ1 $FQ2 $FASTA > $BODY_F
 
+# you should not need to edit these
+paste -d ',' $SAMPLE $SAMPLE $PLATFORM $FQ1 $FQ2 $FASTA > $BODY_F
 cat $HEAD_F $BODY_F > $SAMPLESHEET_OUT
 rm -rf $TMPDIR
