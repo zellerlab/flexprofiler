@@ -22,10 +22,21 @@ The following profiles are available:
 - `zellerlab_shark`: for use on the LUMC shark cluster, sets paths to databases etc.
 - `zellerlab_metagenomics`: for short read metagenomics profiling, sets defaults for preprocessing and collation
 
+## Containers and environments
+All the pipeline steps are set up to use appropriate Singularity containers, so you need to have the singularity profile enabled (see above) and the singularity program should be available in your environment (for the SHARK cluster if you use [this script](../utils/run_shark.sh) the singularity module is automatically loaded so you don't need to do anything).
+
+For some steps Conda/mamba/micromamba is also required.
+This need to be installed in your system and available in the `$PATH`.
+If you use micromamba or mamba instead than conda (as you should), you need to set the relevant flag in `~/.nextflow/config`.
+Copy [this config file](../utils/user.config) to `~/.nextflow/config` and adapt it as required to do it.
+
+It is good also if you set an appropriate cache directory for singularity and conda so that containers and environments are not downloaded again every time you run the pipeline.
+If you use [this config file](../utils/user.config) this is also set up for you, you only need to set the right paths.
+
 ## Nextflow Tower / Seqera cloud
 To monitor more easily the progress of your run use [Sequera Cloud](https://cloud.seqera.io), which can be reached also outside of the LUMC VPN.
 Create an account on the website and generate a Token.
-Then, copy the content of [this file](../utils/tower.config) to `~/.nextflow/config` (generate it if not present, this is loaded automatically by nextflow).
+Then, copy the content of [this file](../utils/user.config) to `~/.nextflow/config` (generate it if not present, this is loaded automatically by nextflow).
 Make sure to copy your own token generated in Seqera Cloud to the config!
 
 ## Database generation
