@@ -6,7 +6,7 @@ You can then run it with `sbatch run_shark.sh`, or start an interactive shell on
 
 ## Params file
 To run the pipeline you need to set up a `params.yaml` file with the required parameters.
-An example file that you can copy and edit to suit you needs is [here](../utils/params.yaml).
+An example file that you can copy and edit to suit your needs is [here](../utils/params.yaml).
 
 ## Profiles
 A set of Nextflow profiles has been developped to standardise microbiome profiling in the Zellerlab.
