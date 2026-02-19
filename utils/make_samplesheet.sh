@@ -6,6 +6,7 @@
 INDIR="<SET INPUT DIR HERE>" # where are the fastq files
 SAMPLESHEET_OUT="samplesheet.csv" # where to save the samplesheet
 
+# you should not need to edit these
 HEADER_STR="sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta"
 TMPDIR=$(mktemp -d)
 PLATFORM="${TMPDIR}/platform.txt"
@@ -15,7 +16,6 @@ FQ2="${TMPDIR}/fastq2.txt"
 FASTA="${TMPDIR}/fasta.txt"
 HEAD_F="${TMPDIR}/header.csv"
 BODY_F="${TMPDIR}/body.csv"
-
 echo $HEADER_STR > $HEAD_F
 
 # Edit this as required to fit the filenames of your samples
