@@ -28,7 +28,6 @@ Create an account on the website and generate a Token.
 Then, copy the content of (this file)[utils/tower.config] to `~/.nextflow/config` (generate it if not present, this is loaded automatically by nextflow).
 Make sure to copy your own token generated in Seqera Cloud to the config!
 
-
 ## Database generation
 The required databases have been already generated for you and should be automatically loaded on the SHARK cluster.
 If not, contact Saul.
