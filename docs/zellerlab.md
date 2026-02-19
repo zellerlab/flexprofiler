@@ -4,6 +4,10 @@
 To run zellerlab/flexprofiler on the SHARK cluster, copy (this example run file)[utils/run_shark.sh] and edit as required.
 You can then run it with `sbatch run_shark.sh`, or start an interactive shell on a worker (not login!) node and just execute it with `./run_shark.sh`
 
+## Params file
+To run the pipeline you need to set up a `params.yaml` file with the required parameters.
+An example file that you can copy and edit to suit you needs is (here)[utils/params.yaml].
+
 ## Profiles
 A set of Nextflow profiles has been developped to standardise microbiome profiling in the Zellerlab.
 These profiles are defined (here)[conf/zellerlab.config].
