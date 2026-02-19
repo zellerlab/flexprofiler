@@ -1,4 +1,9 @@
-# zellerlab/flexprofiler
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/zellerlab-flexprofiler_logo_dark.png">
+    <img alt="zellerlab/flexprofiler" src="docs/images/zellerlab-flexprofiler_logo_generic.png">
+  </picture>
+</h1>
 
 ## Introduction
 
@@ -18,11 +23,11 @@ We plan to contribute to **nf-core** modules or other components of more general
    - Host-read removal: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/)
 3. Performs taxonomic classification and/or profiling using one or more of:
    - [mOTUs](https://motus-tool.org/)
-4. Standardises output tables (tool-specific and [`Taxpasta`](https://taxpasta.readthedocs.io))
+4. Standardises and collates output tables (tool-specific)
 5. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
 
 ## For Zellerlab internal users
-A set of pre-configured options used internally in the group is documented (here)[docs/zellerlab.md].
+A set of pre-configured options used internally in the group is documented [here](docs/zellerlab.md).
 
 ## Usage
 
