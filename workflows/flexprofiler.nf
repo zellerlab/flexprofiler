@@ -98,6 +98,7 @@ workflow FLEXPROFILER {
             if (meta.instrument_platform == 'PACBIO_SMRT' && fastq_2) {
                 error("Error: Please check input samplesheet: for PacBio reads entry `fastq_2` should be empty!")
             }
+            // this is probably not needed as the condition is impossible to reach (meta.single_end is defined as true only if fastq_2 is not present)
             if (meta.single_end && fastq_2) {
                 error("Error: Please check input samplesheet: for single-end reads entry `fastq_2` should be empty")
             }
