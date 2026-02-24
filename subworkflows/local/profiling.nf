@@ -63,6 +63,9 @@ workflow PROFILING {
             [meta, input_reads, db_meta, db]
         }
         .branch { _meta, _input_reads, db_meta, _db ->
+            motus: db_meta.tool == 'motus'
+            cayman: db_meta.tool == 'cayman'
+            unknown: true
             // centrifuge: db_meta.tool == 'centrifuge'
             // diamond: db_meta.tool == 'diamond'
             // kaiju: db_meta.tool == 'kaiju'
@@ -70,10 +73,8 @@ workflow PROFILING {
             // krakenuniq: db_meta.tool == 'krakenuniq'
             // malt: db_meta.tool == 'malt'
             // metaphlan: db_meta.tool == 'metaphlan'
-            motus: db_meta.tool == 'motus'
             // kmcp: db_meta.tool == 'kmcp'
             // ganon: db_meta.tool == 'ganon'
-            unknown: true
         }
 
     /*
@@ -84,6 +85,36 @@ workflow PROFILING {
     // input channels for reads vs databases. We restructure the channel tuple
     // for each tool and make liberal use of multiMap to keep reads/databases
     // channel element order in sync with each other
+
+    if (params.run_motus) {
+
+        ch_input_for_motus = ch_input_for_profiling.motus
+            .multiMap { it ->
+                reads: [it[0] + it[2], it[1]]
+                db: it[3]
+            }
+
+        MOTUS_PROFILE(ch_input_for_motus.reads, ch_input_for_motus.db)
+        ch_versions = ch_versions.mix(MOTUS_PROFILE.out.versions.first())
+        ch_raw_profiles = ch_raw_profiles.mix(MOTUS_PROFILE.out.out)
+        ch_multiqc_files = ch_multiqc_files.mix(MOTUS_PROFILE.out.log)
+    }
+
+    if (params.run_cayman) {
+
+        ch_input_for_cayman = ch_input_for_profiling.cayman
+            .multiMap { it ->
+                reads: [it[0] + it[2], it[1]]
+                db: it[3]
+            }
+
+        CAYMAN_PROFILE(ch_input_for_cayman.reads, ch_input_for_cayman.db)
+        ch_versions = ch_versions.mix(CAYMAN_PROFILE.out.versions.first())
+        ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
+        ch_multiqc_files = ch_multiqc_files.mix(CAYMAN_PROFILE.out.log)
+    }
+
+
 
     //if (params.run_malt) {
 
@@ -318,20 +349,6 @@ workflow PROFILING {
     //    ch_raw_profiles = ch_raw_profiles.mix(DIAMOND_BLASTX.out.tsv)
     //    ch_multiqc_files = ch_multiqc_files.mix(DIAMOND_BLASTX.out.log)
     //}
-
-    if (params.run_motus) {
-
-        ch_input_for_motus = ch_input_for_profiling.motus
-            .multiMap { it ->
-                reads: [it[0] + it[2], it[1]]
-                db: it[3]
-            }
-
-        MOTUS_PROFILE(ch_input_for_motus.reads, ch_input_for_motus.db)
-        ch_versions = ch_versions.mix(MOTUS_PROFILE.out.versions.first())
-        ch_raw_profiles = ch_raw_profiles.mix(MOTUS_PROFILE.out.out)
-        ch_multiqc_files = ch_multiqc_files.mix(MOTUS_PROFILE.out.log)
-    }
 
     //if (params.run_krakenuniq) {
 

@@ -13,7 +13,6 @@ process MOTUS_MERGE {
 
     output:
     tuple val(meta), path("*.txt") , optional: true, emit: txt
-    tuple val(meta), path("*.biom"), optional: true, emit: biom
     path "versions.yml" , emit: versions
 
     when:
