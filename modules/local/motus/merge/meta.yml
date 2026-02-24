@@ -32,41 +32,20 @@ input:
   - db:
       type: directory
       description: |
-        mOTUs database downloaded by `motus downloadDB`
+        mOTUs database downloaded by `motus downloadGMDB`
         pattern: "db_mOTU/"
-  - profile_version_yml:
-      type: file
-      description: |
-        A single versions.yml file output from motus/profile. motus/merge cannot reconstruct
-        this itself without having the motus database present and configured with the tool
-        so here we take it from what is already reported by the upstream module.
-      pattern: "versions.yml"
-      ontologies:
-        - edam: http://edamontology.org/format_3750 # YAML
 output:
   txt:
     - - meta:
-          type: file
-          description: OTU table in txt format, if BIOM format not requested
-          pattern: "*.txt"
-          ontologies: []
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'test', single_end:false ]`
       - "*.txt":
           type: file
-          description: OTU table in txt format, if BIOM format not requested
+          description: OTU table in txt format
           pattern: "*.txt"
           ontologies: []
-  biom:
-    - - meta:
-          type: file
-          description: OTU table in txt format, if BIOM format not requested
-          pattern: "*.txt"
-          ontologies: []
-      - "*.biom":
-          type: file
-          description: OTU table in biom format, if BIOM format requested
-          pattern: "*.biom"
-          ontologies:
-            - edam: http://edamontology.org/format_3746 # BIOM format
   versions:
     - versions.yml:
         type: file
@@ -75,6 +54,6 @@ output:
         ontologies:
           - edam: http://edamontology.org/format_3750 # YAML
 authors:
-  - "@jfy133"
+  - "@saulpierotti"
 maintainers:
-  - "@jfy133"
+  - "@saulpierotti"

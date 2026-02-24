@@ -1,0 +1,75 @@
+name: "cayman_profile"
+description: A command-line tool for profiling CAZyme abundances in metagenomic datasets
+keywords:
+  - classify
+  - metagenomics
+  - fastq
+  - functional profiling
+tools:
+  - "cayman":
+      description: "A command-line tool for profiling CAZyme abundances in metagenomic datasets"
+      tool_dev_url: "https://github.com/zellerlab/cayman"
+      doi: "10.1101/2024.01.08.574624"
+      licence: ["MIT"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'test', single_end:false ]`
+    - input:
+        type: file
+        description: |
+          List of output files (more than one) from motus profile,
+          or a single directory containing motus output files.
+        ontologies: []
+  - db:
+      type: directory
+      description: |
+        mOTUs database downloaded by `motus downloadDB`
+        pattern: "db_mOTU/"
+  - profile_version_yml:
+      type: file
+      description: |
+        A single versions.yml file output from motus/profile. motus/merge cannot reconstruct
+        this itself without having the motus database present and configured with the tool
+        so here we take it from what is already reported by the upstream module.
+      pattern: "versions.yml"
+      ontologies:
+        - edam: http://edamontology.org/format_3750 # YAML
+output:
+  txt:
+    - - meta:
+          type: file
+          description: OTU table in txt format, if BIOM format not requested
+          pattern: "*.txt"
+          ontologies: []
+      - "*.txt":
+          type: file
+          description: OTU table in txt format, if BIOM format not requested
+          pattern: "*.txt"
+          ontologies: []
+  biom:
+    - - meta:
+          type: file
+          description: OTU table in txt format, if BIOM format not requested
+          pattern: "*.txt"
+          ontologies: []
+      - "*.biom":
+          type: file
+          description: OTU table in biom format, if BIOM format requested
+          pattern: "*.biom"
+          ontologies:
+            - edam: http://edamontology.org/format_3746 # BIOM format
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: http://edamontology.org/format_3750 # YAML
+authors:
+  - "@saulpierotti"
+maintainers:
+  - "@saulpierotti"
