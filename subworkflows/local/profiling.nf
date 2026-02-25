@@ -2,8 +2,9 @@
 // Run profiling
 //
 
-include { MOTUS_PROFILE          } from '../../modules/local/motus/profile/main'
 include { BIOAWK as RENAME_READS } from '../../modules/nf-core/bioawk/main'
+include { MOTUS_PROFILE          } from '../../modules/local/motus/profile/main'
+include { CAYMAN_PROFILE         } from '../../modules/local/cayman/profile/main'
 
 
 //include { MALT_RUN                                      } from '../../modules/nf-core/malt/run/main'
@@ -135,9 +136,22 @@ workflow PROFILING {
 
     if (params.run_cayman) {
         ch_input_for_cayman = ch_input_for_profiling.cayman
-            .multiMap { it ->
-                reads: [it[0] + it[2], it[1]]
-                db: it[3]
+            .map { meta, reads, db_meta, db ->
+                [meta + db_meta.findAll { k, v -> k != "db_name" }, reads, [db_meta.db_name, db]]
+            }
+            .groupTuple(by: [0, 1])
+            .multiMap { meta, reads, db_list ->
+                def db_ordered = [
+                    db_list.find { db_name, db -> db_name == "annot"    }[1],
+                    db_list.find { db_name, db -> db_name == "gene_cat" }[1],
+                    db_list.find { db_name, db -> db_name == "bwa_amb"  }[1],
+                    db_list.find { db_name, db -> db_name == "bwa_ann"  }[1],
+                    db_list.find { db_name, db -> db_name == "bwa_bwt"  }[1],
+                    db_list.find { db_name, db -> db_name == "bwa_pac"  }[1],
+                    db_list.find { db_name, db -> db_name == "bwa_sa"   }[1],
+                ]
+                reads: [meta, reads]
+                db: [meta, db_ordered].flatten()
             }
 
         CAYMAN_PROFILE(ch_input_for_cayman.reads, ch_input_for_cayman.db)
