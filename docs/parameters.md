@@ -21,6 +21,7 @@ Common options across both long and short read preprocessing QC steps
 
 | Parameter | Description | Type | Default | Required | Hidden |
 |-----------|-----------|-----------|-----------|-----------|-----------|
+| `perform_repair_pe_order` | Use bbmap repair to attempt at repairing broken paired end reads <details><summary>Help</summary><small>BBMAP repair reorders reads in paired-end fastq files so that they are correctly matched.\nPE reads may become unmatched in case of upstream processing with non-PE-aware tools.\nRefer to https://github.com/BioInfoTools/BBMap/blob/master/sh/repair.sh for more information.</small></details>| `boolean` |  |  |  |
 | `skip_preprocessing_qc` | Specify to skip sequencing quality control of raw sequencing reads <details><summary>Help</summary><small>Skipping running of FastQC or Falco maybe useful in cases where you are already running with preprocessed data (e.g. you are also skipping short/long read qc steps) that you already know the quality of</small></details>| `boolean` |  |  |  |
 | `preprocessing_qc_tool` | Specify the tool used for quality control of raw sequencing reads (accepted: `fastqc`\|`falco`) <details><summary>Help</summary><small>Falco is designed as a drop-in replacement for FastQC but written in C++ for faster computation. We particularly recommend using falco when using long reads (due to reduced memory constraints), however is also applicable for short reads.</small></details>| `string` | fastqc |  |  |
 | `save_preprocessed_reads` | Save reads from samples that went through the adapter clipping, pair-merging, and length filtering steps for both short and long reads <details><summary>Help</summary><small>This saves the FASTQ output from the following tools:<br><br>- fastp<br>- AdapterRemoval<br>- Porechop<br>- Filtlong<br>- Nanoq<br><br>These reads will be a mixture of: adapter clipped, quality trimmed, pair-merged, and length filtered, depending on the parameters you set.</small></details>| `boolean` |  |  |  |
@@ -108,6 +109,7 @@ Options for per-sample run-merging
 | Parameter | Description | Type | Default | Required | Hidden |
 |-----------|-----------|-----------|-----------|-----------|-----------|
 | `run_motus` | Turn on profiling with mOTUs. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
+| `run_cayman` | Turn on profiling with cayman. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
 
 ## Postprocessing and visualisation options
 

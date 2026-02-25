@@ -17,14 +17,15 @@ We plan to contribute to **nf-core** modules or other components of more general
 
 ## Pipeline simplified overview
 
-1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
-2. Read pre-processing
+1. Repair of broken PE fastq reads with BBMAP repair([BBmap Repair](https://github.com/BioInfoTools/BBMap/blob/master/sh/repair.sh))
+2. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
+3. Read pre-processing
    - Adapter clipping and merging: [fastp](https://github.com/OpenGene/fastp)
    - Host-read removal: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/)
-3. Performs taxonomic classification and/or profiling using one or more of:
+4. Performs taxonomic classification and/or profiling using one or more of:
    - [mOTUs](https://motus-tool.org/)
-4. Standardises and collates output tables (tool-specific)
-5. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+5. Standardises and collates output tables (tool-specific)
+6. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
 
 ## For Zellerlab internal users
 A set of pre-configured options used internally in the group is documented [here](docs/zellerlab.md).
