@@ -37,7 +37,7 @@ process BBMAP_REPAIR {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        bbmap: \$(bbversion.sh | grep -v "Duplicate cpuset")
+        bbmap: \$(bbversion.sh | grep -v "Duplicate cpuset | grep -v [warning]")
     END_VERSIONS
     """
 
