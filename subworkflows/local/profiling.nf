@@ -136,22 +136,9 @@ workflow PROFILING {
 
     if (params.run_cayman) {
         ch_input_for_cayman = ch_input_for_profiling.cayman
-            .map { meta, reads, db_meta, db ->
-                [meta + db_meta.findAll { k, v -> k != "db_name" }, reads, [db_meta.db_name, db]]
-            }
-            .groupTuple(by: [0, 1])
-            .multiMap { meta, reads, db_list ->
-                def db_ordered = [
-                    db_list.find { db_name, db -> db_name == "annot"    }[1],
-                    db_list.find { db_name, db -> db_name == "gene_cat" }[1],
-                    db_list.find { db_name, db -> db_name == "bwa_amb"  }[1],
-                    db_list.find { db_name, db -> db_name == "bwa_ann"  }[1],
-                    db_list.find { db_name, db -> db_name == "bwa_bwt"  }[1],
-                    db_list.find { db_name, db -> db_name == "bwa_pac"  }[1],
-                    db_list.find { db_name, db -> db_name == "bwa_sa"   }[1],
-                ]
-                reads: [meta, reads]
-                db: [meta, db_ordered].flatten()
+            .multiMap { read_meta, reads, db_meta, db ->
+                reads: [read_meta + db_meta, reads]
+                db: db
             }
 
         CAYMAN_PROFILE(ch_input_for_cayman.reads, ch_input_for_cayman.db)

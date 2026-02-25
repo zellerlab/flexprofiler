@@ -1,9 +1,3 @@
 tool,db_name,db_params,db_path
 motus,db_mOTU,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/motus_v4.0.4/db_mOTU
-cayman,annot,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/cayman/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv
-cayman,gene_cat,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/cayman/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz
-cayman,bwa_amb,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/cayman/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.amb
-cayman,bwa_ann,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/cayman/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.ann
-cayman,bwa_bwt,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/cayman/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.bwt
-cayman,bwa_pac,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/cayman/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.pac
-cayman,bwa_sa,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/cayman/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.sa
+cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/cayman/GMGC10.human-gut.95nr.0.5.percent.prevalence

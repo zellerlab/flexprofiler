@@ -39,22 +39,20 @@ wget https://zenodo.org/records/10473258/files/gene_catalogues.zip
 unzip gene_catalogue_annotations.zip
 unzip gene_catalogues.zip
 bwa index -b 90000000000 gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz
+
+CAYMAN_DBNAME=GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence
+mkdir -p $CAYMAN_DBNAME
+mv annots/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv $CAYMAN_DBNAME
+mv gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz $CAYMAN_DBNAME
+mv gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.* $CAYMAN_DBNAME
 CAYMAN_TO=${DBPATH}/cayman
-cp annots/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv $CAYMAN_TO
-cp gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz $CAYMAN_TO
-cp gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.* $CAYMAN_TO
+cp -r $CAYMAN_DBNAME $CAYMAN_TO
 
 # heredoc to generate the CSV file with the paths to the downloaded databases
 cat <<-EOT > flexprofiler_databases.csv
 tool,db_name,db_params,db_path
 motus,db_mOTU,,${MOTUSDB_TO}/db_mOTU
-cayman,annot,,${CAYMAN_TO}/annot/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv
-cayman,gene_cat,,${CAYMAN_TO}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz
-cayman,bwa_amb,,${CAYMAN_TO}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.amb
-cayman,bwa_ann,,${CAYMAN_TO}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.ann
-cayman,bwa_bwt,,${CAYMAN_TO}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.bwt
-cayman,bwa_pac,,${CAYMAN_TO}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.pac
-cayman,bwa_sa,,${CAYMAN_TO}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.sa
+cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,${CAYMAN_TO}/GMGC10.human-gut.95nr.0.5.percent.prevalence
 EOT
 
 # cleanup
