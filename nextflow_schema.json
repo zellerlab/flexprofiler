@@ -66,6 +66,12 @@
             "description": "Common options across both long and short read preprocessing QC steps",
             "default": "",
             "properties": {
+                "perform_repair_pe_order": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-toggle-on",
+                    "description": "Use bbmap repair to attempt at repairing broken paired end reads",
+                    "help_text": "BBMAP repair reorders reads in paired-end fastq files so that they are correctly matched.\\nPE reads may become unmatched in case of upstream processing with non-PE-aware tools.\\nRefer to https://github.com/BioInfoTools/BBMap/blob/master/sh/repair.sh for more information."
+                },
                 "skip_preprocessing_qc": {
                     "type": "boolean",
                     "fa_icon": "fas fa-forward",
@@ -413,6 +419,11 @@
                     "type": "boolean",
                     "fa_icon": "fas fa-toggle-on",
                     "description": "Turn on profiling with mOTUs. Requires database to be present CSV file passed to --databases"
+                },
+                "run_cayman": {
+                    "type": "boolean",
+                    "description": "Turn on profiling with cayman. Requires database to be present CSV file passed to --databases",
+                    "fa_icon": "fas fa-toggle-on"
                 }
             },
             "fa_icon": "fas fa-align-center"

@@ -3,6 +3,7 @@
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
+include { BBMAP_REPAIR                  } from '../modules/nf-core/bbmap/repair/main'
 include { FASTQC                        } from '../modules/nf-core/fastqc/main'
 include { MULTIQC                       } from '../modules/nf-core/multiqc/main'
 include { paramsSummaryMap              } from 'plugin/nf-schema'
@@ -121,8 +122,21 @@ workflow FLEXPROFILER {
             return [meta + [type: "long"], [fasta]]
         }
 
-    // Merge ch_input.fastq and ch_input.nanopore into a single channel
-    ch_input_for_fastqc = ch_input.fastq.mix(ch_input.nanopore, ch_input.pacbio)
+    /*
+        MODULE: Run BBmap repair
+    */
+
+    if (params.perform_repair_pe_order) {
+        BBMAP_REPAIR(ch_input.fastq, Channel.value(false))
+        ch_fastq_repaired = BBMAP_REPAIR.out.repaired
+        ch_versions = ch_versions.mix(BBMAP_REPAIR.out.versions)
+    }
+    else {
+        ch_fastq_repaired = ch_input.fastq
+    }
+    
+    // Merge ch_fastq_repaired and ch_input.nanopore into a single channel
+    ch_input_for_fastqc = ch_fastq_repaired.fastq.mix(ch_input.nanopore, ch_input.pacbio)
 
     // Validate and decompress databases
     ch_dbs_for_untar = databases.branch { db_meta, db_path ->
@@ -166,7 +180,6 @@ workflow FLEXPROFILER {
         MODULE: Run FastQC
     */
 
-
     if (!params.skip_preprocessing_qc) {
         if (params.preprocessing_qc_tool == 'falco') {
             FALCO(ch_input_for_fastqc)
@@ -183,12 +196,12 @@ workflow FLEXPROFILER {
     */
 
     if (params.perform_shortread_qc) {
-        SHORTREAD_PREPROCESSING(ch_input.fastq, adapterlist)
+        SHORTREAD_PREPROCESSING(ch_fastq_repaired, adapterlist)
         ch_shortreads_preprocessed = SHORTREAD_PREPROCESSING.out.reads
         ch_versions = ch_versions.mix(SHORTREAD_PREPROCESSING.out.versions)
     }
     else {
-        ch_shortreads_preprocessed = ch_input.fastq
+        ch_shortreads_preprocessed = ch_fastq_repaired
     }
 
     if (params.perform_longread_qc) {
