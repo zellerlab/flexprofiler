@@ -80,8 +80,6 @@ workflow FLEXPROFILER {
 
     // Validate input files and create separate channels for FASTQ, FASTA, and Nanopore data
     ch_input = samplesheet
-        // temp
-        .filter { it[0].id in ["Sample_783", "Sample_768", "Sample_815"]}
         .map { meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
             meta.run_accession = run_accession
             meta.instrument_platform = instrument_platform
