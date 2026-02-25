@@ -21,47 +21,58 @@ input:
     - input:
         type: file
         description: |
-          List of output files (more than one) from motus profile,
-          or a single directory containing motus output files.
+          Single or paired ended input fastq files
         ontologies: []
   - db:
       type: directory
       description: |
-        mOTUs database downloaded by `motus downloadDB`
-        pattern: "db_mOTU/"
-  - profile_version_yml:
-      type: file
-      description: |
-        A single versions.yml file output from motus/profile. motus/merge cannot reconstruct
-        this itself without having the motus database present and configured with the tool
-        so here we take it from what is already reported by the upstream module.
-      pattern: "versions.yml"
-      ontologies:
-        - edam: http://edamontology.org/format_3750 # YAML
+        required database files for cayman: GMGC10 sequences (.fna.gz), annotation file (.csv), and bwa index
+        pattern: "*/"
 output:
-  txt:
+  out:
     - - meta:
-          type: file
-          description: OTU table in txt format, if BIOM format not requested
-          pattern: "*.txt"
-          ontologies: []
-      - "*.txt":
-          type: file
-          description: OTU table in txt format, if BIOM format not requested
-          pattern: "*.txt"
-          ontologies: []
-  biom:
+          type: map
+          description: |
+            Groovy Map containing sample information
+            e.g. `[ id:'test', single_end:false ]`
+      - "*.cazy.txt.gz":
+            type: file
+            description: The main CAZy RPKM feature matrix at the domain level
+            pattern: "*.cazy.txt.gz"
+            ontologies: []
+  aln_stats:
     - - meta:
-          type: file
-          description: OTU table in txt format, if BIOM format not requested
-          pattern: "*.txt"
-          ontologies: []
-      - "*.biom":
-          type: file
-          description: OTU table in biom format, if BIOM format requested
-          pattern: "*.biom"
-          ontologies:
-            - edam: http://edamontology.org/format_3746 # BIOM format
+          type: map
+          description: |
+            Groovy Map containing sample information
+            e.g. `[ id:'test', single_end:false ]`
+      - "*.aln_stats.txt.gz":
+            type: file
+            description: BWA alignment statistics
+            pattern: "*.aln_stats.txt.gz"
+            ontologies: []
+  gene_counts:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information
+            e.g. `[ id:'test', single_end:false ]`
+      - "*.gene_counts.txt.gz":
+            type: file
+            description: The RPKM feature matrix at the gene level
+            pattern: "*.gene_counts.txt.gz"
+            ontologies: []
+  log:
+    - - meta:
+          type: map
+          description: |
+            Groovy Map containing sample information
+            e.g. `[ id:'test', single_end:false ]`
+      - "*.cayman.log":
+            type: file
+            description: Execution log
+            pattern: "*.cayman.log"
+            ontologies: []
   versions:
     - versions.yml:
         type: file

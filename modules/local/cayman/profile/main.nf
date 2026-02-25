@@ -12,10 +12,10 @@ process CAYMAN_PROFILE {
     path db
 
     output:
-    tuple val(meta), path("${meta.id}.cazy.txt.gz"       ), emit: out
-    tuple val(meta), path("${meta.id}.aln_stats.txt.gz"  ), emit: aln_stats
-    tuple val(meta), path("${meta.id}.gene_counts.txt.gz"), emit: gene_counts
-    tuple val(meta), path("${meta.id}.cayman.log"        ), emit: log
+    tuple val(meta), path("*.cazy.txt.gz"       ), emit: out
+    tuple val(meta), path("*.aln_stats.txt.gz"  ), emit: aln_stats
+    tuple val(meta), path("*.gene_counts.txt.gz"), emit: gene_counts
+    tuple val(meta), path("*.cayman.log"        ), emit: log
     path "versions.yml" , emit: versions
 
     when:
