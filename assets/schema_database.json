@@ -10,19 +10,10 @@
             "tool": {
                 "type": "string",
                 "enum": [
-                    "bracken",
-                    "centrifuge",
-                    "diamond",
-                    "ganon",
-                    "kaiju",
-                    "kmcp",
-                    "kraken2",
-                    "krakenuniq",
-                    "malt",
-                    "metaphlan",
+                    "cayman",
                     "motus"
                 ],
-                "errorMessage": "Invalid tool name. Please see documentation for all supported profilers. Currently these classifers are included: bracken, centrifuge, diamond, ganon, kaiju, kmcp, kraken2, krakenuniq, malt, metaphlan, motus.",
+                "errorMessage": "Invalid tool name. Please see documentation for all supported profilers. Currently these classifers are included: motus, cayman.",
                 "meta": ["tool"]
             },
             "db_name": {
