@@ -3,7 +3,7 @@
     IMPORT MODULES / SUBWORKFLOWS / FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-include { BBMAP_REPAIR                  } from '../modules/nf-core/bbmap/repair/main'
+include { BBMAP_REPAIR                  } from '../modules/local/bbmap/repair/main'
 include { FASTQC                        } from '../modules/nf-core/fastqc/main'
 include { MULTIQC                       } from '../modules/nf-core/multiqc/main'
 include { paramsSummaryMap              } from 'plugin/nf-schema'
@@ -28,8 +28,8 @@ include { SHORTREAD_HOSTREMOVAL         } from '../subworkflows/local/shortread_
 include { LONGREAD_HOSTREMOVAL          } from '../subworkflows/local/longread_hostremoval'
 include { SHORTREAD_COMPLEXITYFILTERING } from '../subworkflows/local/shortread_complexityfiltering'
 include { PROFILING                     } from '../subworkflows/local/profiling'
-//include { VISUALIZATION_KRONA           } from '../subworkflows/local/visualization_krona'
 include { STANDARDISATION_PROFILES      } from '../subworkflows/local/standardisation_profiles'
+//include { VISUALIZATION_KRONA           } from '../subworkflows/local/visualization_krona'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -80,6 +80,8 @@ workflow FLEXPROFILER {
 
     // Validate input files and create separate channels for FASTQ, FASTA, and Nanopore data
     ch_input = samplesheet
+        // temp
+        .filter { it[0].id in ["Sample_783", "Sample_768", "Sample_815"]}
         .map { meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
             meta.run_accession = run_accession
             meta.instrument_platform = instrument_platform
@@ -127,16 +129,22 @@ workflow FLEXPROFILER {
     */
 
     if (params.perform_repair_pe_order) {
+        ch_input.fastq.map {
+            meta, reads -> 
+            if ( meta.single_end ) {
+                error("params.perform_repair_pe is true but single ended files have been detected. Please set params.perform_repair_pe to false or remove the single ended files. Error raised for sample: ${meta.id}")
+            }
+        }
         BBMAP_REPAIR(ch_input.fastq, Channel.value(false))
         ch_fastq_repaired = BBMAP_REPAIR.out.repaired
-        ch_versions = ch_versions.mix(BBMAP_REPAIR.out.versions)
+        ch_versions = ch_versions.mix(BBMAP_REPAIR.out.versions.first())
     }
     else {
         ch_fastq_repaired = ch_input.fastq
     }
     
     // Merge ch_fastq_repaired and ch_input.nanopore into a single channel
-    ch_input_for_fastqc = ch_fastq_repaired.fastq.mix(ch_input.nanopore, ch_input.pacbio)
+    ch_input_for_fastqc = ch_fastq_repaired.mix(ch_input.nanopore, ch_input.pacbio)
 
     // Validate and decompress databases
     ch_dbs_for_untar = databases.branch { db_meta, db_path ->

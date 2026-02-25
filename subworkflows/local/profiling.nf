@@ -2,7 +2,9 @@
 // Run profiling
 //
 
-include { MOTUS_PROFILE } from '../../modules/local/motus/profile/main'
+include { MOTUS_PROFILE          } from '../../modules/local/motus/profile/main'
+include { BIOAWK as RENAME_READS } from '../../modules/nf-core/bioawk/main'
+
 
 //include { MALT_RUN                                      } from '../../modules/nf-core/malt/run/main'
 //include { MEGAN_RMA2INFO as MEGAN_RMA2INFO_TSV          } from '../../modules/nf-core/megan/rma2info/main'
@@ -87,21 +89,51 @@ workflow PROFILING {
     // channel element order in sync with each other
 
     if (params.run_motus) {
-
-        ch_input_for_motus = ch_input_for_profiling.motus
-            .multiMap { it ->
-                reads: [it[0] + it[2], it[1]]
-                db: it[3]
+        ch_input_for_motus_raw = ch_input_for_profiling.motus
+            .branch { read_meta, reads, db_meta, db -> 
+                se: read_meta.single_end
+                pe: !read_meta.single_end
+            }
+        
+        ch_input_for_motus_rename_reads = ch_input_for_motus_raw.pe
+            .map { read_meta, reads, db_meta, db -> [read_meta, reads] }
+            .flatMap { meta, reads ->
+                [
+                    [ meta + [paired_idx: 1], reads[0] ],
+                    [ meta + [paired_idx: 2], reads[1] ]
+                ]
             }
 
-        MOTUS_PROFILE(ch_input_for_motus.reads, ch_input_for_motus.db)
+        // mOTUs 4 needs the read names to be identical across PE reads, without /1 /2 suffix
+        // this step takes care of this
+        RENAME_READS(ch_input_for_motus_rename_reads)
+        ch_versions = ch_versions.mix(RENAME_READS.out.versions.first())
+                    
+        ch_input_for_motus_profile = RENAME_READS.out.output
+            .map {
+                meta, read -> [ meta.findAll { k, v -> k != "paired_idx" }, [meta.paired_idx, read] ]
+            }
+            .groupTuple(by: 0)
+            .map {
+                meta, read_list ->
+                def r1 = read_list.find { idx, read -> idx == 1 }[1]
+                def r2 = read_list.find { idx, read -> idx == 2 }[1]
+                [ meta, [r1, r2] ]
+            }
+            .join(ch_input_for_motus_raw.pe.map { read_meta, reads, db_meta, db -> [read_meta, db_meta, db] }, failOnDuplicate: true, failOnMismatch: true)
+            .mix(ch_input_for_motus_raw.se)
+            .multiMap { read_meta, reads, db_meta, db ->
+                reads: [read_meta + db_meta, reads]
+                db: db
+            }
+
+        MOTUS_PROFILE(ch_input_for_motus_profile.reads, ch_input_for_motus_profile.db)
         ch_versions = ch_versions.mix(MOTUS_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS_PROFILE.out.log)
     }
 
     if (params.run_cayman) {
-
         ch_input_for_cayman = ch_input_for_profiling.cayman
             .multiMap { it ->
                 reads: [it[0] + it[2], it[1]]

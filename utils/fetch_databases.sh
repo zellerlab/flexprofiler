@@ -31,6 +31,9 @@ MOTUSDB_TO=${DBPATH}/motus_v4.0.4
 mkdir -p ${MOTUSDB_TO}
 cp -r ${MOTUSDB_FROM} ${MOTUSDB_TO}
 
+# cayman
+
+
 # heredoc to generate the CSV file with the paths to the downloaded databases
 cat <<-EOT > flexprofiler_databases.csv
 tool,db_name,db_params,db_path
