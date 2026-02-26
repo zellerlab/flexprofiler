@@ -109,6 +109,7 @@ Options for per-sample run-merging
 | Parameter | Description | Type | Default | Required | Hidden |
 |-----------|-----------|-----------|-----------|-----------|-----------|
 | `run_motus` | Turn on profiling with mOTUs. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
+| `motus_rename_reads` | Whether to fix individual PE read names so that they are identical and do not have /1 or /2 suffixes <details><summary>Help</summary><small>mOTUs 4 requires PE reads to have identical names. If the individual read names from the fastq @ lines have suffixes /1 and /2, mOTUs will fail. This step renames the reads throughout the file by removing the /1 or /2 suffix. Note that if PE reads are mismatched this step does not fix it, for that use `params.repair_pe_reads`</small></details>| `boolean` |  |  |  |
 | `run_cayman` | Turn on profiling with cayman. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
 
 ## Postprocessing and visualisation options
