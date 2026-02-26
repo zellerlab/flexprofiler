@@ -2,9 +2,9 @@
 // Run profiling
 //
 
-include { BIOAWK as RENAME_READS } from '../../modules/nf-core/bioawk/main'
-include { MOTUS_PROFILE          } from '../../modules/local/motus/profile/main'
-include { CAYMAN_PROFILE         } from '../../modules/local/cayman/profile/main'
+include { BIOAWK as MOTUS_RENAME_READS } from '../../modules/nf-core/bioawk/main'
+include { MOTUS_PROFILE                } from '../../modules/local/motus/profile/main'
+include { CAYMAN_PROFILE               } from '../../modules/local/cayman/profile/main'
 
 
 //include { MALT_RUN                                      } from '../../modules/nf-core/malt/run/main'
@@ -108,10 +108,10 @@ workflow PROFILING {
                     ]
                 }
 
-            RENAME_READS(ch_input_for_motus_rename_reads)
-            ch_versions = ch_versions.mix(RENAME_READS.out.versions.first())
+            MOTUS_RENAME_READS(ch_input_for_motus_rename_reads)
+            ch_versions = ch_versions.mix(MOTUS_RENAME_READS.out.versions.first())
 
-            ch_input_for_motus_profile = RENAME_READS.out.output
+            ch_input_for_motus_profile = MOTUS_RENAME_READS.out.output
                 .map {
                     meta, read -> [ meta.findAll { k, v -> k != "paired_idx" }, [meta.paired_idx, read] ]
                 }
