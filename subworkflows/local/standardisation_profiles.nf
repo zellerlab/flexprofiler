@@ -3,6 +3,7 @@
 //
 
 include { MOTUS_MERGE } from '../../modules/local/motus/merge/main'
+include { CAYMAN_MERGE } from '../../modules/local/cayman/merge/main'
 
 //include { TAXPASTA_MERGE                                                        } from '../../modules/nf-core/taxpasta/merge/main'
 //include { TAXPASTA_STANDARDISE                                                  } from '../../modules/nf-core/taxpasta/standardise/main'
@@ -75,6 +76,7 @@ workflow STANDARDISATION_PROFILES {
     */
     ch_input_profiles = profiles.branch {
         motus: it[0]['tool'] == 'motus'
+        cayman: it[0]['tool'] == 'cayman'
         unknown: true
 //        bracken: it[0]['tool'] == 'bracken'
 //        centrifuge: it[0]['tool'] == 'centrifuge'
@@ -91,6 +93,7 @@ workflow STANDARDISATION_PROFILES {
 
     ch_input_databases = databases.branch {
         motus: it[0]['tool'] == 'motus'
+        cayman: it[0]['tool'] == 'cayman'
 //        kaiju: it[0]['tool'] == 'kaiju'
         unknown: true
     }
@@ -102,16 +105,22 @@ workflow STANDARDISATION_PROFILES {
 
     // mOTUs
 
-    // mOTUs has a 'single' database, and cannot create custom ones.
-    // Therefore removing db info here, and publish merged at root mOTUs results
-    // directory
-
     ch_profiles_for_motus = groupProfiles(ch_input_profiles.motus)
 
     ch_input_for_motusmerge = combineProfilesWithDatabase(ch_profiles_for_motus, ch_input_databases.motus)
 
     MOTUS_MERGE(ch_input_for_motusmerge.profile, ch_input_for_motusmerge.db)
     ch_versions = ch_versions.mix(MOTUS_MERGE.out.versions)
+    
+    // cayman
+    // TODO: this is not yet tested
+
+    ch_profiles_for_cayman = groupProfiles(ch_input_profiles.cayman)
+
+    ch_input_for_caymanmerge = combineProfilesWithDatabase(ch_profiles_for_cayman, ch_input_databases.cayman)
+
+    CAYMAN_MERGE(ch_input_for_caymanmerge.profile, ch_input_for_caymanmerge.db)
+    ch_versions = ch_versions.mix(CAYMAN_MERGE.out.versions)
 
 //    // Bracken
 //

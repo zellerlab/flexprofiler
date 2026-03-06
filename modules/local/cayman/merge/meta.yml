@@ -1,0 +1,55 @@
+name: "motus_merge"
+description: A command-line tool for profiling CAZyme abundances in metagenomic datasets
+keywords:
+  - classify
+  - metagenomics
+  - fastq
+  - functional profiling
+  - merging
+  - merge
+tools:
+  - "cayman":
+      description: "A command-line tool for profiling CAZyme abundances in metagenomic datasets"
+      tool_dev_url: "https://github.com/zellerlab/cayman"
+      doi: "10.1101/2024.01.08.574624"
+      licence: ["MIT"]
+      identifier: ""
+input:
+  - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'test', single_end:false ]`
+    - input:
+        type: file
+        description: |
+          List of output files (more than one) from cayman profile
+        ontologies: []
+  - db:
+      type: directory
+      description: |
+        required database files for cayman: GMGC10 sequences (.fna.gz), annotation file (.csv), and bwa index
+        pattern: "*/"
+output:
+  txt:
+    - - meta:
+        type: map
+        description: |
+          Groovy Map containing sample information
+          e.g. `[ id:'test', single_end:false ]`
+      - "*.txt":
+          type: file
+          description: Cayman table in txt.gz format
+          pattern: "*.txt.gz"
+          ontologies: []
+  versions:
+    - versions.yml:
+        type: file
+        description: File containing software versions
+        pattern: "versions.yml"
+        ontologies:
+          - edam: http://edamontology.org/format_3750 # YAML
+authors:
+  - "@saulpierotti"
+maintainers:
+  - "@saulpierotti"
