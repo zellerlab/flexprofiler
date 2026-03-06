@@ -2,8 +2,9 @@ process CAYMAN_MERGE {
     tag "$meta.id"
     label 'process_single'
 
+    // this should be set to something more stable in time
     conda "${moduleDir}/environment.yml"
-    container "quay.io/saulpierotti-ebi/r_datatable_tidyverse"
+    container "saulpierotti-ebi/r_datatable_tidyverse@sha256:a78f80162c5b8d8e3cdf7203807aec70d161f07dc64f23893eaff3dbe5586c59"
 
     input:
     tuple val(meta), path(input)
