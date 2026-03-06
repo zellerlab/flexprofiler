@@ -4,7 +4,7 @@ process CAYMAN_MERGE {
 
     // this should be set to something more stable in time
     conda "${moduleDir}/environment.yml"
-    container "saulpierotti-ebi/r_datatable_tidyverse@sha256:a78f80162c5b8d8e3cdf7203807aec70d161f07dc64f23893eaff3dbe5586c59"
+    container "quay.io/saulpierotti/r_datatable_tidyverse:1.0.0"
 
     input:
     tuple val(meta), path(input)
