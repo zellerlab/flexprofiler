@@ -39,8 +39,8 @@ process CAYMAN_MERGE {
 
     handle <- file("versions.yml", "a")
     writeLines("\\"${task.process}\\":", handle)
-    writeLines(sprintf("\\tdata.table: %s", packageVersion('data.table')), handle)
-    writeLines(sprintf("\\tr-base: %s", getRversion()), handle)
+    writeLines(sprintf("   data.table: %s", packageVersion('data.table')), handle)
+    writeLines(sprintf("   r-base: %s", getRversion()), handle)
     """
 
     stub:
