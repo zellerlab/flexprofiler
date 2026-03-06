@@ -37,8 +37,10 @@ process CAYMAN_MERGE {
     df <- rbindlist(lapply(inputs, read_f))
     fwrite(df, file="${prefix}_cayman_merged.txt.gz", sep="\t")
 
-    writeLines(sprintf("data.table: %s", packageVersion('data.table')), "versions.yml")
-    writeLines(sprintf("r-base: %s", getRversion()), "versions.yml", append=TRUE)
+    handle <- file("versions.yml", "a")
+    writeLines("\\"${task.process}\\":", handle)
+    writeLines(sprintf("\\tdata.table: %s", packageVersion('data.table')), handle)
+    writeLines(sprintf("\\tr-base: %s", getRversion()), handle)
     """
 
     stub:
@@ -47,8 +49,11 @@ process CAYMAN_MERGE {
     """
     touch ${prefix}_cayman_merged.txt.gz
 
-    Rscript -e "writeLines(sprintf("data.table: %s", packageVersion('data.table')), "versions.yml")
-    Rscript -e "writeLines(sprintf("r-base: %s", getRversion()), "versions.yml", append=TRUE)"
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        Rscript -e "sprintf("data.table: %s", packageVersion('data.table'))"
+        Rscript -e "sprintf("r-base: %s", getRversion())"
+    END_VERSIONS
     """
 
 }
