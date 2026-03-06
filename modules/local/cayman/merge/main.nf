@@ -3,7 +3,7 @@ process CAYMAN_MERGE {
     label 'process_single'
 
     conda "${moduleDir}/environment.yml"
-    container "quay.io/saulpierotti/r_datatable_tidyverse"
+    container "quay.io/saulpierotti-ebi/r_datatable_tidyverse"
 
     input:
     tuple val(meta), path(input)
