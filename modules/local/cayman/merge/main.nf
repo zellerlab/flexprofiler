@@ -30,7 +30,7 @@ process CAYMAN_MERGE {
 
     read_f <- function(f) {
         df <- fread(f)
-        df[, sample := gsub(".txt.gz", "", basename(f))]
+        df[, sample := gsub("_${meta.id}.cazy.txt.gz", "", basename(f))]
         return(df)
     }
 
@@ -51,8 +51,8 @@ process CAYMAN_MERGE {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        Rscript -e "sprintf("data.table: %s", packageVersion('data.table'))"
-        Rscript -e "sprintf("r-base: %s", getRversion())"
+        data.table: $(Rscript -e "sprintf("%s", packageVersion('data.table'))")
+        r-base: $(Rscript -e "sprintf("%s", getRversion())")
     END_VERSIONS
     """
 
