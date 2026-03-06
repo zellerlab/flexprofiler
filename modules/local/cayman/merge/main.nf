@@ -51,8 +51,8 @@ process CAYMAN_MERGE {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        data.table: \$(Rscript -e "sprintf("%s", packageVersion('data.table'))")
-        r-base: \$(Rscript -e "sprintf("%s", getRversion())")
+        data.table: \$(Rscript -e "cat(sprintf(\\"%s\\", packageVersion('data.table')))")
+        r-base: \$(Rscript -e "cat(sprintf(\\"%s\\", getRversion()))")
     END_VERSIONS
     """
 
