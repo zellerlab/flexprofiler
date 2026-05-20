@@ -1,0 +1,69 @@
+import TestConfig
+
+nextflow_pipeline {
+
+    name "Test motus4"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_motus4"
+    profile "test_motus4"
+
+    test("test_motus4") {
+
+        setup {
+            def db_mOTU = "${TestConfig.getCacheDir(baseDir)}/test_motus4/db_mOTU/"
+            def hostremoval_t2t_genome = "${TestConfig.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/"
+
+            if (new File(db_mOTU).exists() && new File(db_mOTU).isDirectory()) {
+                println "Using cached databases at ${db_mOTU}"
+            } else {
+                println "Cache missing. Downloading database to ${db_mOTU}..."
+                curlAndExtract("https://zenodo.org/records/17668622/files/db_mOTU.tar.gz", db_mOTU)
+            }
+            
+            if (new File(hostremoval_t2t_genome).exists() && new File(hostremoval_t2t_genome).isDirectory()) {
+                println "Using cached reference genome at ${hostremoval_t2t_genome}"
+            } else {
+                println "Cache missing. Downloading reference genome to ${hostremoval_t2t_genome}..."
+                new File(hostremoval_t2t_genome).mkdirs()
+                def t2t_fa_url = "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/009/914/755/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
+                def t2t_fa_destination = new File("${hostremoval_t2t_genome}/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz")
+                //t2t_fa_destination.withOutputStream { out -> out << t2t_fa_url.toURL().openStream() }
+                curlAndExtract("https://genome-idx.s3.amazonaws.com/bt/chm13v2.0.zip", "${hostremoval_t2t_genome}/bowtie2_index")
+            }
+            def generate_custom_samplesheet = ['bash', '-c', "printf 'tool,db_name,db_params,db_path\nmotus4,db1,,${db_mOTU}/db_mOTU\n' > ${launchDir}/database.csv"]
+            def generate_custom_samplesheet_execute = generate_custom_samplesheet.execute()
+            generate_custom_samplesheet_execute.waitFor()
+        }
+
+        when {          
+            process {
+                // Limit resources so that this can run on GitHub Actions
+                resourceLimits = [
+                    cpus: 4,
+                    memory: '15.GB',
+                    time: '6.h',
+                ]
+            }
+            params {
+                outdir                        = "${outputDir}"
+                databases                     = "${launchDir}/database.csv"
+                input                         = "${params.pipelines_testdata_base_path}/flexprofiler/samplesheet.csv"
+                databases                     = 'database_motus4.csv'
+                hostremoval_reference         = "${TestConfig.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
+                shortread_hostremoval_index   = "${TestConfig.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/bowtie2_index"
+                run_motus4                    = true
+                perform_shortread_qc          = true
+                perform_shortread_hostremoval = true
+                run_profile_standardisation   = true
+                perform_runmerging            = true
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.success },
+            )
+        }
+    }
+}

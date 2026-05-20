@@ -2,7 +2,7 @@
 // Standardise output files e.g. aggregation
 //
 
-include { MOTUS_MERGE } from '../../modules/local/motus/merge/main'
+include { MOTUS4_MERGE } from '../../modules/local/motus4/merge/main'
 include { CAYMAN_MERGE } from '../../modules/local/cayman/merge/main'
 
 //include { TAXPASTA_MERGE                                                        } from '../../modules/nf-core/taxpasta/merge/main'
@@ -75,7 +75,7 @@ workflow STANDARDISATION_PROFILES {
         Split profile results based on tool they come from
     */
     ch_input_profiles = profiles.branch {
-        motus: it[0]['tool'] == 'motus'
+        motus4: it[0]['tool'] == 'motus4'
         cayman: it[0]['tool'] == 'cayman'
         unknown: true
 //        bracken: it[0]['tool'] == 'bracken'
@@ -92,7 +92,7 @@ workflow STANDARDISATION_PROFILES {
     }
 
     ch_input_databases = databases.branch {
-        motus: it[0]['tool'] == 'motus'
+        motus4: it[0]['tool'] == 'motus4'
         cayman: it[0]['tool'] == 'cayman'
 //        kaiju: it[0]['tool'] == 'kaiju'
         unknown: true
@@ -105,10 +105,10 @@ workflow STANDARDISATION_PROFILES {
 
     // mOTUs
 
-    ch_profiles_for_motus = groupProfiles(ch_input_profiles.motus)
-    ch_input_for_motusmerge = combineProfilesWithDatabase(ch_profiles_for_motus, ch_input_databases.motus)
-    MOTUS_MERGE(ch_input_for_motusmerge.profile, ch_input_for_motusmerge.db)
-    ch_versions = ch_versions.mix(MOTUS_MERGE.out.versions)
+    ch_profiles_for_motus4 = groupProfiles(ch_input_profiles.motus4)
+    ch_input_for_motus4merge = combineProfilesWithDatabase(ch_profiles_for_motus4, ch_input_databases.motus4)
+    MOTUS4_MERGE(ch_input_for_motus4merge.profile, ch_input_for_motus4merge.db)
+    ch_versions = ch_versions.mix(MOTUS4_MERGE.out.versions)
     
     // cayman
     // TODO: this is not yet tested

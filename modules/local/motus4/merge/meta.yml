@@ -1,4 +1,4 @@
-name: "motus_merge"
+name: "motus4_merge"
 description: Taxonomic meta-omics profiling using universal marker genes
 keywords:
   - classify
@@ -9,7 +9,7 @@ keywords:
   - merge
   - otu table
 tools:
-  - "motus":
+  - "motus4":
       description: "Marker gene-based OTU (mOTU) profiling"
       homepage: "https://motu-tool.org/"
       documentation: "https://github.com/motu-tool/mOTUs/wiki"
@@ -26,13 +26,13 @@ input:
     - input:
         type: file
         description: |
-          List of output files (more than one) from motus profile,
-          or a single directory containing motus output files.
+          List of output files (more than one) from motus4 profile,
+          or a single directory containing motus4 output files.
         ontologies: []
   - db:
       type: directory
       description: |
-        mOTUs database downloaded by `motus downloadGMDB`
+        mOTUs database downloaded by `motus4 downloadGMDB`
         pattern: "db_mOTU/"
 output:
   txt:

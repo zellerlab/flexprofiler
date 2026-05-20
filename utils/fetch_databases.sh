@@ -51,7 +51,7 @@ cp -r $CAYMAN_DBNAME $CAYMAN_TO
 # heredoc to generate the CSV file with the paths to the downloaded databases
 cat <<-EOT > flexprofiler_databases.csv
 tool,db_name,db_params,db_path
-motus,db_mOTU,,${MOTUSDB_TO}/db_mOTU
+motus4,db_mOTU,,${MOTUSDB_TO}/db_mOTU
 cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,${CAYMAN_TO}/GMGC10.human-gut.95nr.0.5.percent.prevalence
 EOT
 

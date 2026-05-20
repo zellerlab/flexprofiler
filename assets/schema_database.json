@@ -11,9 +11,9 @@
                 "type": "string",
                 "enum": [
                     "cayman",
-                    "motus"
+                    "motus4"
                 ],
-                "errorMessage": "Invalid tool name. Please see documentation for all supported profilers. Currently these classifers are included: motus, cayman.",
+                "errorMessage": "Invalid tool name. Please see documentation for all supported profilers. Currently these classifers are included: motus4, cayman.",
                 "meta": ["tool"]
             },
             "db_name": {

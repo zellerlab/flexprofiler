@@ -415,12 +415,12 @@
             "description": "",
             "default": "",
             "properties": {
-                "run_motus": {
+                "run_motus4": {
                     "type": "boolean",
                     "fa_icon": "fas fa-toggle-on",
                     "description": "Turn on profiling with mOTUs. Requires database to be present CSV file passed to --databases"
                 },
-                "motus_rename_reads": {
+                "motus4_rename_reads": {
                     "type": "boolean",
                     "fa_icon": "fas fa-tools",
                     "description": "Whether to fix individual PE read names so that they are identical and do not have /1 or /2 suffixes",
