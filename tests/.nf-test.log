@@ -1,6 +1,0 @@
-May-20 12:18:19.455 [main] INFO  com.askimed.nf.test.App - nf-test 0.9.5
-May-20 12:18:19.462 [main] INFO  com.askimed.nf.test.App - Arguments: [list]
-May-20 12:18:19.799 [main] INFO  com.askimed.nf.test.App - Nextflow Version: 26.04.1
-May-20 12:18:19.805 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Loaded 0 files from directory /Users/saul/flexprofiler/tests in 0.002 sec
-May-20 12:18:19.805 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Found 0 files containing tests.
-May-20 12:18:19.805 [main] DEBUG com.askimed.nf.test.lang.dependencies.DependencyResolver - Found files: []
