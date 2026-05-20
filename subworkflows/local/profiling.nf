@@ -36,6 +36,8 @@ workflow PROFILING {
     // These per-read ID taxonomic assingment
     ch_raw_profiles = Channel.empty()
     // These are count tables
+    
+    // TODO: add a step to produce a total read count here
 
     /*
         COMBINE READS WITH POSSIBLE DATABASES
