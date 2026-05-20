@@ -2,4 +2,4 @@ input: "<PATH TO YOUR>/samplesheet.csv"
 outdir: "<PATH TO WHERE SHOULD YOUR OUTPUT BE SAVED>"
 
 # select which tools to run
-run_motus: true
+run_motus4: true

@@ -273,17 +273,7 @@ def toolCitationText() {
 
     def text_classification = [
         "Taxonomic classification or profiling was carried out with:",
-        //params.run_bracken ? "Bracken (Lu et al. 2017)," : "",
-        //params.run_kraken2 ? "Kraken2 (Wood et al. 2019)," : "",
-        //params.run_krakenuniq ? "KrakenUniq (Breitwieser et al. 2018)," : "",
-        //params.run_metaphlan ? "MetaPhlAn (Blanco-Míguez et al. 2023)," : "",
-        //params.run_malt ? "MALT (Vågene et al. 2018) and MEGAN6 CE (Huson et al. 2016)," : "",
-        //params.run_diamond ? "DIAMOND (Buchfink et al. 2015)," : "",
-        //params.run_centrifuge ? "Centrifuge (Kim et al. 2016)," : "",
-        //params.run_kaiju ? "Kaiju (Menzel et al. 2016)," : "",
-        params.run_motus ? "mOTUs (Ruscheweyh et al. 2022)," : "",
-        //params.run_ganon ? "ganon (Piro et al. 2020)" : "",
-        //params.run_kmcp ? "KMCP (Shen et al. 2023)" : "",
+        params.run_motus4 ? "mOTUs 4 (Ruscheweyh et al. 2022)," : "",
         ".",
     ].join(' ').trim()
 
@@ -355,7 +345,7 @@ def toolBibliographyText() {
 
 
     def text_classification = [
-        params.run_motus ? "<li>Ruscheweyh, H.-J., Milanese, A., Paoli, L., Karcher, N., Clayssen, Q., Keller, M. I., Wirbel, J., Bork, P., Mende, D. R., Zeller, G., & Sunagawa, S. (2022). Cultivation-independent genomes greatly expand taxonomic-profiling capabilities of mOTUs across various environments. Microbiome, 10(1), 212. <a href=\"https://doi.org/10.1186/s40168-022-01410-z\">10.1186/s40168-022-01410-z</a></li>" : "",
+        params.run_motus4 ? "<li>Ruscheweyh, H.-J., Milanese, A., Paoli, L., Karcher, N., Clayssen, Q., Keller, M. I., Wirbel, J., Bork, P., Mende, D. R., Zeller, G., & Sunagawa, S. (2022). Cultivation-independent genomes greatly expand taxonomic-profiling capabilities of mOTUs across various environments. Microbiome, 10(1), 212. <a href=\"https://doi.org/10.1186/s40168-022-01410-z\">10.1186/s40168-022-01410-z</a></li>" : "",
         // params.run_bracken ? "<li>Lu, J., Breitwieser, F. P., Thielen, P., & Salzberg, S. L. (2017). Bracken: estimating species abundance in metagenomics data. PeerJ. Computer Science, 3(e104), e104. <a href=\"https://doi.org/10.7717/peerj-cs.104\">10.7717/peerj-cs.104</a></li>" : "",
         // params.run_kraken2 ? "<li>Wood, D. E., Lu, J., & Langmead, B. (2019). Improved metagenomic analysis with Kraken 2. Genome Biology, 20(1), 257.  <a href=\"https://doi.org/10.1186/s13059-019-1891-0\">10.1186/s13059-019-1891-0</a></li>" : "",
         // params.run_krakenuniq ? "<li>Breitwieser, F. P., Baker, D. N., & Salzberg, S. L. (2018). KrakenUniq: confident and fast metagenomics classification using unique k-mer counts. Genome Biology, 19(1), 198.  <a href=\"https://doi.org/10.1186/s13059-018-1568-0\">10.1186/s13059-018-1568-0</a></li>" : "",

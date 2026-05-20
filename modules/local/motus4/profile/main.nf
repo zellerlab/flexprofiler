@@ -1,4 +1,4 @@
-process MOTUS_PROFILE {
+process MOTUS4_PROFILE {
     tag "$meta.id"
     label 'process_medium'
 
@@ -61,7 +61,7 @@ process MOTUS_PROFILE {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        motus: \$VERSION
+        motus4: \$VERSION
     END_VERSIONS
     """
 
@@ -78,7 +78,7 @@ process MOTUS_PROFILE {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        motus: \$VERSION
+        motus4: \$VERSION
     END_VERSIONS
     """
 }

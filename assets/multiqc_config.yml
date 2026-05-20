@@ -50,7 +50,7 @@ report_section_order:
     order: 40
   kaiju:
     order: 30
-  motus:
+  motus4:
     order: 20
 
 export_plots: true
@@ -275,7 +275,7 @@ table_columns_placement:
     Mappability: 1720
     Assig. Taxonomy: 1730
     Taxonomic assignment success: 1740
-  motus:
+  motus4:
     Total number of reads: 1800
     Number of reads after filtering: 1810
     Total number of inserts: 1820
@@ -365,7 +365,7 @@ table_columns_visible:
   DIAMOND: false
   Kaiju: false
   MALT: false
-  motus: false
+  motus4: false
   metaphlan: false
 
 table_columns_name:

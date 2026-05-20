@@ -130,7 +130,7 @@ kraken2,db2,--quick,/<path>/<to>/kraken2/testdb-kraken2.tar.gz
 krakenuniq,db3,,/<path>/<to>/krakenuniq/testdb-krakenuniq.tar.gz
 centrifuge,db1,,/<path>/<to>/centrifuge/minigut_cf.tar.gz
 metaphlan,db1,,/<path>/<to>/metaphlan/metaphlan_database/
-motus,db_mOTU,,/<path>/<to>/motus/motus_database/
+motus4,db_mOTU,,/<path>/<to>/motus4/motus4_database/
 ganon,db1,,/<path>/<to>/ganon/test-db-ganon.tar.gz
 kmcp,db1,;-I 20,/<path>/<to>/kmcp/test-db-kmcp.tar.gz
 ```
@@ -144,7 +144,7 @@ kraken2,db2,--quick,short,/<path>/<to>/kraken2/testdb-kraken2.tar.gz
 krakenuniq,db3,,short;long,/<path>/<to>/krakenuniq/testdb-krakenuniq.tar.gz
 centrifuge,db1,,short,/<path>/<to>/centrifuge/minigut_cf.tar.gz
 metaphlan,db1,,short,/<path>/<to>/metaphlan/metaphlan_database/
-motus,db_mOTU,,long,/<path>/<to>/motus/motus_database/
+motus4,db_mOTU,,long,/<path>/<to>/motus4/motus4_database/
 ganon,db1,,short,/<path>/<to>/ganon/test-db-ganon.tar.gz
 kmcp,db1,;-I 20,short,/<path>/<to>/kmcp/test-db-kmcp.tar.gz
 ```
@@ -183,8 +183,8 @@ Click the links in the list below for short quick-reference tutorials how to gen
 
 The (uncompressed) database paths (`db_path`) for each tool are expected to contain:
 
-- [**mOTUs**:](usage/tutorials.md#motus-custom-database) the directory `db_mOTU/` that is downloaded via `motus downloadMGDB`.
-  - Note that you must use `motus downloadMGDB` and if installed via `conda`, will be placed in a specific `site-package` directory in the conda environment. For more details see the [mOTUs database tutorial](usage/tutorials.md#motus-custom-database).
+- [**mOTUs**:](usage/tutorials.md#motus4-custom-database) the directory `db_mOTU/` that is downloaded via `motus4 downloadMGDB`.
+  - Note that you must use `motus4 downloadMGDB` and if installed via `conda`, will be placed in a specific `site-package` directory in the conda environment. For more details see the [mOTUs database tutorial](usage/tutorials.md#motus4-custom-database).
 <!--
 - [**Bracken**:](usage/tutorials.md#bracken-custom-database) output of the combined `kraken2-build` and `bracken-build` process.
 - [**Centrifuge**:](usage/tutorials.md#centrifuge-custom-database) output of `centrifuge-build`.
@@ -481,7 +481,7 @@ The following tools will produce multi-sample taxon tables:
 - **Kaiju** (via Kaiju's `kaiju2table` tool)
 - **Kraken2** (via KrakenTools' `combine_kreports.py` script)
 - **MetaPhlAn** (via MetaPhlAn's `merge_metaphlan_tables.py` script)
-- **mOTUs** (via the `motus merge` command)
+- **mOTUs** (via the `motus4 merge` command)
 - **ganon** (via the `ganon table` command)
 
 Note that the multi-sample tables from the 'native' tools in each folders are [not inter-operable](https://taxpasta.readthedocs.io/en/latest/tutorials/getting-started/) with each other as they can have different formats and can contain additional and different data. In this case we refer you to use the standardised and merged output from Taxpasta, as described above.

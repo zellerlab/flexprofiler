@@ -34,7 +34,7 @@ input:
   - profiler:
       type: string
       description: Name of the profiler used to generate the profile (mandatory)
-      pattern: "bracken|centrifuge|diamond|ganon|kaiju|kmcp|kraken2|krakenuniq|megan6|metaphlan|motus"
+      pattern: "bracken|centrifuge|diamond|ganon|kaiju|kmcp|kraken2|krakenuniq|megan6|metaphlan|motus4"
   - format:
       type: string
       description: Type of output file to be generated

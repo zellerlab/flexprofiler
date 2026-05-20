@@ -1,4 +1,4 @@
-process MOTUS_MERGE {
+process MOTUS4_MERGE {
     tag "$meta.id"
     label 'process_single'
 
@@ -69,7 +69,7 @@ process MOTUS_MERGE {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        motus: \$VERSION
+        motus4: \$VERSION
     END_VERSIONS
     """
 

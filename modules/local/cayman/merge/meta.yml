@@ -1,4 +1,4 @@
-name: "motus_merge"
+name: "motus4_merge"
 description: A command-line tool for profiling CAZyme abundances in metagenomic datasets
 keywords:
   - classify
