@@ -1,22 +1,22 @@
-May-20 18:06:30.208 [main] INFO  com.askimed.nf.test.App - nf-test 0.9.5
-May-20 18:06:30.215 [main] INFO  com.askimed.nf.test.App - Arguments: [test, tests/test_motus4.nf.test, --verbose]
-May-20 18:06:30.578 [main] INFO  com.askimed.nf.test.App - Nextflow Version: 25.10.4
-May-20 18:06:30.579 [main] INFO  com.askimed.nf.test.commands.RunTestsCommand - Load config from file /Users/saul/flexprofiler/nf-test.config...
-May-20 18:06:30.802 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/visualization_krona.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/kaiju/kaiju2krona/main.nf' not found.
-May-20 18:06:30.802 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/visualization_krona.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/krakentools/kreport2krona/main.nf' not found.
-May-20 18:06:30.804 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/standardisation_profiles.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/bracken/combinebrackenoutputs/main.nf' not found.
-May-20 18:06:30.804 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/standardisation_profiles.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/krakentools/combinekreports/main.nf' not found.
-May-20 18:06:30.804 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/standardisation_profiles.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/krakentools/combinekreports/main.nf' not found.
-May-20 18:06:30.804 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/standardisation_profiles.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/metaphlan/mergemetaphlantables/main.nf' not found.
-May-20 18:06:30.804 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/standardisation_profiles.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/ganon/table/main.nf' not found.
-May-20 18:06:30.833 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Loaded 136 files from directory /Users/saul/flexprofiler in 0.036 sec
-May-20 18:06:30.833 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Found 1 files containing tests.
-May-20 18:06:30.833 [main] DEBUG com.askimed.nf.test.lang.dependencies.DependencyResolver - Found files: [/Users/saul/flexprofiler/tests/test_motus4.nf.test]
-May-20 18:06:30.958 [main] INFO  com.askimed.nf.test.commands.RunTestsCommand - Found 1 tests to execute.
-May-20 18:06:30.958 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Started test plan
-May-20 18:06:30.958 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Running testsuite 'Test motus4' from file '/Users/saul/flexprofiler/tests/test_motus4.nf.test'.
-May-20 18:06:30.958 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Run test '59ea80b1: test_motus4'. type: com.askimed.nf.test.lang.pipeline.PipelineTest
-May-20 18:06:35.353 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Test '59ea80b1: test_motus4' finished. status: FAILED
+May-20 18:17:28.254 [main] INFO  com.askimed.nf.test.App - nf-test 0.9.5
+May-20 18:17:28.261 [main] INFO  com.askimed.nf.test.App - Arguments: [test, tests/test_motus4.nf.test, --verbose]
+May-20 18:17:28.630 [main] INFO  com.askimed.nf.test.App - Nextflow Version: 25.10.4
+May-20 18:17:28.630 [main] INFO  com.askimed.nf.test.commands.RunTestsCommand - Load config from file /Users/saul/flexprofiler/nf-test.config...
+May-20 18:17:28.848 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/visualization_krona.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/kaiju/kaiju2krona/main.nf' not found.
+May-20 18:17:28.849 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/visualization_krona.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/krakentools/kreport2krona/main.nf' not found.
+May-20 18:17:28.851 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/standardisation_profiles.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/bracken/combinebrackenoutputs/main.nf' not found.
+May-20 18:17:28.851 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/standardisation_profiles.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/krakentools/combinekreports/main.nf' not found.
+May-20 18:17:28.851 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/standardisation_profiles.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/krakentools/combinekreports/main.nf' not found.
+May-20 18:17:28.851 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/standardisation_profiles.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/metaphlan/mergemetaphlantables/main.nf' not found.
+May-20 18:17:28.851 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/standardisation_profiles.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/ganon/table/main.nf' not found.
+May-20 18:17:28.888 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Loaded 136 files from directory /Users/saul/flexprofiler in 0.045 sec
+May-20 18:17:28.888 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Found 1 files containing tests.
+May-20 18:17:28.888 [main] DEBUG com.askimed.nf.test.lang.dependencies.DependencyResolver - Found files: [/Users/saul/flexprofiler/tests/test_motus4.nf.test]
+May-20 18:17:29.008 [main] INFO  com.askimed.nf.test.commands.RunTestsCommand - Found 1 tests to execute.
+May-20 18:17:29.008 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Started test plan
+May-20 18:17:29.008 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Running testsuite 'Test motus4' from file '/Users/saul/flexprofiler/tests/test_motus4.nf.test'.
+May-20 18:17:29.008 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Run test '59ea80b1: test_motus4'. type: com.askimed.nf.test.lang.pipeline.PipelineTest
+May-20 18:18:11.474 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Test '59ea80b1: test_motus4' finished. status: FAILED
 org.codehaus.groovy.runtime.powerassert.PowerAssertionError: 1 of 1 assertions failed
 	at com.askimed.nf.test.lang.extensions.GlobalMethods.assertAll(GlobalMethods.java:47)
 	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
@@ -45,5 +45,5 @@ org.codehaus.groovy.runtime.powerassert.PowerAssertionError: 1 of 1 assertions f
 	at picocli.CommandLine.execute(CommandLine.java:2078)
 	at com.askimed.nf.test.App.run(App.java:39)
 	at com.askimed.nf.test.App.main(App.java:46)
-May-20 18:06:35.354 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Testsuite 'Test motus4' finished. snapshot file: false, skipped tests: false, failed tests: true
-May-20 18:06:35.354 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Executed 1 tests. 1 tests failed. Done!
+May-20 18:18:11.476 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Testsuite 'Test motus4' finished. snapshot file: false, skipped tests: false, failed tests: true
+May-20 18:18:11.476 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Executed 1 tests. 1 tests failed. Done!
