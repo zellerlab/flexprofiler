@@ -6,24 +6,6 @@ include { BIOAWK as MOTUS4_RENAME_READS } from '../../modules/nf-core/bioawk/mai
 include { MOTUS4_PROFILE                } from '../../modules/local/motus4/profile/main'
 include { CAYMAN_PROFILE               } from '../../modules/local/cayman/profile/main'
 
-
-//include { MALT_RUN                                      } from '../../modules/nf-core/malt/run/main'
-//include { MEGAN_RMA2INFO as MEGAN_RMA2INFO_TSV          } from '../../modules/nf-core/megan/rma2info/main'
-//include { KRAKEN2_KRAKEN2                               } from '../../modules/nf-core/kraken2/kraken2/main'
-//include { KRAKEN2_STANDARD_REPORT                       } from '../../modules/local/kraken2_standard_report'
-//include { BRACKEN_BRACKEN                               } from '../../modules/nf-core/bracken/bracken/main'
-//include { CENTRIFUGE_CENTRIFUGE                         } from '../../modules/nf-core/centrifuge/centrifuge/main'
-//include { CENTRIFUGE_KREPORT                            } from '../../modules/nf-core/centrifuge/kreport/main'
-//include { METAPHLAN_METAPHLAN                           } from '../../modules/nf-core/metaphlan/metaphlan/main'
-//include { KAIJU_KAIJU                                   } from '../../modules/nf-core/kaiju/kaiju/main'
-//include { KAIJU_KAIJU2TABLE as KAIJU_KAIJU2TABLE_SINGLE } from '../../modules/nf-core/kaiju/kaiju2table/main'
-//include { DIAMOND_BLASTX                                } from '../../modules/nf-core/diamond/blastx/main'
-//include { KRAKENUNIQ_PRELOADEDKRAKENUNIQ                } from '../../modules/nf-core/krakenuniq/preloadedkrakenuniq/main'
-//include { KMCP_SEARCH                                   } from '../../modules/nf-core/kmcp/search/main'
-//include { KMCP_PROFILE                                  } from '../../modules/nf-core/kmcp/profile/main'
-//include { GANON_CLASSIFY                                } from '../../modules/nf-core/ganon/classify/main'
-//include { GANON_REPORT                                  } from '../../modules/nf-core/ganon/report/main'
-
 workflow PROFILING {
     take:
     reads     // [ [ meta ], [ reads ] ]
@@ -86,7 +68,7 @@ workflow PROFILING {
         if (params.motus4_rename_reads) {
             // mOTUs needs the read names to be identical across PE reads, without /1 /2 suffix
             // this step takes care of this
-            ch_input_for_motus4_raw = ch_input_for_profiling.motus
+            ch_input_for_motus4_raw = ch_input_for_profiling.motus4
                 .branch { read_meta, reads, db_meta, db -> 
                     se: read_meta.single_end
                     pe: !read_meta.single_end
@@ -122,7 +104,7 @@ workflow PROFILING {
                     db: db
                 }
         } else {
-            ch_input_for_motus4_profile = ch_input_for_profiling.motus
+            ch_input_for_motus4_profile = ch_input_for_profiling.motus4
                 .multiMap { read_meta, reads, db_meta, db ->
                     reads: [read_meta + db_meta, reads]
                     db: db

@@ -6,7 +6,7 @@ nextflow_pipeline {
     script "../main.nf"
     tag "pipeline"
     tag "test_motus4"
-    profile "test_motus4"
+    profile "test_motus4,singularity"
 
     test("test_motus4") {
 
@@ -19,6 +19,8 @@ nextflow_pipeline {
             } else {
                 println "Cache missing. Downloading database to ${db_mOTU}..."
                 curlAndExtract("https://zenodo.org/records/17668622/files/db_mOTU.tar.gz", db_mOTU)
+                def db_mOTU_marker = new File("${db_mOTU}/db_mOTU/db_mOTU.downloaded")
+                db_mOTU_marker << ""
             }
             
             if (new File(hostremoval_t2t_genome).exists() && new File(hostremoval_t2t_genome).isDirectory()) {

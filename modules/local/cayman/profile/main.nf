@@ -45,6 +45,7 @@ process CAYMAN_PROFILE {
     """
 
     stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch "${prefix}.aln_stats.txt.gz"
     touch "${prefix}.cazy.txt.gz"
