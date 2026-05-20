@@ -6,7 +6,7 @@ nextflow_pipeline {
     script "../main.nf"
     tag "pipeline"
     tag "test_motus4"
-    profile "test_motus4,singularity"
+    profile "test_motus4"
 
     test("test_motus4") {
 
