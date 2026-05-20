@@ -36,27 +36,12 @@ nextflow_pipeline {
             generate_custom_samplesheet_execute.waitFor()
         }
 
-        when {          
-            process {
-                // Limit resources so that this can run on GitHub Actions
-                resourceLimits = [
-                    cpus: 4,
-                    memory: '15.GB',
-                    time: '6.h',
-                ]
-            }
+        when {
             params {
                 outdir                        = "${outputDir}"
                 databases                     = "${launchDir}/database.csv"
-                input                         = "${params.pipelines_testdata_base_path}/flexprofiler/samplesheet.csv"
-                databases                     = 'database_motus4.csv'
                 hostremoval_reference         = "${TestConfig.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
-                shortread_hostremoval_index   = "${TestConfig.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/bowtie2_index"
-                run_motus4                    = true
-                perform_shortread_qc          = true
-                perform_shortread_hostremoval = true
-                run_profile_standardisation   = true
-                perform_runmerging            = true
+                shortread_hostremoval_index   = "${TestConfig.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/bowtie2_index/chm13v2.0"
             }
         }
 
