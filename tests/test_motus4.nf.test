@@ -6,7 +6,9 @@ nextflow_pipeline {
     script "../main.nf"
     tag "pipeline"
     tag "test_motus4"
-    profile "test_motus4"
+    // docker does not work with motus for some reason but works on singularity
+    // pysam fails with ValueError: file does not contain alignment data
+    profile "test_motus4,singularity"
 
     test("test_motus4") {
 
