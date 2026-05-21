@@ -35,7 +35,3 @@ seqtk seq -a  ERX5474930_ERR5766174_1.fastq.gz > ERX5474930_ERR5766174_1.fa.gz
 ```
 
 FASTA files are stored under `data/fasta/`
-
-### Databases
-
-Before running the tests, you need to set up tool-specific databases and a `databases.csv` file as detailed in the [main README of the pipeline](../../README.md).
