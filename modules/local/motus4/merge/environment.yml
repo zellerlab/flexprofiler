@@ -4,8 +4,4 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-<<<<<<< Updated upstream
-  - motus ==4.0.4
-=======
-  - motus=4.0.4
->>>>>>> Stashed changes
+  - motus==4.0.4
