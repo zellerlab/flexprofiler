@@ -1,4 +1,4 @@
-import TestConfig
+import TestUtils
 
 nextflow_pipeline {
 
@@ -9,10 +9,9 @@ nextflow_pipeline {
     profile "test_motus4"
 
     test("test_motus4") {
-
         setup {
-            def db_mOTU = "${TestConfig.getCacheDir(baseDir)}/test_motus4/db_mOTU/"
-            def hostremoval_t2t_genome = "${TestConfig.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/"
+            def db_mOTU = "${TestUtils.getCacheDir(baseDir)}/test_motus4/db_mOTU/"
+            def hostremoval_t2t_genome = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/"
 
             if (new File(db_mOTU).exists() && new File(db_mOTU).isDirectory()) {
                 print "\n  INFO: Using cached databases at ${db_mOTU}"
@@ -36,21 +35,29 @@ nextflow_pipeline {
             def generate_custom_samplesheet = ['bash', '-c', "printf 'tool,db_name,db_params,db_path\nmotus4,db1,,${db_mOTU}/db_mOTU\n' > ${launchDir}/database.csv"]
             def generate_custom_samplesheet_execute = generate_custom_samplesheet.execute()
             generate_custom_samplesheet_execute.waitFor()
-            print "\n  INFO: Downloads completed."
+
+            // copy test data over
+            def source = "${baseDir}/assets/test-data/data"
+            def destination = "${TestUtils.getCacheDir(baseDir)}/data"
+            print "\n  INFO: Downloads completed. Copying test data from ${source} to ${destination}..."
+            TestUtils.copyFolder(source, destination)
+            print "\n  INFO: Test data copied to ${destination}"
         }
 
         when {
             params {
                 outdir                        = "${outputDir}"
                 databases                     = "${launchDir}/database.csv"
-                hostremoval_reference         = "${TestConfig.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
-                shortread_hostremoval_index   = "${TestConfig.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/bowtie2_index/chm13v2.0"
+                hostremoval_reference         = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
+                shortread_hostremoval_index   = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/bowtie2_index/chm13v2.0"
             }
         }
 
         then {
+            def stable_name_all = getAllFilesFromDir(params.outdir, relative: true , includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
             assertAll(
                 { assert workflow.success },
+                { assert snapshot ( stable_name_all ).match("all_files") },
             )
         }
     }
