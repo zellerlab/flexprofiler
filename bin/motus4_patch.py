@@ -5,8 +5,9 @@
 
 import sys,pathlib
 from unittest.mock import patch
+from motus.motus import main
 
-workdir = pathlib.Path(__file__).resolve().parent
+workdir = pathlib.Path.cwd()
 
 with (
     patch('motus.mutils.DEFAULT_MOTUS_MGDB_PARENT_LOCATION', new=workdir),

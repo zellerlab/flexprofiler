@@ -15,18 +15,18 @@ nextflow_pipeline {
             def hostremoval_t2t_genome = "${TestConfig.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/"
 
             if (new File(db_mOTU).exists() && new File(db_mOTU).isDirectory()) {
-                println "Using cached databases at ${db_mOTU}"
+                print "\n  INFO: Using cached databases at ${db_mOTU}"
             } else {
-                println "Cache missing. Downloading database to ${db_mOTU}..."
+                print "\n  INFO: Cache missing. Downloading database to ${db_mOTU}..."
                 curlAndExtract("https://zenodo.org/records/17668622/files/db_mOTU.tar.gz", db_mOTU)
                 def db_mOTU_marker = new File("${db_mOTU}/db_mOTU/db_mOTU.downloaded")
                 db_mOTU_marker << ""
             }
             
             if (new File(hostremoval_t2t_genome).exists() && new File(hostremoval_t2t_genome).isDirectory()) {
-                println "Using cached reference genome at ${hostremoval_t2t_genome}"
+                print "\n  INFO: Using cached reference genome at ${hostremoval_t2t_genome}"
             } else {
-                println "Cache missing. Downloading reference genome to ${hostremoval_t2t_genome}..."
+                print "\n  INFO: Cache missing. Downloading reference genome to ${hostremoval_t2t_genome}..."
                 new File(hostremoval_t2t_genome).mkdirs()
                 def t2t_fa_url = "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/009/914/755/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
                 def t2t_fa_destination = new File("${hostremoval_t2t_genome}/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz")
@@ -36,6 +36,7 @@ nextflow_pipeline {
             def generate_custom_samplesheet = ['bash', '-c', "printf 'tool,db_name,db_params,db_path\nmotus4,db1,,${db_mOTU}/db_mOTU\n' > ${launchDir}/database.csv"]
             def generate_custom_samplesheet_execute = generate_custom_samplesheet.execute()
             generate_custom_samplesheet_execute.waitFor()
+            print "\n  INFO: Downloads completed."
         }
 
         when {
