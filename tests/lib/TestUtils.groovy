@@ -99,7 +99,7 @@ class TestUtils {
         } else {
             print "\n  INFO: Generating BWA index for ${fasta}..."
             print "\n  WARN: BWA 0.7.19-r1273 must be installed and in your PATH for this to work!"
-            def proc = "bwa index -b 90000000000 ${fasta}".execute()
+            def proc = "bwa index ${fasta}".execute()
             def stderr = new StringBuilder()
             proc.consumeProcessErrorStream(stderr)
             def exitCode = proc.waitFor()
