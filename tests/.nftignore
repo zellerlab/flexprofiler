@@ -1,0 +1,10 @@
+fastp/*.html
+fastp/*.log
+fastqc/raw/*.html
+fastqc/processed/*.html
+fastqc/raw/*.zip
+fastqc/processed/*.zip
+multiqc/multiqc_report.html
+multiqc/multiqc_plots/
+multiqc/multiqc_data/multiqc_sources.txt
+motus4/*.log
