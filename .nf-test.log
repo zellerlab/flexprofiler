@@ -1,49 +1,13 @@
-May-22 19:00:43.584 [main] INFO  com.askimed.nf.test.App - nf-test 0.9.5
-May-22 19:00:43.592 [main] INFO  com.askimed.nf.test.App - Arguments: [test, tests/test_motus4.nf.test, --profile, +docker, --debug, --verbose]
-May-22 19:00:43.962 [main] INFO  com.askimed.nf.test.App - Nextflow Version: 25.10.4
-May-22 19:00:43.963 [main] INFO  com.askimed.nf.test.commands.RunTestsCommand - Load config from file /Users/saul/flexprofiler/nf-test.config...
-May-22 19:00:44.162 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/visualization_krona.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/kaiju/kaiju2krona/main.nf' not found.
-May-22 19:00:44.163 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/visualization_krona.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/krakentools/kreport2krona/main.nf' not found.
-May-22 19:00:44.211 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Loaded 139 files from directory /Users/saul/flexprofiler in 0.055 sec
-May-22 19:00:44.212 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Found 1 files containing tests.
-May-22 19:00:44.212 [main] DEBUG com.askimed.nf.test.lang.dependencies.DependencyResolver - Found files: [/Users/saul/flexprofiler/tests/test_motus4.nf.test]
-May-22 19:00:44.439 [main] INFO  com.askimed.nf.test.commands.RunTestsCommand - Found 1 tests to execute.
-May-22 19:00:44.439 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Started test plan
-May-22 19:00:44.439 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Running testsuite 'Test motus4' from file '/Users/saul/flexprofiler/tests/test_motus4.nf.test'.
-May-22 19:00:44.439 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Run test '59ea80b1: test_motus4'. type: com.askimed.nf.test.lang.pipeline.PipelineTest
-May-22 19:01:02.658 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Test '59ea80b1: test_motus4' finished. status: FAILED
-groovy.lang.MissingMethodException: No signature of method: static TestUtils.copyFolder() is applicable for argument types: (org.codehaus.groovy.runtime.GStringImpl, org.codehaus.groovy.runtime.GStringImpl) values: [/Users/saul/flexprofiler/assets/test-data/data, /Users/saul/flexprofiler/.nf-test/shared_cache/data]
-	at groovy.lang.MetaClassImpl.invokeStaticMissingMethod(MetaClassImpl.java:1652)
-	at groovy.lang.MetaClassImpl.invokeStaticMethod(MetaClassImpl.java:1638)
-	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
-	at TestUtils.stageTestData(TestUtils.groovy:59)
-	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
-	at test_motus4_nf$_run_closure1$_closure2$_closure3.doCall(test_motus4.nf.test:41)
-	at test_motus4_nf$_run_closure1$_closure2$_closure3.doCall(test_motus4.nf.test)
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
-	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
-	at org.codehaus.groovy.reflection.CachedMethod.invoke(CachedMethod.java:343)
-	at groovy.lang.MetaMethod.doMethodInvoke(MetaMethod.java:328)
-	at org.codehaus.groovy.runtime.metaclass.ClosureMetaClass.invokeMethod(ClosureMetaClass.java:280)
-	at groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1009)
-	at groovy.lang.Closure.call(Closure.java:433)
-	at groovy.lang.Closure.call(Closure.java:412)
-	at com.askimed.nf.test.lang.TestCode.execute(TestCode.java:16)
-	at com.askimed.nf.test.lang.pipeline.PipelineTest.execute(PipelineTest.java:73)
-	at com.askimed.nf.test.core.TestExecutionEngine.execute(TestExecutionEngine.java:172)
-	at com.askimed.nf.test.commands.RunTestsCommand.execute(RunTestsCommand.java:322)
-	at com.askimed.nf.test.commands.AbstractCommand.call(AbstractCommand.java:43)
-	at com.askimed.nf.test.commands.AbstractCommand.call(AbstractCommand.java:18)
-	at picocli.CommandLine.executeUserObject(CommandLine.java:1953)
-	at picocli.CommandLine.access$1300(CommandLine.java:145)
-	at picocli.CommandLine$RunLast.executeUserObjectOfLastSubcommandWithSameParent(CommandLine.java:2352)
-	at picocli.CommandLine$RunLast.handle(CommandLine.java:2346)
-	at picocli.CommandLine$RunLast.handle(CommandLine.java:2311)
-	at picocli.CommandLine$AbstractParseResultHandler.execute(CommandLine.java:2179)
-	at picocli.CommandLine.execute(CommandLine.java:2078)
-	at com.askimed.nf.test.App.run(App.java:39)
-	at com.askimed.nf.test.App.main(App.java:46)
-May-22 19:01:02.664 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Testsuite 'Test motus4' finished. snapshot file: false, skipped tests: false, failed tests: true
-May-22 19:01:02.664 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Executed 1 tests. 1 tests failed. Done!
+May-22 19:03:45.123 [main] INFO  com.askimed.nf.test.App - nf-test 0.9.5
+May-22 19:03:45.131 [main] INFO  com.askimed.nf.test.App - Arguments: [test, tests/test_motus4.nf.test, --profile, +docker, --debug, --verbose]
+May-22 19:03:45.502 [main] INFO  com.askimed.nf.test.App - Nextflow Version: 25.10.4
+May-22 19:03:45.502 [main] INFO  com.askimed.nf.test.commands.RunTestsCommand - Load config from file /Users/saul/flexprofiler/nf-test.config...
+May-22 19:03:45.703 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/visualization_krona.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/kaiju/kaiju2krona/main.nf' not found.
+May-22 19:03:45.703 [main] WARN  com.askimed.nf.test.nextflow.NextflowScript - Module /Users/saul/flexprofiler/subworkflows/local/visualization_krona.nf: Dependency '/Users/saul/flexprofiler/subworkflows/local/../../modules/nf-core/krakentools/kreport2krona/main.nf' not found.
+May-22 19:03:45.764 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Loaded 139 files from directory /Users/saul/flexprofiler in 0.068 sec
+May-22 19:03:45.765 [main] INFO  com.askimed.nf.test.lang.dependencies.DependencyResolver - Found 1 files containing tests.
+May-22 19:03:45.765 [main] DEBUG com.askimed.nf.test.lang.dependencies.DependencyResolver - Found files: [/Users/saul/flexprofiler/tests/test_motus4.nf.test]
+May-22 19:03:46.007 [main] INFO  com.askimed.nf.test.commands.RunTestsCommand - Found 1 tests to execute.
+May-22 19:03:46.008 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Started test plan
+May-22 19:03:46.008 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Running testsuite 'Test motus4' from file '/Users/saul/flexprofiler/tests/test_motus4.nf.test'.
+May-22 19:03:46.008 [main] INFO  com.askimed.nf.test.core.TestExecutionEngine - Run test '59ea80b1: test_motus4'. type: com.askimed.nf.test.lang.pipeline.PipelineTest
