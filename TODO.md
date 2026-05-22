@@ -1,4 +1,9 @@
 # TODOs
+- Complete cayman and motus4 tests
+    - [ ] add fasta and long reads
+    - [ ] add single ended
+    - [ ] add mismatched ordered PE
+    - [ ] add /1 and /2 in read names to test `motus4_rename_reads`
 - Update documentation to drop mention of software from taxprofiler
     - [x] README.md
     - [x] docs/usage.md
