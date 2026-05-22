@@ -22,6 +22,22 @@ class TestUtils {
         }
     }
 
+    static void checkMD5s(Map<String, String> md5s) {
+        if ( !md5s ) {
+            throw new Exception( "md5s not provided. Cannot verify integrity of cached archive." )
+        }
+        md5s.each { file, expected_md5 ->
+            if ( new File(file).exists() ) {
+                def actual_md5 = "md5sum ${file}".execute().text.trim().split()[0]
+                if ( actual_md5 != expected_md5 ) {
+                    throw new Exception( "md5 mismatch for ${file}. Expected ${expected_md5}, got ${actual_md5}. Please clean the cache and retry." )  
+                }
+            } else {
+                throw new Exception( "Expected file ${file} not found in cache. Please clean the cache and retry." )
+            }
+        }
+    }
+
     static void stageTestData(Object baseDir) {
         def source = "${baseDir}/assets/test-data/data"
         def destination = "${getCacheDir(baseDir)}/data"
@@ -30,17 +46,19 @@ class TestUtils {
         print "\n  INFO: Test data copied to ${destination}"
     }
 
-    static void fetchArchive (String url, String destination, String touch_file = null) {
-            if ( new File( destination ).exists() && new File(destination).isDirectory() ) {
-                print "\n  INFO: Using cached archive at ${destination}"
-            } else {
-                print "\n  INFO: Cache missing. Downloading archive to ${destination}..."
-                curlAndExtract( url, destination )
-                if ( touch_file ) {
-                    def marker = new File( touch_file )
-                    marker << ""
-                }
+    static void fetchArchive (List<String> urls, String destination, String touch_file = null, Map<String, String> md5s) {
+        if ( new File( destination ).exists() && new File(destination).isDirectory() ) {
+            print "\n  INFO: Using cached archive at ${destination}"
+        } else {
+            print "\n  INFO: Cache missing. Downloading archive to ${destination}..."
+            urls.each { url -> curlAndExtract( url, destination ) }
+            if ( touch_file ) {
+                def marker = new File( touch_file )
+                marker << ""
             }
+        }
+        checkMD5s( md5s )
+        print "\n  INFO: Cached archive at ${destination} passed integrity check."
     }
 
     static void makeDatabaseSheet(Object launchDir, String content) {
@@ -61,9 +79,39 @@ class TestUtils {
             t2t_fa_destination.withOutputStream { out -> out << t2t_fa_url.toURL().openStream() }
             curlAndExtract( bowtie2_index_url, "${hostremoval_t2t_genome}/bowtie2_index" )
         }
+        def md5s = [
+            "${hostremoval_t2t_genome}/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz": "9e6bf6b586bc8954208d1cc1d5f2fc99",
+            "${hostremoval_t2t_genome}/bowtie2_index/chm13v2.0/chm13v2.0.1.bt2": "20901bcfe2065fc399d1d53ff87d39b3",
+            "${hostremoval_t2t_genome}/bowtie2_index/chm13v2.0/chm13v2.0.2.bt2": "5f09ff75d61ecae9a14fbf26916f2bcf",
+            "${hostremoval_t2t_genome}/bowtie2_index/chm13v2.0/chm13v2.0.3.bt2": "202208bb6de8fb51010d50a7e56aa717",
+            "${hostremoval_t2t_genome}/bowtie2_index/chm13v2.0/chm13v2.0.4.bt2": "798cadba311a10d612b877b2c5382536",
+            "${hostremoval_t2t_genome}/bowtie2_index/chm13v2.0/chm13v2.0.rev.1.bt2": "b3edaa2215e7d87d7306105789b126c2",
+            "${hostremoval_t2t_genome}/bowtie2_index/chm13v2.0/chm13v2.0.rev.2.bt2": "95f530d31dc402e9af9898874ff99c81",
+        ]
+        checkMD5s( md5s )
+        print "\n  INFO: Reference genome at ${hostremoval_t2t_genome} passed integrity check."
     }
 
-    static String getUnstableName() {
-        return "pipeline_info/execution_*.{html,txt}"
+    static void generateBwaIndex(String fasta, Map<String, String> md5s = null) {
+        def indexFiles = [".amb", ".ann", ".bwt", ".pac", ".sa"]
+        if ( indexFiles.every { new File("${fasta}${it}").exists() } ) {
+            print "\n  INFO: Using cached BWA index for ${fasta}."
+        } else {
+            print "\n  INFO: Generating BWA index for ${fasta}..."
+            print "\n  WARN: BWA 0.7.19-r1273 must be installed and in your PATH for this to work!"
+            def proc = "bwa index -b 90000000000 ${fasta}".execute()
+            def stderr = new StringBuilder()
+            proc.consumeProcessErrorStream(stderr)
+            def exitCode = proc.waitFor()
+            if ( exitCode != 0 ) {
+                throw new Exception( "Failed to generate BWA index for ${fasta}." )
+            }
+        }
+        checkMD5s( md5s )
+        print "\n  INFO: BWA index for ${fasta} passed integrity check."
+    }
+
+    static List<String> getUnstableName() {
+        return [ 'pipeline_info/*.{html,json,txt}' ]
     }
 }

@@ -1,0 +1,61 @@
+import TestUtils
+
+nextflow_pipeline {
+    name "Test cayman"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_cayman"
+    profile "test_cayman"
+
+    test("test_cayman") {
+        setup {
+            // download cayman database
+            def db_cayman                 = "${TestUtils.getCacheDir(baseDir)}/test_cayman/db_cayman/"
+            def db_cayman_genes_url       = "https://zenodo.org/records/10473258/files/gene_catalogues.zip"
+            def db_cayman_annotations_url = "https://zenodo.org/records/10473258/files/gene_catalogue_annotations.zip"
+            def required_files_md5 = [
+                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz": "093bd0cbb55ebbb938464b29b024019c",
+                "${db_cayman}/annots/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv": "608e26df4d2c7742c1de8421fb2d6c88",
+            ]
+            TestUtils.fetchArchive( [ db_cayman_genes_url, db_cayman_annotations_url ], db_cayman, null, required_files_md5 )
+            def required_index_files_md5 = [
+                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.ann": "e5c3789fb9811fecba71e968101feb28",
+                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.pac": "b77e7b78de54d1dfb3f988ba50b26f7d",
+                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.amb": "50eb462f4f6a7e458c79536cc4457361",
+                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.bwt": "b774f4af6d004584bcbe99e9a1fdbd15",
+                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.sa" : "f8d1727dbaee237196fa4be135c6b632",
+            ]
+            TestUtils.generateBwaIndex( "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz", required_index_files_md5 )
+
+            // create database sheet
+            TestUtils.makeDatabaseSheet( launchDir, "cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,${db_cayman}/GMGC10.human-gut.95nr.0.5.percent.prevalence\n" )
+
+            // download hostremoval reference genome and index
+            TestUtils.fetchHostremovalT2TGenome( baseDir )
+
+            // copy test data over
+            TestUtils.stageTestData( baseDir )
+        }
+
+        when {
+            params {
+                outdir                        = "${outputDir}"
+                databases                     = "${launchDir}/database.csv"
+                hostremoval_reference         = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
+                shortread_hostremoval_index   = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/bowtie2_index/chm13v2.0"
+            }
+        }
+
+        then {
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: TestUtils.getUnstableName(), relative: true )
+            def stable_content    = getAllFilesFromDir( params.outdir, includeDir: false, ignore: TestUtils.getUnstableName(), ignoreFile: 'tests/.nftignore', relative: false )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( stable_content ).match( "md5sums" ) },
+            )
+        }
+    }
+}
