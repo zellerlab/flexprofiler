@@ -22,23 +22,15 @@ workflow STANDARDISATION_PROFILES {
         motus4: it[0]['tool'] == 'motus4'
         cayman: it[0]['tool'] == 'cayman'
         unknown: true
-//        bracken: it[0]['tool'] == 'bracken'
-//        centrifuge: it[0]['tool'] == 'centrifuge'
-//        ganon: it[0]['tool'] == 'ganon'
-//        kmcp: it[0]['tool'] == 'kmcp'
-//        kraken2: it[0]['tool'] == 'kraken2' || it[0]['tool'] == 'kraken2-bracken'
-//        metaphlan: it[0]['tool'] == 'metaphlan'
     }
 
     ch_input_classifications = classifications.branch {
-//        kaiju: it[0]['tool'] == 'kaiju'
         unknown: true
     }
 
     ch_input_databases = databases.branch {
         motus4: it[0]['tool'] == 'motus4'
         cayman: it[0]['tool'] == 'cayman'
-//        kaiju: it[0]['tool'] == 'kaiju'
         unknown: true
     }
 
@@ -48,7 +40,6 @@ workflow STANDARDISATION_PROFILES {
 
 
     // mOTUs
-
     ch_profiles_for_motus4 = groupProfiles(ch_input_profiles.motus4)
     ch_input_for_motus4merge = combineProfilesWithDatabase(ch_profiles_for_motus4, ch_input_databases.motus4)
     MOTUS4_MERGE(ch_input_for_motus4merge.profile, ch_input_for_motus4merge.db)
@@ -62,7 +53,6 @@ workflow STANDARDISATION_PROFILES {
     ch_versions = ch_versions.mix(CAYMAN_MERGE.out.versions)
 
     emit:
-    //taxpasta = TAXPASTA_MERGE.out.merged_profiles
     versions = ch_versions
     mqc      = ch_multiqc_files
 }

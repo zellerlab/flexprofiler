@@ -237,6 +237,10 @@ If sequencing files are processed with tools that are not PE-aware, reads may be
 This breaks almost every PE tool, so PE repair is done using [BBDUK's repair.sh](https://github.com/BioInfoTools/BBMap/blob/master/sh/repair.sh) BEFORE any other step when `--perform_repair_pe_order` is set.
 This is also before FASTQC raw is run, because with incorrectly paired reads the FASTQC output is nonsensical.
 
+:::info
+Paired-end repair applies only to short reads.
+:::
+
 #### Read Processing
 
 Raw sequencing read processing in the form of adapter clipping and paired-end read merging can be activated via the `--perform_shortread_qc` or `--perform_longread_qc` flags.

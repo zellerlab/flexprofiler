@@ -9,26 +9,29 @@ nextflow_pipeline {
 
     test("test_cayman") {
         setup {
+            // this needs to be reviewed - incomplete
             // download cayman database
             def db_cayman                 = "${TestUtils.getCacheDir(baseDir)}/test_cayman/db_cayman/"
             def db_cayman_genes_url       = "https://zenodo.org/records/10473258/files/gene_catalogues.zip"
             def db_cayman_annotations_url = "https://zenodo.org/records/10473258/files/gene_catalogue_annotations.zip"
+            def human_gut_folder = "${db_cayman}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz"
             def required_files_md5 = [
-                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz": "093bd0cbb55ebbb938464b29b024019c",
-                "${db_cayman}/annots/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv": "608e26df4d2c7742c1de8421fb2d6c88",
+                "${human_gut_folder}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz": "093bd0cbb55ebbb938464b29b024019c",
+                "${human_gut_folder}/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv": "608e26df4d2c7742c1de8421fb2d6c88",
             ]
             TestUtils.fetchArchive( [ db_cayman_genes_url, db_cayman_annotations_url ], db_cayman, null, required_files_md5 )
             def required_index_files_md5 = [
-                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.ann": "e5c3789fb9811fecba71e968101feb28",
-                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.pac": "b77e7b78de54d1dfb3f988ba50b26f7d",
-                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.amb": "50eb462f4f6a7e458c79536cc4457361",
-                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.bwt": "b774f4af6d004584bcbe99e9a1fdbd15",
-                "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.sa" : "f8d1727dbaee237196fa4be135c6b632",
+                "${human_gut_folder}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.ann": "e5c3789fb9811fecba71e968101feb28",
+                "${human_gut_folder}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.pac": "b77e7b78de54d1dfb3f988ba50b26f7d",
+                "${human_gut_folder}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.amb": "50eb462f4f6a7e458c79536cc4457361",
+                "${human_gut_folder}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.bwt": "b774f4af6d004584bcbe99e9a1fdbd15",
+                "${human_gut_folder}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz.sa" : "f8d1727dbaee237196fa4be135c6b632",
             ]
-            TestUtils.generateBwaIndex( "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz", required_index_files_md5 )
+            TestUtils.copyFiles( human_gut_files, human_gut_folder )
+            TestUtils.generateBwaIndex( "${human_gut_folder}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz", required_index_files_md5 )
 
             // create database sheet
-            TestUtils.makeDatabaseSheet( launchDir, "cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,${db_cayman}/GMGC10.human-gut.95nr.0.5.percent.prevalence\n" )
+            TestUtils.makeDatabaseSheet( launchDir, "cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,${human_gut_folder}\n" )
 
             // download hostremoval reference genome and index
             TestUtils.fetchHostremovalT2TGenome( baseDir )
