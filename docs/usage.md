@@ -2,7 +2,8 @@
 
 ## Introduction
 
-zellerlab/flexprofiler is a pipeline for highly-parallelised taxonomic classification and profiling of shotgun metagenomic data across multiple tools simultaneously. In addition to multiple classification and profiling tools, at the same time it allows you to performing taxonomic classification and profiling across multiple databases and settings per tool, as well as produces standardised output tables to allow immediate cross comparison of results between tools.
+zellerlab/flexprofiler is a pipeline for highly-parallelised taxonomic classification and profiling of shotgun metagenomic data across multiple tools simultaneously.
+In addition to multiple classification and profiling tools, at the same time it allows you to performing taxonomic classification and profiling across multiple databases and settings per tool, as well as produces standardised output tables to allow immediate cross comparison of results between tools.
 
 In addition to this page, you can find additional usage information on the following pages:
 
@@ -185,18 +186,6 @@ The (uncompressed) database paths (`db_path`) for each tool are expected to cont
 
 - [**mOTUs**:](usage/tutorials.md#motus4-custom-database) the directory `db_mOTU/` that is downloaded via `motus4 downloadMGDB`.
   - Note that you must use `motus4 downloadMGDB` and if installed via `conda`, will be placed in a specific `site-package` directory in the conda environment. For more details see the [mOTUs database tutorial](usage/tutorials.md#motus4-custom-database).
-<!--
-- [**Bracken**:](usage/tutorials.md#bracken-custom-database) output of the combined `kraken2-build` and `bracken-build` process.
-- [**Centrifuge**:](usage/tutorials.md#centrifuge-custom-database) output of `centrifuge-build`.
-- [**DIAMOND**:](usage/tutorials.md#diamond-custom-database) output of `diamond makedb`.
-- [**Kaiju**:](usage/tutorials.md#kaiju-custom-database) output of `kaiju-makedb`.
-- [**Kraken2**:](usage/tutorials.md#kraken2-custom-database) output of `kraken2-build` command(s).
-- [**KrakenUniq**:](usage/tutorials.md#krakenuniq-custom-database) output of `krakenuniq-build` command(s).
-- [**MALT**](usage/tutorials.md#malt-custom-database) output of `malt-build`.
-- [**MetaPhlAn**:](usage/tutorials.md#metaphlan-custom-database) output of with `metaphlan --install` or downloaded from links on the [MetaPhlAn wiki](https://github.com/biobakery/MetaPhlAn/wiki/MetaPhlAn-4#customizing-the-database).
-- [**ganon**:](usage/tutorials.md#ganon-custom-database) output of `ganon build` or `ganon build-custom`.
-- [**KMCP**:](usage/tutorials.md#kmcp-custom-database) output of `kmcp index`. Note: `kmcp index` uses the output of an upstream `kmcp compute` step.
--->
 
 ## Running the pipeline
 
@@ -352,19 +341,13 @@ You can optionally save the FASTQ output of the run merging with the `--save_run
 
 #### Classification and Profiling
 
-The following sections provide tips and suggestions for running the different taxonomic classification and profiling tools _within the pipeline_. For advice and/or guidance whether you should run a particular tool on your specific data, please see the documentation of each tool!
-
-An important distinction between the different tools in included in the pipeline is classification versus profiling. Taxonomic _classification_ is concerned with simply detecting the presence of species in a given sample. Taxonomic _profiling_ involves additionally estimating the _abundance_ of each species.
-
+The following sections provide tips and suggestions for running the different taxonomic classification and profiling tools _within the pipeline_.
+For advice and/or guidance whether you should run a particular tool on your specific data, please see the documentation of each tool!
+An important distinction between the different tools in included in the pipeline is classification versus profiling.
+Taxonomic _classification_ is concerned with simply detecting the presence of species in a given sample.
+Taxonomic _profiling_ involves additionally estimating the _abundance_ of each species.
 Note that not all taxonomic classification tools (e.g. Kraken, MALT, Kaiju) performs _profiling_, but all taxonomic profilers (e.g. MetaPhlAn, mOTUs, Bracken) must perform some form of _classification_ prior to profiling.
-
 For advice as to which tool to run in your context, please see the documentation of each tool.
-
-:::note
-If you would like to change this behaviour, please contact us on the [nf-core slack](https://nf-co.re/join) and we can discuss this.
-:::
-
-Not all tools currently have dedicated tips, suggestions and/or recommendations, however we welcome further contributions for existing and additional tools via pull requests to the [zellerlab/flexprofiler repository](https://github.com/zellerlab/flexprofiler)!
 
 ##### mOTUs
 
@@ -372,120 +355,6 @@ mOTUs v4 has a number of breaking changes compared to v3, in particular:
 - The taxonomy is based on GDBM and not NCBI
 - Many command line options have been removed
 - Input BAM files are not accepted anymore, only FASTQs
-
-<!--
-##### Bracken
-
-You must make sure to also activate Kraken2 to run Bracken in the pipeline.
-
-It is unclear whether Bracken is suitable for running long reads, as it makes certain assumptions about read lengths. Furthermore, during testing we found issues where Bracken would fail on the long-read test data.
-
-Therefore currently zellerlab/flexprofiler does not run Bracken on data specified as being sequenced with `OXFORD_NANOPORE` in the input samplesheet.
-
-Bracken currently does support reporting of abundance stats for multiple taxonomic levels at once (by default, it only reports species level hits).
-You can change the reported taxonomic level by using Bracken's `-l` parameter (see Step 3 of the [Bracken documentation](https://ccb.jhu.edu/software/bracken/index.shtml?t=manual)).
-If you want to report multiple taxonomic levels, you must specify your Bracken database multiple times in the database sheet, once for each taxonomic level you want to report, and each with a unique database name.
-For example:
-
-```csv title="databases.csv"
-tool,db_name,db_params,db_type,db_path
-bracken,db1-species,;-l S,short,https://github.com/nf-core/test-datasets/raw/taxprofiler/data/database/bracken/testdb-bracken.tar.gz
-bracken,db1-genus,;-l G,short,https://github.com/nf-core/test-datasets/raw/taxprofiler/data/database/bracken/testdb-bracken.tar.gz
-bracken,db1-phylum,;-l P,short,https://github.com/nf-core/test-datasets/raw/taxprofiler/data/database/bracken/testdb-bracken.tar.gz
-kraken2,db2,--quick,short,https://github.com/nf-core/test-datasets/raw/taxprofiler/data/database/kraken2/testdb-kraken2.tar.gz
-```
-
-This will produce independent Bracken output files for each taxonomic level, with the suffixes `db1-species`, `db1-genus` and `db1-phylum` respectively in the `bracken/<database_name>/` output directories.
-
-:::warning
-Do not forget to supply the Bracken parameters after the a `;` to ensure the `-l` parameter goes to Bracken and not Kraken!
-See [Full database sheet](#full-database-sheet) for more information.
-:::
-
-##### Centrifuge
-
-Centrifuge currently does not accept FASTA files as input, therefore no output will be produced for these input files.
-
-##### DIAMOND
-
-DIAMOND can only accept a single input read file. When run DIAMOND on paired-end reads without merging, only the `read1` file will be used.
-Alternatively, you can merge the reads using `--shortread_qc_mergepairs`.
-
-:::warning
-Note however that the merging approach only works when the vast majority of reads do actually merge.
-If your DNA molecules were too short, read pairs will not overlap and not merge - by default being discarded.
-While you have the option of retaining unmerged reads as well (with `--shortread_qc_includeunmerged`), be careful that including unmerged reads retains these as _independent_ reads in the FASTQ file - thus you may get double counts on a taxon from a single read.
-:::
-
-DIAMOND only allows output of a single file format at a time, therefore parameters such `--diamond_save_reads` supplied will result in only aligned reads in SAM format will be produced, no taxonomic profiles will be available. Be aware of this when setting up your pipeline runs, depending on your particular use case.
-
-##### Kaiju
-
-Currently, no specific tips or suggestions.
-
-##### Kraken2
-
-Currently, no specific tips or suggestions.
-
-##### KrakenUniq
-
-Currently, no specific tips or suggestions.
-
-##### MALT
-
-MALT does not support paired-end reads alignment (unlike other tools), therefore zellerlab/flexprofiler aligns these as independent files if read-merging is skipped. If you skip merging, you can sum or average the results of the counts of the pairs.
-
-Krona can only be run on MALT output if path to Krona taxonomy database supplied to `--krona_taxonomy_directory`. Therefore if you do not supply the a Krona directory, Krona plots will not be produced for MALT.
-
-##### MetaPhlAn
-
-MetaPhlAn4 is compatible with the MetaPhlAn3 database by adding the `--mpa3` into `db_params` of the `database.csv`.
-
-##### ganon
-
-It is unclear whether ganon is suitable for running long reads - during testing we found issues where ganon would fail on the long-read test data.
-
-Therefore currently zellerlab/flexprofiler does not run ganon on data specified as being sequenced with `OXFORD_NANOPORE` in the input samplesheet.
-
-##### KMCP
-
-KMCP is only suitable for short-read metagenomic profiling, with much lower sensitivity on long-read datasets. Therefore, zellerlab/flexprofiler does not currently run KMCP on data specified as being sequenced with `OXFORD_NANOPORE` in the input samplesheet.
-
-#### Post Processing
-
-##### Visualisation
-
-zellerlab/flexprofiler supports generation of Krona interactive pie chart plots for the following compatible tools.
-
-- Kraken2
-- Centrifuge
-- Kaiju
-- MALT
-
-:::warning
-MALT KRONA plots cannot be generated automatically, you must also specify a Krona taxonomy directory with `--krona_taxonomy_directory` if you wish to generate these.
-:::
-
-##### Multi-Table Generation
-
-The main multiple-sample table from zellerlab/flexprofiler is from a dedicated standalone tool originally developed for the pipeline - [Taxpasta](https://taxpasta.readthedocs.io/en/latest/). When providing `--run_profile_standardisation`, every classifier/profiler and database combination will get a standardised and (if present) multi-sample taxon table in the [`taxpasta/`](https://nf-co.re/taxprofiler/output) directory. These tables are structured in the same way, to facilitate comparison between the results of the classifier/profiler. If multiple samples are provided, `taxpasta merge` will be executed, whereas if only a single sample is provided, `taxpasta standardise` will be executed - the file naming scheme will be the same for both.
-
-In addition to per-sample profiles and standardised Taxpasta output, the pipeline also supports generation of 'native' multi-sample taxonomic profiles (i.e., those generated by the taxonomic profiling tools themselves or additional utility scripts provided by the tool authors), when providing `--run_profile_standardisation` to your pipeline.
-
-These are executed on a per-database level. I.e., you will get a multi-sample taxon table for each database you provide for each tool and will be placed in the same directory as the directories containing the per-sample profiles.
-
-The following tools will produce multi-sample taxon tables:
-
-- **Bracken** (via bracken's `combine_bracken_outputs.py` script)
-- **Centrifuge** (via KrakenTools' `combine_kreports.py` script)
-- **Kaiju** (via Kaiju's `kaiju2table` tool)
-- **Kraken2** (via KrakenTools' `combine_kreports.py` script)
-- **MetaPhlAn** (via MetaPhlAn's `merge_metaphlan_tables.py` script)
-- **mOTUs** (via the `motus4 merge` command)
-- **ganon** (via the `ganon table` command)
-
-Note that the multi-sample tables from the 'native' tools in each folders are [not inter-operable](https://taxpasta.readthedocs.io/en/latest/tutorials/getting-started/) with each other as they can have different formats and can contain additional and different data. In this case we refer you to use the standardised and merged output from Taxpasta, as described above.
--->
 
 ### Updating the pipeline
 

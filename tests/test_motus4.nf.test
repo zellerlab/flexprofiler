@@ -1,7 +1,6 @@
 import TestUtils
 
 nextflow_pipeline {
-
     name "Test motus4"
     script "../main.nf"
     tag "pipeline"
@@ -14,10 +13,26 @@ nextflow_pipeline {
             def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus4/db_mOTU/"
             def db_mOTU_url    = "https://zenodo.org/records/17668622/files/db_mOTU.tar.gz"
             def db_mOTU_marker = "${db_mOTU}/db_mOTU/db_mOTU.downloaded"
-            TestUtils.fetchArchive( db_mOTU_url, db_mOTU, db_mOTU_marker )
+            def required_files_md5 = [
+                "${db_mOTU}/db_mOTU/db_mOTU.downloaded"                    : "d41d8cd98f00b204e9800998ecf8427e",
+                "${db_mOTU}/db_mOTU/mOTUs3.1_2_mOTUs4.0.map.tsv.gz"        : "712e563391ddd56d4418974d45bf5b17",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.db"                          : "269b81f94bdd8eca9e9ec2b137fe907c",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.blocklist.gz"             : "be5d306ffced844d6bd36d668ab90238",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz"                   : "97feea5f2670c2afa4b0f2ae6cd935cb",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.amb"               : "b5773280bde9c07eca6e2e54b1a726ce",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.ann"               : "fcbedd5d5a87768a3334f8bc0f771d02",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.bwt"               : "ac6b286d1a2bc5748245f1d7a6e3846f",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.pac"               : "e9d3c2d29409773958be27372e3d4249",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.sa"                : "0ea923181850c8d38491f0b0bde705a1",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.genomes.tsv.gz"              : "7b61075131725f1a891370c2ad9d5f97",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.gtdb.taxonomy.80mv.tsv.gz"   : "2a4a2894714705f152a80c1cccee376d",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.gtdb.taxonomy.rep.tsv.gz"    : "738d5939b0ba86e890d13293de7194c7",
+                "${db_mOTU}/db_mOTU/mOTUsv4.0.map.tsv.gz"                  : "4093387daffedbd7aa3dce69a9edddaf",
+            ]
+            TestUtils.fetchArchive( [ db_mOTU_url ], db_mOTU, db_mOTU_marker, required_files_md5 )
             
             // create database sheet
-            TestUtils.makeDatabaseSheet( launchDir, "motus4,db1,,${db_mOTU}/db_mOTU\n" )
+            TestUtils.makeDatabaseSheet( launchDir, "motus4,db_mOTU,,${db_mOTU}/db_mOTU\n" )
 
             // download hostremoval reference genome and index
             TestUtils.fetchHostremovalT2TGenome( baseDir )
