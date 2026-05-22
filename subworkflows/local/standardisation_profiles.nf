@@ -56,7 +56,6 @@ workflow STANDARDISATION_PROFILES {
     
     // cayman
     // TODO: this is not yet tested
-
     ch_profiles_for_cayman = groupProfiles(ch_input_profiles.cayman)
     ch_input_for_caymanmerge = combineProfilesWithDatabase(ch_profiles_for_cayman, ch_input_databases.cayman)
     CAYMAN_MERGE(ch_input_for_caymanmerge.profile, ch_input_for_caymanmerge.db)

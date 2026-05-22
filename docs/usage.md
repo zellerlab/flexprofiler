@@ -348,12 +348,29 @@ For advice and/or guidance whether you should run a particular tool on your spec
 An important distinction between the different tools in included in the pipeline is classification versus profiling.
 For advice as to which tool to run in your context, please see the documentation of each tool.
 
-##### mOTUs
+<!-- TODO: add section
+##### MapSeq
+
+##### IDTaxa
+
+##### mOTUs v3
+-->
+
+##### mOTUs v4
 
 mOTUs v4 has a number of breaking changes compared to v3, in particular:
 - The taxonomy is based on GDBM and not NCBI
 - Many command line options have been removed
-- Input BAM files are not accepted anymore, only FASTQs
+
+To run mOTUs v4, you need to specify the parameter `--run_motus4`.
+You also need to provide appropriate databases (see the [database documentation](databases.md) for details).
+The parameter `--motus4_rename_reads` is useful when working with paired-end reads with a `/1` and `/2` suffix in the read names.
+mOTUs v4 expects the reads in a pair to have identical names, so this steps renames all the reads accordingly removing the suffixes.
+
+##### Cayman
+
+To run mOTUs v4, you need to specify the parameter `--run_cayman`.
+You also need to provide appropriate databases (see the [database documentation](databases.md) for details).
 
 ### Updating the pipeline
 
