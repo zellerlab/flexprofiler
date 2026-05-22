@@ -10,38 +10,20 @@ nextflow_pipeline {
 
     test("test_motus4") {
         setup {
-            def db_mOTU = "${TestUtils.getCacheDir(baseDir)}/test_motus4/db_mOTU/"
-            def hostremoval_t2t_genome = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/"
-
-            if (new File(db_mOTU).exists() && new File(db_mOTU).isDirectory()) {
-                print "\n  INFO: Using cached databases at ${db_mOTU}"
-            } else {
-                print "\n  INFO: Cache missing. Downloading database to ${db_mOTU}..."
-                curlAndExtract("https://zenodo.org/records/17668622/files/db_mOTU.tar.gz", db_mOTU)
-                def db_mOTU_marker = new File("${db_mOTU}/db_mOTU/db_mOTU.downloaded")
-                db_mOTU_marker << ""
-            }
+            // download mOTU database
+            def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus4/db_mOTU/"
+            def db_mOTU_url    = "https://zenodo.org/records/17668622/files/db_mOTU.tar.gz"
+            def db_mOTU_marker = "${db_mOTU}/db_mOTU/db_mOTU.downloaded"
+            TestUtils.fetchArchive( db_mOTU_url, db_mOTU, db_mOTU_marker )
             
-            if (new File(hostremoval_t2t_genome).exists() && new File(hostremoval_t2t_genome).isDirectory()) {
-                print "\n  INFO: Using cached reference genome at ${hostremoval_t2t_genome}"
-            } else {
-                print "\n  INFO: Cache missing. Downloading reference genome to ${hostremoval_t2t_genome}..."
-                new File(hostremoval_t2t_genome).mkdirs()
-                def t2t_fa_url = "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/009/914/755/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
-                def t2t_fa_destination = new File("${hostremoval_t2t_genome}/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz")
-                t2t_fa_destination.withOutputStream { out -> out << t2t_fa_url.toURL().openStream() }
-                curlAndExtract("https://genome-idx.s3.amazonaws.com/bt/chm13v2.0.zip", "${hostremoval_t2t_genome}/bowtie2_index")
-            }
-            def generate_custom_samplesheet = ['bash', '-c', "printf 'tool,db_name,db_params,db_path\nmotus4,db1,,${db_mOTU}/db_mOTU\n' > ${launchDir}/database.csv"]
-            def generate_custom_samplesheet_execute = generate_custom_samplesheet.execute()
-            generate_custom_samplesheet_execute.waitFor()
+            // create database sheet
+            TestUtils.makeDatabaseSheet( launchDir, "motus4,db1,,${db_mOTU}/db_mOTU\n" )
+
+            // download hostremoval reference genome and index
+            TestUtils.fetchHostremovalT2TGenome( baseDir )
 
             // copy test data over
-            def source = "${baseDir}/assets/test-data/data"
-            def destination = "${TestUtils.getCacheDir(baseDir)}/data"
-            print "\n  INFO: Downloads completed. Copying test data from ${source} to ${destination}..."
-            TestUtils.copyFolder(source, destination)
-            print "\n  INFO: Test data copied to ${destination}"
+            TestUtils.stageTestData( baseDir )
         }
 
         when {
@@ -54,10 +36,14 @@ nextflow_pipeline {
         }
 
         then {
-            def stable_name_all = getAllFilesFromDir(params.outdir, relative: true , includeDir: true, ignore: ['pipeline_info/*.{html,json,txt}'])
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: TestUtils.getUnstableName(), relative: true )
+            def stable_content    = getAllFilesFromDir( params.outdir, includeDir: false, ignore: TestUtils.getUnstableName(), ignoreFile: 'tests/.nftignore', relative: false )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
             assertAll(
                 { assert workflow.success },
-                { assert snapshot ( stable_name_all ).match("all_files") },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( stable_content ).match( "md5sums" ) },
             )
         }
     }
