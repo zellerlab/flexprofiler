@@ -27,7 +27,7 @@ nextflow_pipeline {
             ]
             TestUtils.generateBwaIndex( "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz", required_index_files_md5 )
 
-            def human_gut_folder = "${db_cayman}/gene_catalogues/GMGC10.human-gut.95nr.0.5.percent.prevalence"
+            def human_gut_folder = "${db_cayman}/GMGC10.human-gut.95nr.0.5.percent.prevalence"
             TestUtils.copyFiles( required_files_md5 + required_index_files_md5, human_gut_folder )
 
             // create database sheet
