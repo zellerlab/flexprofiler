@@ -9,17 +9,31 @@ class TestUtils {
         return "${baseDir}/.nf-test/shared_cache"
     }
 
-    static void copyFolder(String source_string, String destination_string) {
-        def source = Paths.get(source_string)
-        def destination = Paths.get(destination_string)
-        Files.walk(source).each { src ->
-            Path dest = destination.resolve(source.relativize(src))
-            if (Files.isDirectory(src)) {
-                Files.createDirectories(dest)
+    //static void copyFiles(List<String> files, String destination_string) {
+    //    print "\n  INFO: Copying files to ${destination_string}..."
+    //    def destination = Paths.get(destination_string)
+    //    Files.createDirectories(destination)
+    //    files.each { f ->
+    //        def src = Paths.get(f)
+    //        Files.copy(src, destination.resolve(src.fileName), StandardCopyOption.REPLACE_EXISTING)
+    //    }
+    //    print "\n  INFO: Files copied to ${destination_string}."
+    //}
+
+    static void moveTo (List<String> files, String destination) {
+        def dest_path = Paths.get(destination)
+        if ( !Files.exists(dest_path) ) {
+            Files.createDirectories(dest_path)
+        }
+        files.each { file ->
+            def src_path = Paths.get(file)
+            if ( Files.exists(src_path) ) {
+                Files.copy(src_path, dest_path.resolve(src_path.getFileName()), StandardCopyOption.REPLACE_EXISTING)
             } else {
-                Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING)
+                throw new Exception( "File ${file} not found. Cannot move to ${destination}." )
             }
         }
+
     }
 
     static void checkMD5s(Map<String, String> md5s) {
