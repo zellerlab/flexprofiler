@@ -22,21 +22,21 @@ class TestUtils {
         }
     }
 
-    //static void moveTo (List<String> files, String destination) {
-    //    def dest_path = Paths.get(destination)
-    //    if ( !Files.exists(dest_path) ) {
-    //        Files.createDirectories(dest_path)
-    //    }
-    //    files.each { file ->
-    //        def src_path = Paths.get(file)
-    //        if ( Files.exists(src_path) ) {
-    //            Files.move(src_path, dest_path.resolve(src_path.getFileName()), StandardCopyOption.REPLACE_EXISTING)
-    //        } else {
-    //            throw new Exception( "File ${file} not found. Cannot move to ${destination}." )
-    //        }
-    //    }
-
-    //}
+    static void copyFiles(Map<String, String> files_md5, String destination_string) {
+        print "\n  INFO: Copying files to ${destination_string}..."
+        def destination = Paths.get(destination_string)
+        Files.createDirectories(destination)
+        files_md5.each { filepath, expected_md5 ->
+            def src = Paths.get(filepath)
+            def dest = destination.resolve(src.getFileName())
+            Files.copy(src, dest, StandardCopyOption.REPLACE_EXISTING)
+            def actual_md5 = "md5sum ${dest}".execute().text.trim().split()[0]
+            if (actual_md5 != expected_md5) {
+                throw new RuntimeException("MD5 mismatch for ${filepath}: expected ${expected_md5}, got ${actual_md5}")
+            }
+        }
+        print "\n  INFO: Files copied to ${destination_string}"
+    }
 
     static void checkMD5s(Map<String, String> md5s) {
         if ( !md5s ) {
