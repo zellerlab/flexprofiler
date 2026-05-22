@@ -127,14 +127,14 @@ workflow FLEXPROFILER {
     */
 
     if (params.perform_repair_pe_order) {
-        ch_input.fastq.map {
+        ch_bbmap_repair = ch_input.fastq.branch {
             meta, reads -> 
-            if ( meta.single_end ) {
-                error("params.perform_repair_pe is true but single ended files have been detected. Please set params.perform_repair_pe to false or remove the single ended files. Error raised for sample: ${meta.id}")
-            }
+            se: meta.single_end
+            pe: !meta.single_end
+            
         }
-        BBMAP_REPAIR(ch_input.fastq, Channel.value(false))
-        ch_fastq_repaired = BBMAP_REPAIR.out.repaired
+        BBMAP_REPAIR(ch_bbmap_repair.pe, Channel.value(false))
+        ch_fastq_repaired = BBMAP_REPAIR.out.repaired.mix(ch_bbmap_repair.se)
         ch_versions = ch_versions.mix(BBMAP_REPAIR.out.versions.first())
     }
     else {
