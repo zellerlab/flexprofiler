@@ -106,8 +106,10 @@ workflow FLEXPROFILER {
             return [meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta]
         }
         .branch { meta, _run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
-            fastq: meta.single_end || fastq_2
-            return [meta + [type: "short"], fastq_2 ? [fastq_1, fastq_2] : [fastq_1]]
+            fastq_pe: !meta.single_end && fastq_2
+            return [meta + [type: "short"], [fastq_1, fastq_2]]
+            fastq_se: meta.single_end && !fastq_2
+            return [meta + [type: "short"], [fastq_1]]
             nanopore: instrument_platform == 'OXFORD_NANOPORE' && !meta.is_fasta
             meta.single_end = true
             return [meta + [type: "long"], [fastq_1]]
@@ -127,22 +129,16 @@ workflow FLEXPROFILER {
     */
 
     if (params.perform_repair_pe_order) {
-        ch_bbmap_repair = ch_input.fastq.branch {
-            meta, reads -> 
-            se: meta.single_end
-            pe: !meta.single_end
-            
-        }
-        BBMAP_REPAIR(ch_bbmap_repair.pe, Channel.value(false))
-        ch_fastq_repaired = BBMAP_REPAIR.out.repaired.mix(ch_bbmap_repair.se)
+        BBMAP_REPAIR(ch_input.fastq_pe, Channel.value(false))
+        ch_fastq_pe_repaired = BBMAP_REPAIR.out.repaired
         ch_versions = ch_versions.mix(BBMAP_REPAIR.out.versions.first())
     }
     else {
-        ch_fastq_repaired = ch_input.fastq
+        ch_fastq_pe_repaired = ch_input.fastq_pe
     }
     
     // Merge ch_fastq_repaired and ch_input.nanopore into a single channel
-    ch_input_for_fastqc = ch_fastq_repaired.mix(ch_input.nanopore, ch_input.pacbio)
+    ch_input_for_fastqc = ch_fastq_pe_repaired.mix(ch_input.fastq_se, ch_input.nanopore, ch_input.pacbio)
 
     // Validate and decompress databases
     ch_dbs_for_untar = databases.branch { db_meta, db_path ->
