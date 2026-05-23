@@ -29,7 +29,6 @@ include { LONGREAD_HOSTREMOVAL          } from '../subworkflows/local/longread_h
 include { SHORTREAD_COMPLEXITYFILTERING } from '../subworkflows/local/shortread_complexityfiltering'
 include { PROFILING                     } from '../subworkflows/local/profiling'
 include { STANDARDISATION_PROFILES      } from '../subworkflows/local/standardisation_profiles'
-//include { VISUALIZATION_KRONA           } from '../subworkflows/local/visualization_krona'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -130,15 +129,15 @@ workflow FLEXPROFILER {
 
     if (params.perform_repair_pe_order) {
         BBMAP_REPAIR(ch_input.fastq_pe, Channel.value(false))
-        ch_fastq_pe_repaired = BBMAP_REPAIR.out.repaired
+        ch_fastq_repaired = BBMAP_REPAIR.out.repaired.mix(ch_input.fastq_se)
         ch_versions = ch_versions.mix(BBMAP_REPAIR.out.versions.first())
     }
     else {
-        ch_fastq_pe_repaired = ch_input.fastq_pe
+        ch_fastq_repaired = ch_input.fastq_pe.mix(ch_input.fastq_se)
     }
     
     // Merge ch_fastq_repaired and ch_input.nanopore into a single channel
-    ch_input_for_fastqc = ch_fastq_pe_repaired.mix(ch_input.fastq_se, ch_input.nanopore, ch_input.pacbio)
+    ch_input_for_fastqc = ch_fastq_repaired.mix(ch_input.nanopore, ch_input.pacbio)
 
     // Validate and decompress databases
     ch_dbs_for_untar = databases.branch { db_meta, db_path ->
@@ -297,14 +296,6 @@ workflow FLEXPROFILER {
 
     PROFILING(ch_reads_runmerged, ch_final_dbs)
     ch_versions = ch_versions.mix(PROFILING.out.versions)
-
-    /*
-        SUBWORKFLOW: VISUALIZATION_KRONA
-    */
-    //if (params.run_krona) {
-    //    VISUALIZATION_KRONA(PROFILING.out.classifications, PROFILING.out.profiles, ch_final_dbs)
-    //    ch_versions = ch_versions.mix(VISUALIZATION_KRONA.out.versions)
-    //}
 
     /*
         SUBWORKFLOW: PROFILING STANDARDISATION

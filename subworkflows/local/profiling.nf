@@ -69,17 +69,17 @@ workflow PROFILING {
             // mOTUs needs the read names to be identical across PE reads, without /1 /2 suffix
             // this step takes care of this
             ch_input_for_motus4_raw = ch_input_for_profiling.motus4
-                .branch { read_meta, reads, db_meta, db -> 
+                .branch { read_meta, input_reads, db_meta, db -> 
                     se: read_meta.single_end
                     pe: !read_meta.single_end
                 }
             
             ch_input_for_motus4_rename_reads = ch_input_for_motus4_raw.pe
-                .map { read_meta, reads, db_meta, db -> [read_meta, reads] }
-                .flatMap { meta, reads ->
+                .map { read_meta, input_reads, db_meta, db -> [read_meta, input_reads] }
+                .flatMap { meta, input_reads ->
                     [
-                        [ meta + [paired_idx: 1], reads[0] ],
-                        [ meta + [paired_idx: 2], reads[1] ]
+                        [ meta + [paired_idx: 1], input_reads[0] ],
+                        [ meta + [paired_idx: 2], input_reads[1] ]
                     ]
                 }
 
@@ -88,25 +88,25 @@ workflow PROFILING {
 
             ch_input_for_motus4_profile = MOTUS4_RENAME_READS.out.output
                 .map {
-                    meta, read -> [ meta.findAll { k, v -> k != "paired_idx" }, [meta.paired_idx, read] ]
+                    meta, input_reads -> [ meta.findAll { k, v -> k != "paired_idx" }, [meta.paired_idx, input_reads] ]
                 }
                 .groupTuple(by: 0)
                 .map {
                     meta, read_list ->
-                    def r1 = read_list.find { idx, read -> idx == 1 }[1]
-                    def r2 = read_list.find { idx, read -> idx == 2 }[1]
+                    def r1 = read_list.find { idx, the_read -> idx == 1 }[1]
+                    def r2 = read_list.find { idx, the_read -> idx == 2 }[1]
                     [ meta, [r1, r2] ]
                 }
-                .join(ch_input_for_motus4_raw.pe.map { read_meta, reads, db_meta, db -> [read_meta, db_meta, db] }, failOnDuplicate: true, failOnMismatch: true)
+                .join(ch_input_for_motus4_raw.pe.map { read_meta, input_reads, db_meta, db -> [read_meta, db_meta, db] }, failOnDuplicate: true, failOnMismatch: true)
                 .mix(ch_input_for_motus4_raw.se)
-                .multiMap { read_meta, reads, db_meta, db ->
-                    reads: [read_meta + db_meta, reads]
+                .multiMap { read_meta, input_reads, db_meta, db ->
+                    reads: [read_meta + db_meta, input_reads]
                     db: db
                 }
         } else {
             ch_input_for_motus4_profile = ch_input_for_profiling.motus4
-                .multiMap { read_meta, reads, db_meta, db ->
-                    reads: [read_meta + db_meta, reads]
+                .multiMap { read_meta, input_reads, db_meta, db ->
+                    reads: [read_meta + db_meta, input_reads]
                     db: db
                 }
         }
@@ -119,8 +119,8 @@ workflow PROFILING {
 
     if (params.run_cayman) {
         ch_input_for_cayman = ch_input_for_profiling.cayman
-            .multiMap { read_meta, reads, db_meta, db ->
-                reads: [read_meta + db_meta, reads]
+            .multiMap { read_meta, input_reads, db_meta, db ->
+                reads: [read_meta + db_meta, input_reads]
                 db: db
             }
 
