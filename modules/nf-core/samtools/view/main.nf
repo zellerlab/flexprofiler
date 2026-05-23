@@ -27,15 +27,15 @@ process SAMTOOLS_VIEW {
     task.ext.when == null || task.ext.when
 
     script:
+    prefix = task.ext.prefix ?: "${meta.id}"
+    file_type = args.contains("--output-fmt sam") ? "sam" :
+        args.contains("--output-fmt bam") ? "bam" :
+        args.contains("--output-fmt cram") ? "cram" :
+        input.getExtension()
     def args = task.ext.args ?: ''
     def args2 = task.ext.args2 ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}"
     def reference = fasta ? "--reference ${fasta}" : ""
-    file_type = args.contains("--output-fmt sam") ? "sam" :
-                args.contains("--output-fmt bam") ? "bam" :
-                args.contains("--output-fmt cram") ? "cram" :
-                input.getExtension()
-    readnames = qname ? "--qname-file ${qname} --output-unselected ${prefix}.unselected.${file_type}": ""
+    def readnames = qname ? "--qname-file ${qname} --output-unselected ${prefix}.unselected.${file_type}": ""
     if ("$input" == "${prefix}.${file_type}") error "Input and output names are the same, use \"task.ext.prefix\" to disambiguate!"
     """
     samtools \\
@@ -56,18 +56,11 @@ process SAMTOOLS_VIEW {
 
     stub:
     def args = task.ext.args ?: ''
-    prefix = task.ext.prefix ?: "${meta.id}"
-    file_type = args.contains("--output-fmt sam") ? "sam" :
-                args.contains("--output-fmt bam") ? "bam" :
-                args.contains("--output-fmt cram") ? "cram" :
-                input.getExtension()
     if ("$input" == "${prefix}.${file_type}") error "Input and output names are the same, use \"task.ext.prefix\" to disambiguate!"
-
-    def index = args.contains("--write-index") ? "touch ${prefix}.${file_type}.csi" : ""
-
+    def touch_index = args.contains("--write-index") ? "touch ${prefix}.${file_type}.csi" : ""
     """
     touch ${prefix}.${file_type}
-    ${index}
+    ${touch_index}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
