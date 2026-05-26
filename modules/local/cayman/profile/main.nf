@@ -1,3 +1,4 @@
+// NOTE: cayman returns error 1 for out of memory
 process CAYMAN_PROFILE {
     tag "$meta.id"
     label 'process_medium'
