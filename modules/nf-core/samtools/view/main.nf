@@ -27,12 +27,12 @@ process SAMTOOLS_VIEW {
     task.ext.when == null || task.ext.when
 
     script:
+    def args = task.ext.args ?: ''
     prefix = task.ext.prefix ?: "${meta.id}"
     file_type = args.contains("--output-fmt sam") ? "sam" :
         args.contains("--output-fmt bam") ? "bam" :
         args.contains("--output-fmt cram") ? "cram" :
         input.getExtension()
-    def args = task.ext.args ?: ''
     def args2 = task.ext.args2 ?: ''
     def reference = fasta ? "--reference ${fasta}" : ""
     def readnames = qname ? "--qname-file ${qname} --output-unselected ${prefix}.unselected.${file_type}": ""

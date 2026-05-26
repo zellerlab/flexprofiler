@@ -1,0 +1,51 @@
+{
+    "number_of_tasks": {
+        "content": [
+            0
+        ],
+        "timestamp": "2026-05-26T12:46:42.967288",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
+    "software_versions": {
+        "content": [
+            {
+                "Workflow": {
+                    "zellerlab/flexprofiler": "v0.0.1"
+                }
+            }
+        ],
+        "timestamp": "2026-05-26T12:46:42.956688",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
+    "filenames": {
+        "content": [
+            [
+                "pipeline_info",
+                "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml"
+            ]
+        ],
+        "timestamp": "2026-05-26T12:46:42.974598",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
+    "md5sums": {
+        "content": [
+            [
+                "zellerlab_flexprofiler_software_mqc_versions.yml:md5,3e007a66550862e939b4e9c144c034db"
+            ]
+        ],
+        "timestamp": "2026-05-26T12:46:42.980099",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    }
+}
