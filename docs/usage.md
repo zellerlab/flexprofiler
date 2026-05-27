@@ -347,7 +347,7 @@ If you have multiple taxa or sequences you wish to remove (e.g., the host genome
 For samples that may have been sequenced over multiple runs, or for FASTQ files split into multiple chunks, you can activate the ability to merge across all runs or chunks with `--perform_runmerging`.
 For more information how to set up your input samplesheet, see [Multiple runs of the same sample](#multiple-runs-of-the-same-sample).
 Activating this functionality will concatenate the FASTQ files with the same sample name _after_ the optional preprocessing steps and _before_ classification/profiling.
-Note that libraries with runs of different pairing types will **not** be merged and this will be indicated on output files with a `_se` or `_pe` suffix to the sample name accordingly.
+Note that libraries with runs of different pairing types will **not** be merged.
 
 You can optionally save the FASTQ output of the run merging with the `--save_runmerged_reads`.
 
@@ -363,7 +363,6 @@ For advice as to which tool to run in your context, please see the documentation
 
 ##### IDTaxa
 
-##### mOTUs v3
 -->
 
 ##### mOTUs v4
@@ -376,6 +375,11 @@ To run mOTUs v4, you need to specify the parameter `--run_motus4`.
 You also need to provide appropriate databases (see the [database documentation](databases.md) for details).
 The parameter `--motus4_rename_reads` is useful when working with paired-end reads with a `/1` and `/2` suffix in the read names.
 mOTUs v4 expects the reads in a pair to have identical names, so this steps renames all the reads accordingly removing the suffixes.
+
+##### mOTUs v3
+
+To run mOTUs v3, you need to specify the parameter `--run_motus3`.
+You also need to provide appropriate databases (see the [database documentation](databases.md) for details).
 
 ##### Cayman
 
