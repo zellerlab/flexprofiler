@@ -62,8 +62,8 @@
                 "2612_db_mOTU.log contains 'Finished mOTUs': true",
                 "2613_db_mOTU.log contains 'Finished mOTUs': true"
             ],
-            "motus4_db_mOTU_combined_reports.txt contains unassigned: true",
-            "motus4_db_mOTU_combined_reports.txt contains Methanobrevibacter_A smithii: true"
+            "motus4_db_mOTU_combined_reports.txt contains 'unassigned': true",
+            "motus4_db_mOTU_combined_reports.txt contains 'Methanobrevibacter_A smithii': true"
         ],
         "timestamp": "2026-05-22T18:45:57.555303",
         "meta": {

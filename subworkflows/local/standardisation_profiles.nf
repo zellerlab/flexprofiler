@@ -20,6 +20,7 @@ workflow STANDARDISATION_PROFILES {
     */
     ch_input_profiles = profiles.branch {
         motus4: it[0]['tool'] == 'motus4'
+        motus3: it[0]['tool'] == 'motus3'
         cayman: it[0]['tool'] == 'cayman'
         unknown: true
     }
@@ -30,6 +31,7 @@ workflow STANDARDISATION_PROFILES {
 
     ch_input_databases = databases.branch {
         motus4: it[0]['tool'] == 'motus4'
+        motus3: it[0]['tool'] == 'motus3'
         cayman: it[0]['tool'] == 'cayman'
         unknown: true
     }
@@ -46,7 +48,6 @@ workflow STANDARDISATION_PROFILES {
     ch_versions = ch_versions.mix(MOTUS4_MERGE.out.versions)
     
     // cayman
-    // TODO: this is not yet tested
     ch_profiles_for_cayman = groupProfiles(ch_input_profiles.cayman)
     ch_input_for_caymanmerge = combineProfilesWithDatabase(ch_profiles_for_cayman, ch_input_databases.cayman)
     CAYMAN_MERGE(ch_input_for_caymanmerge.profile, ch_input_for_caymanmerge.db)
@@ -71,7 +72,21 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
     return ch_profiles
         .map { meta, profile -> [meta.db_name, profile] }
         .groupTuple(groupTupleOptions)
-        .map { db_name, profiles -> [[id: db_name], profiles] }
+        .map { 
+            db_name, profiles -> 
+            def names = profiles.collect { it.getName() }
+            def duplicates = names.findAll { name -> names.count(name) > 1 }.unique()
+            if (duplicates) {
+                error (
+                    "Duplicate sample names identified in profile standardisation: ${duplicates.join(', ')}\n" +
+                    "This usually happens if sample names collide and run merging is not activated.\n" +
+                    "If run merging is active, runs obtained with different sequencing technology or a mix of paired and single end files cannot be merged.\n" +
+                    "This can result in multiple merged samples with the same name.\n" +
+                    "Please rename your sample column in the samplesheet accordingly."
+                )
+            }
+            [[id: db_name], profiles] 
+        }
 }
 
 /**

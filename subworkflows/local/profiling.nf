@@ -4,7 +4,8 @@
 
 include { BIOAWK as MOTUS4_RENAME_READS } from '../../modules/nf-core/bioawk/main'
 include { MOTUS4_PROFILE                } from '../../modules/local/motus4/profile/main'
-include { CAYMAN_PROFILE               } from '../../modules/local/cayman/profile/main'
+include { MOTUS_PROFILE  as MOTUS3_PROFILE  } from '../../modules/nf-core/motus/profile'
+include { CAYMAN_PROFILE                } from '../../modules/local/cayman/profile/main'
 
 workflow PROFILING {
     take:
@@ -49,8 +50,16 @@ workflow PROFILING {
         .map { _db_type, meta, input_reads, db_meta, db ->
             [meta, input_reads, db_meta, db]
         }
+        .filter{
+            read_meta, input_reads, db_meta, db ->
+            if (read_meta.is_fasta || read_meta.instrument_platform != "ILLUMINA") {
+                log.warn("[zellerlab/flexprofiler] currently accepts only ILLUMINA FASTQ as input. Skipping sample ${read_meta.id}.")
+            }
+            !read_meta.is_fasta && read_meta.instrument_platform == "ILLUMINA"
+        }
         .branch { _meta, _input_reads, db_meta, _db ->
             motus4: db_meta.tool == 'motus4'
+            motus3: db_meta.tool == 'motus3'
             cayman: db_meta.tool == 'cayman'
             unknown: true
         }
@@ -117,6 +126,20 @@ workflow PROFILING {
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS4_PROFILE.out.log)
     }
 
+    if (params.run_motus3) {
+        ch_input_for_motus3 = ch_input_for_profiling.motus3
+            .multiMap { it ->
+                reads: [it[0] + it[2], it[1]]
+                db: it[3]
+            }
+
+        MOTUS3_PROFILE(ch_input_for_motus3.reads, ch_input_for_motus3.db)
+
+        ch_versions = ch_versions.mix(MOTUS3_PROFILE.out.versions.first())
+        ch_raw_profiles = ch_raw_profiles.mix(MOTUS3_PROFILE.out.out)
+        ch_multiqc_files = ch_multiqc_files.mix(MOTUS3_PROFILE.out.log)
+    }
+
     if (params.run_cayman) {
         ch_input_for_cayman = ch_input_for_profiling.cayman
             .multiMap { read_meta, input_reads, db_meta, db ->
@@ -151,7 +174,6 @@ workflow PROFILING {
 * @return A multiMap'ed output channel with two sub channels, one with the profile and the other with the db
 */
 def combineProfilesWithDatabase(ch_profile, ch_database) {
-
     return ch_profile
         .map { meta, profile -> [meta.db_name, meta, profile] }
         .combine(ch_database, by: 0)

@@ -99,7 +99,7 @@ Options for per-sample run-merging
 
 | Parameter | Description | Type | Default | Required | Hidden |
 |-----------|-----------|-----------|-----------|-----------|-----------|
-| `perform_runmerging` | Turn on run merging <details><summary>Help</summary><small>Turns on the concatenation of sequencing runs or libraries with the same sample name.<br><br>This can be useful to ensure you get a single profile per sample, rather than one profile per run or library. Note that in some cases comparing profiles of independent _libraries_ may be useful, so this parameter may not always be suitable.  </small></details>| `boolean` |  |  |  |
+| `perform_runmerging` | Turn on run merging <details><summary>Help</summary><small>Turns on the concatenation of sequencing runs or libraries with the same sample name.<br><br>This can be useful to ensure you get a single profile per sample, rather than one profile per run or library. Note that in some cases comparing profiles of independent _libraries_ may be useful, so this parameter may not always be suitable.<br><br>WARNING: merging takes into account not only the sample name, but also the sequencing technology and paired/single end status. Runs obtained with different modalities will not be merged and will result in name collisions if both run merging and profile standardisation are active.</small></details>| `boolean` |  |  |  |
 | `save_runmerged_reads` | Save reads from samples that went through the run-merging step <details><summary>Help</summary><small>Save the run- and library-concatenated reads of a given sample in FASTQ format.<br><br>> ⚠️ Only samples that went through the run-merging step of the pipeline will be stored in the resulting directory. <br><br>If you wish to save the files that go to the classification/profiling steps for samples that _did not_ go through run merging, you must supply the appropriate upstream `--save_<preprocessing_step>` flag.<br><br></small></details>| `boolean` |  |  |  |
 
 ## Profiling options
@@ -108,7 +108,8 @@ Options for per-sample run-merging
 
 | Parameter | Description | Type | Default | Required | Hidden |
 |-----------|-----------|-----------|-----------|-----------|-----------|
-| `run_motus4` | Turn on profiling with mOTUs. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
+| `run_motus4` | Turn on profiling with mOTUs v4. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
+| `run_motus3` | Turn on profiling with mOTUs v3. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
 | `motus4_rename_reads` | Whether to fix individual PE read names so that they are identical and do not have /1 or /2 suffixes <details><summary>Help</summary><small>mOTUs 4 requires PE reads to have identical names. If the individual read names from the fastq @ lines have suffixes /1 and /2, mOTUs will fail. This step renames the reads throughout the file by removing the /1 or /2 suffix. Note that if PE reads are mismatched this step does not fix it, for that use `params.repair_pe_reads`</small></details>| `boolean` |  |  |  |
 | `run_cayman` | Turn on profiling with cayman. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
 

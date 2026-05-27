@@ -1,13 +1,13 @@
 import TestUtils
 
 nextflow_pipeline {
-    name "Test motus4"
+    name "Test motus3"
     script "../main.nf"
     tag "pipeline"
     tag "test_motus4"
-    profile "test_motus4"
+    profile "test_motus3"
 
-    test("test_motus4") {
+    test("test_motus3") {
         setup {
             // download mOTU database
             def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus4/db_mOTU/"
@@ -60,11 +60,11 @@ nextflow_pipeline {
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
                 { assert snapshot (
-                    getAllFilesFromDir ( "${params.outdir}/motus4", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 's__Collinsella sp900768795' " + file.text.contains( "s__Collinsella sp900768795" ) },
-                    getAllFilesFromDir ( "${params.outdir}/motus4", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished mOTUs': " + file.text.contains ( "Finished mOTUs" ) },
+                    getAllFilesFromDir ( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 's__Collinsella sp900768795' " + file.text.contains( "s__Collinsella sp900768795" ) },
+                    getAllFilesFromDir ( "${params.outdir}/motus3", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished mOTUs': " + file.text.contains ( "Finished mOTUs" ) },
                     "${ motus4_merge_report.getName() } contains 'unassigned': " + motus4_merge_report.text.contains( 'mOTUv4.0_unassigned	d__;p___A;c__;o__;f__;g__;s__' ),
                     "${ motus4_merge_report.getName() } contains 'Methanobrevibacter_A smithii': " + motus4_merge_report.text.contains( 's__Methanobrevibacter_A smithii' ),
-                ).match("motus4") },
+                ).match("motus3") },
             )
         }
     }

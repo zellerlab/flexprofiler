@@ -398,7 +398,7 @@
                     "type": "boolean",
                     "fa_icon": "fas fa-toggle-on",
                     "description": "Turn on run merging",
-                    "help_text": "Turns on the concatenation of sequencing runs or libraries with the same sample name.\n\nThis can be useful to ensure you get a single profile per sample, rather than one profile per run or library. Note that in some cases comparing profiles of independent _libraries_ may be useful, so this parameter may not always be suitable.  "
+                    "help_text": "Turns on the concatenation of sequencing runs or libraries with the same sample name.\n\nThis can be useful to ensure you get a single profile per sample, rather than one profile per run or library. Note that in some cases comparing profiles of independent _libraries_ may be useful, so this parameter may not always be suitable.\n\nWARNING: merging takes into account not only the sample name, but also the sequencing technology and paired/single end status. Runs obtained with different modalities will not be merged and will result in name collisions if both run merging and profile standardisation are active."
                 },
                 "save_runmerged_reads": {
                     "type": "boolean",
@@ -418,7 +418,12 @@
                 "run_motus4": {
                     "type": "boolean",
                     "fa_icon": "fas fa-toggle-on",
-                    "description": "Turn on profiling with mOTUs. Requires database to be present CSV file passed to --databases"
+                    "description": "Turn on profiling with mOTUs v4. Requires database to be present CSV file passed to --databases"
+                },
+                "run_motus3": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-toggle-on",
+                    "description": "Turn on profiling with mOTUs v3. Requires database to be present CSV file passed to --databases"
                 },
                 "motus4_rename_reads": {
                     "type": "boolean",
