@@ -30,6 +30,21 @@ MOTUSDB_FROM="$(dirname $(micromamba run -p ${MOTUSDIR} python -c 'import motus.
 MOTUSDB_TO=${DBPATH}/motus_v4.0.4
 mkdir -p ${MOTUSDB_TO}
 cp -r ${MOTUSDB_FROM} ${MOTUSDB_TO}
+MOTUS4_DB_TO=$MOTUSDB_TO
+
+# mOTUs 3.1
+MOTUSDIR=${TMPDIR}/mOTUs3.1
+micromamba create -y \
+    -p ${MOTUSDIR} \
+    -c bioconda \
+    -c conda-forge \
+    motus=3.1
+micromamba run -p ${MOTUSDIR} motus downloadDB
+MOTUSDB_FROM=$(micromamba run -p ${MOTUSDIR} python -c 'import motus.motus as m; print(m.DATABASE)')
+MOTUSDB_TO=${DBPATH}/motus_v4.0.4
+mkdir -p ${MOTUSDB_TO}
+cp -r ${MOTUSDB_FROM} ${MOTUSDB_TO}
+MOTUS3_DB_TO=$MOTUSDB_TO
 
 # cayman
 CAYMANDIR=${TMPDIR}/cayman
@@ -51,7 +66,8 @@ cp -r $CAYMAN_DBNAME $CAYMAN_TO
 # heredoc to generate the CSV file with the paths to the downloaded databases
 cat <<-EOT > flexprofiler_databases.csv
 tool,db_name,db_params,db_path
-motus4,db_mOTU,,${MOTUSDB_TO}/db_mOTU
+motus4,db_mOTU,,${MOTUS4_DB_TO}/db_mOTU
+motus3,db_mOTU,,${MOTUS3_DB_TO}/db_mOTU
 cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,${CAYMAN_TO}/GMGC10.human-gut.95nr.0.5.percent.prevalence
 EOT
 

@@ -23,8 +23,8 @@ cp -r $DB_PATH .
 # mOTUs databases are not exchangeable across versions
 
 motus downloadDB
-DB_PATH=$(dirname $(python -c 'import motus.mutils as m; print(m.__file__)'))/db_mOTU
-cp -r $DB_PATH .
+DB_PATH=$(python -c 'import motus.motus as m; print(m.DATABASE)')
+cp -r ${DB_PATH} .
 ```
 
 ## Cayman
