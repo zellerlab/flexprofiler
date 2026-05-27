@@ -10,26 +10,37 @@ nextflow_pipeline {
     test("test_motus3") {
         setup {
             // download mOTU database
-            def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus4/db_mOTU/"
-            def db_mOTU_url    = "https://zenodo.org/records/17668622/files/db_mOTU.tar.gz"
-            def db_mOTU_marker = "${db_mOTU}/db_mOTU/db_mOTU.downloaded"
+            def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus3/db_mOTU/"
+            def db_mOTU_url    = "https://zenodo.org/record/7778108/files/db_mOTU_v3.1.0.tar.gz"
             def required_files_md5 = [
-                "${db_mOTU}/db_mOTU/db_mOTU.downloaded"                    : "d41d8cd98f00b204e9800998ecf8427e",
-                "${db_mOTU}/db_mOTU/mOTUs3.1_2_mOTUs4.0.map.tsv.gz"        : "712e563391ddd56d4418974d45bf5b17",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db"                          : "269b81f94bdd8eca9e9ec2b137fe907c",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.blocklist.gz"             : "be5d306ffced844d6bd36d668ab90238",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz"                   : "97feea5f2670c2afa4b0f2ae6cd935cb",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.amb"               : "b5773280bde9c07eca6e2e54b1a726ce",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.ann"               : "fcbedd5d5a87768a3334f8bc0f771d02",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.bwt"               : "ac6b286d1a2bc5748245f1d7a6e3846f",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.pac"               : "e9d3c2d29409773958be27372e3d4249",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.sa"                : "0ea923181850c8d38491f0b0bde705a1",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.genomes.tsv.gz"              : "7b61075131725f1a891370c2ad9d5f97",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.gtdb.taxonomy.80mv.tsv.gz"   : "2a4a2894714705f152a80c1cccee376d",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.gtdb.taxonomy.rep.tsv.gz"    : "738d5939b0ba86e890d13293de7194c7",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.map.tsv.gz"                  : "4093387daffedbd7aa3dce69a9edddaf",
+                "${db_mOTU}/db_mOTU/db_mOTU_bam_header_CEN"                           : "02471a3fd8ccf7c2b3469bdfc4ecd711",
+                "${db_mOTU}/db_mOTU/db_mOTU_bam_header_NR"                            : "921da3c35afc43c9c842ab507b5edf37",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta"                             : "e76ebcf4a7a921d4099e3a593510544c",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.amb"                         : "0e60f642bf1c74322f3c49b26d2ddc71",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.ann"                         : "09dfecc285a788064bf9b02b1d4dcbf1",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.annotations"                 : "575dbb6899e8c77dc12c28ae1ae2cae2",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.bwt"                         : "597cb3361dd28c6ca963d15b1067fc2c",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.pac"                         : "7141a17bf20c14957bfb28ff8c76c27e",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.sa"                          : "2b649045f14e2614d604047f5f533ac5",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta"                              : "1d15342436c42bce9f7be73841ac3cd7",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta.amb"                          : "a1e15475282c32a25258621f8a9290c3",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta.ann"                          : "40dcc67b80a887a47302e76cc4085932",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta.bwt"                          : "db819a132b66c2fbf8162c2a205c8073",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta.pac"                          : "d58829f369a25e0b1c71b0eaa12af14a",
+                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta.sa"                           : "ea92f78a490b4418ec0034c80ff19e27",
+                "${db_mOTU}/db_mOTU/db_mOTU_genes_length_NR"                          : "e1407ea976008c169924bba2574790e5",
+                "${db_mOTU}/db_mOTU/db_mOTU_MAP_genes_to_MGCs.tsv"                    : "96555050c2bf9ee905e29fbd33526f5d",
+                "${db_mOTU}/db_mOTU/db_mOTU_MAP_MGCs_to_mOTUs_in-line.tsv"            : "1b3fbb3554ef66ca493c7b9a71d2311f",
+                "${db_mOTU}/db_mOTU/db_mOTU_MAP_MGCs_to_mOTUs.tsv"                    : "4c638f0dd950aafb815586e1e3e33de1",
+                "${db_mOTU}/db_mOTU/db_mOTU_padding_coordinates_CEN.tsv"              : "b3f43a046507893df5259c6382fc5e87",
+                "${db_mOTU}/db_mOTU/db_mOTU_padding_coordinates_NR.tsv"               : "e1e777b33c04bbd41cf36f0bf2657f5e",
+                "${db_mOTU}/db_mOTU/db_mOTU_taxonomy_CAMI.tsv"                        : "774bec49c9887574a9905919d34b2183",
+                "${db_mOTU}/db_mOTU/db_mOTU_taxonomy_meta-mOTUs.tsv"                  : "7c494b6c0b89cecf7a5adc6b371cddef",
+                "${db_mOTU}/db_mOTU/db_mOTU_taxonomy_ref-mOTUs_short_names.tsv"       : "9c111be13fce1712fb6afe118153ef00",
+                "${db_mOTU}/db_mOTU/db_mOTU_taxonomy_ref-mOTUs.tsv"                   : "00617fabd6359cadaaddf2b01511b72e",
             ]
-            TestUtils.fetchArchive( [ db_mOTU_url ], db_mOTU, db_mOTU_marker, required_files_md5 )
+
+            TestUtils.fetchArchive( [ db_mOTU_url ], db_mOTU, null, required_files_md5 )
             
             // create database sheet
             TestUtils.makeDatabaseSheet( launchDir, "motus4,db_mOTU,,${db_mOTU}/db_mOTU\n" )
