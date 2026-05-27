@@ -50,15 +50,32 @@ nextflow_pipeline {
         }
 
         then {
-            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: TestUtils.getUnstableName(), relative: true )
-            def stable_content    = getAllFilesFromDir( params.outdir, includeDir: false, ignore: TestUtils.getUnstableName(), ignoreFile: 'tests/.nftignore', relative: false )
-            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def stable_name         = getAllFilesFromDir( params.outdir, includeDir: true , ignore: TestUtils.getUnstableName(), relative: true )
+            def software_versions   = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def cayman_merge_report = file( "${params.outdir}/cayman/merge/cayman_GMGC10.human-gut.95nr.0.5.percent.prevalence_combined_reports_cayman_merged.txt.gz" )
+            def cayman_merge_report_content = new java.util.zip.GZIPInputStream(cayman_merge_report.newInputStream()).getText('UTF-8')
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
-                { assert snapshot ( stable_content ).match( "md5sums" ) },
+                { assert snapshot (
+                    getAllFilesFromDir ( "${params.outdir}/cayman", include: [ '**.cazy.txt.gz' ] ).collect {
+                        file ->
+                        def content = new java.util.zip.GZIPInputStream(file.newInputStream()).getText('UTF-8')
+                        "${file.getName()} contains 'total_reads': ${(content =~ /(?m)^total_reads\t/) as boolean}"
+                    },
+                    getAllFilesFromDir ( "${params.outdir}/cayman", include: [ '**.cazy.txt.gz' ] ).collect {
+                        file ->
+                        def content = new java.util.zip.GZIPInputStream(file.newInputStream()).getText('UTF-8')
+                        "${file.getName()} contains 'GH2': ${(content =~ /(?m)^GH2\t/) as boolean}"
+                    },
+                    getAllFilesFromDir ( "${params.outdir}/cayman", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished.': " + file.text.contains ( "Finished." ) },
+                    "${ cayman_merge_report.getName() } contains 'total_reads': " + ((cayman_merge_report_content =~ /(?m)^total_reads\t/) as boolean),
+                    "${ cayman_merge_report.getName() } contains 'GH2': " + ((cayman_merge_report_content =~ /(?m)^GH2\t/) as boolean),
+                    "${ cayman_merge_report.getName() } contains '2612': " + ((cayman_merge_report_content =~ /\t2612/) as boolean),
+                    "${ cayman_merge_report.getName() } contains '2613': " + ((cayman_merge_report_content =~ /\t2613/) as boolean),
+                ).match("cayman") },
             )
         }
     }

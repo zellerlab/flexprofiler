@@ -5,6 +5,12 @@
 zellerlab/flexprofiler is a pipeline for highly-parallelised taxonomic anf functional classification and profiling of shotgun metagenomic and 16S data across multiple tools simultaneously.
 In addition to multiple classification and profiling tools, at the same time it allows you to performing taxonomic classification and profiling across multiple databases and settings per tool, as well as produces standardised output tables to allow immediate cross comparison of results between tools.
 
+> [!NOTE]
+> Long read and FASTA input is accepted in pre-processing but not used for profiling at the moment.
+> Only short-read ILLUMINA files can be profiled at present.
+> There are remaining references in this documentation about long reads and FASTA but these are not yet implemented.
+> Please reach out to Saul if you would need this functionality.
+
 ## General Usage
 
 To run zellerlab/flexprofiler, at a minimum you require two inputs:

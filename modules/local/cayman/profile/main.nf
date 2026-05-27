@@ -25,7 +25,7 @@ process CAYMAN_PROFILE {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def inputs = meta.single_end ? "-singles $reads" : "-1 ${reads[0]} -2 ${reads[1]}"
+    def inputs = meta.single_end ? "--singles $reads" : "-1 ${reads[0]} -2 ${reads[1]}"
     def bwa_index = task.ext.bwa_index ?: "${db}/*.fna.gz"
     def annot_file = task.ext.annot_file ?: "${db}/*.csv"
     """

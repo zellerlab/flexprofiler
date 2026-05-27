@@ -38,18 +38,17 @@ process MOTUS4_MERGE {
     """
 
     stub:
-    def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.txt
 
     # no way to get the version number without triggering an exit code 2
-    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
+    version=\$(motus 2>&1 | grep "version" | sed "s%^.*version: %%" || true)
 
-    cat <<-END_VERSIONS > versions.yml
+    cat <<-end_versions > versions.yml
     "${task.process}":
-        motus4: \$VERSION
-    END_VERSIONS
+        motus4: \$version
+    end_versions
     """
 
 }
