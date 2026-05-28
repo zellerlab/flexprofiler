@@ -3,7 +3,7 @@
 //
 
 include { MOTUS4_MERGE                 } from '../../modules/local/motus4/merge/main'
-include { MOTUS_MERGE  as MOTUS3_MERGE } from '../../../modules/nf-core/motus/merge'
+include { MOTUS_MERGE  as MOTUS3_MERGE } from '../../modules/nf-core/motus/merge/main'
 include { CAYMAN_MERGE                 } from '../../modules/local/cayman/merge/main'
 
 workflow STANDARDISATION_PROFILES {
