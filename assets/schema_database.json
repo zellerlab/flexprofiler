@@ -10,8 +10,9 @@
             "tool": {
                 "type": "string",
                 "enum": [
-                    "cayman",
-                    "motus4"
+                    "motus4",
+                    "motus3",
+                    "cayman"
                 ],
                 "errorMessage": "Invalid tool name. Please see documentation for all supported profilers. Currently these classifers are included: motus4, cayman.",
                 "meta": ["tool"]
