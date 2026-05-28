@@ -2,9 +2,9 @@
     "motus3": {
         "content": [
             [
-                "2612_db_mOTU.out contains 'Collinsella aerofaciens [ref_mOTU_v31_03626]' false",
-                "2612_se_db_mOTU.out contains 'Collinsella aerofaciens [ref_mOTU_v31_03626]' false",
-                "2613_db_mOTU.out contains 'Collinsella aerofaciens [ref_mOTU_v31_03626]' false"
+                "2612_db_mOTU.out contains 'ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]' true",
+                "2612_se_db_mOTU.out contains 'ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]' true",
+                "2613_db_mOTU.out contains 'ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]' true"
             ],
             [
                 "2612_db_mOTU.out contains 'unassigned' true",
@@ -15,9 +15,11 @@
                 "2612_db_mOTU.log contains 'Finished computation': true",
                 "2612_se_db_mOTU.log contains 'Finished computation': true",
                 "2613_db_mOTU.log contains 'Finished computation': true"
-            ]
+            ],
+            "motus3_db_mOTU_combined_reports.txt contains 'unassigned': true",
+            "motus3_db_mOTU_combined_reports.txt contains 'ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]': true"
         ],
-        "timestamp": "2026-05-28T14:45:43.029256",
+        "timestamp": "2026-05-28T16:42:47.94939",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
