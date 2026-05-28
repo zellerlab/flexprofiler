@@ -10,7 +10,7 @@ nextflow_pipeline {
     test("test_motus4") {
         setup {
             // download mOTU database
-            def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus4/db_mOTU/"
+            def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus4/db_mOTU"
             def db_mOTU_url    = "https://zenodo.org/records/17668622/files/db_mOTU.tar.gz"
             def db_mOTU_marker = "${db_mOTU}/db_mOTU/db_mOTU.downloaded"
             def required_files_md5 = [

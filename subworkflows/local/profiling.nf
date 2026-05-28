@@ -51,6 +51,9 @@ workflow PROFILING {
             [meta, input_reads, db_meta, db]
         }
         .filter{
+            // TODO: this is an initial way to simplify development and focus on adding profilers instead than supporting any data modality
+            // Support for long reads and fasta will be enabled on a case-by-case basis depending on need
+            // I can filter pairs of tools/samples accordingly at this step
             read_meta, input_reads, db_meta, db ->
             if (read_meta.is_fasta || read_meta.instrument_platform != "ILLUMINA") {
                 log.warn("[zellerlab/flexprofiler] currently accepts only ILLUMINA FASTQ as input. Skipping sample ${read_meta.id}.")

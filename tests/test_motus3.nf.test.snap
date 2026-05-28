@@ -1,0 +1,26 @@
+{
+    "software_versions": {
+        "content": [
+            {
+                
+            }
+        ],
+        "timestamp": "2026-05-28T11:37:01.849275868",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
+    "filenames": {
+        "content": [
+            [
+                
+            ]
+        ],
+        "timestamp": "2026-05-28T11:37:01.892288409",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    }
+}
