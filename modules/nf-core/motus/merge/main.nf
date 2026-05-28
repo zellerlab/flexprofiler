@@ -9,8 +9,7 @@ process MOTUS_MERGE {
 
     input:
     tuple val(meta), path(input)
-    path db // to stop docker saying it can't find it... would have to have the module in upstream steps anyway
-    path profile_version_yml, stageAs: 'profile_version.yml'
+    path db
 
     output:
     tuple val(meta), path("*.txt") , optional: true, emit: txt
@@ -37,9 +36,16 @@ process MOTUS_MERGE {
     ## version without having database staged in this directory.
     VERSION=\$(cat ${profile_version_yml} | grep '/*motus:.*' | sed 's/.*otus: //g')
 
+    ## mOTUs version number is not available from command line.
+    ## mOTUs save the version number in index database folder.
+    ## mOTUs will check the database version is same version as exec version.
+    if [ "$db" == "" ]; then
+    else
+        VERSION=\$(grep motus $db/db_mOTU_versions | sed 's/motus\\t//g')
+    fi
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        motus: \$VERSION
+        motus3: \$VERSION
     END_VERSIONS
     """
 
@@ -50,11 +56,14 @@ process MOTUS_MERGE {
     """
     touch ${prefix}.${suffix}
 
-    VERSION=\$(cat ${profile_version_yml} | grep '/*motus:.*' | sed 's/.*otus: //g')
-
+    if [ "$db" == "" ]; then
+        VERSION=\$(echo \$(motus -h 2>&1) | sed 's/^.*Version: //; s/References.*\$//')
+    else
+        VERSION=\$(grep motus $db/db_mOTU_versions | sed 's/motus\\t//g')
+    fi
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        motus: \$VERSION
+        motus3: \$VERSION
     END_VERSIONS
     """
 
