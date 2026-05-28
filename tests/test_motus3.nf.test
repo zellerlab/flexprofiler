@@ -4,13 +4,13 @@ nextflow_pipeline {
     name "Test motus3"
     script "../main.nf"
     tag "pipeline"
-    tag "test_motus4"
+    tag "test_motus3"
     profile "test_motus3"
 
     test("test_motus3") {
         setup {
             // download mOTU database
-            def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus3/db_mOTU/"
+            def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus3/db_mOTU"
             def db_mOTU_url    = "https://zenodo.org/record/7778108/files/db_mOTU_v3.1.0.tar.gz"
             def required_files_md5 = [
                 "${db_mOTU}/db_mOTU/db_mOTU_bam_header_CEN"                           : "02471a3fd8ccf7c2b3469bdfc4ecd711",
@@ -43,7 +43,7 @@ nextflow_pipeline {
             TestUtils.fetchArchive( [ db_mOTU_url ], db_mOTU, null, required_files_md5 )
             
             // create database sheet
-            TestUtils.makeDatabaseSheet( launchDir, "motus4,db_mOTU,,${db_mOTU}/db_mOTU\n" )
+            TestUtils.makeDatabaseSheet( launchDir, "motus3,db_mOTU,,${db_mOTU}/db_mOTU\n" )
 
             // download hostremoval reference genome and index
             TestUtils.fetchHostremovalT2TGenome( baseDir )
@@ -64,7 +64,7 @@ nextflow_pipeline {
         then {
             def stable_name         = getAllFilesFromDir( params.outdir, includeDir: true , ignore: TestUtils.getUnstableName(), relative: true )
             def software_versions   = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
-            def motus4_merge_report = file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" )
+            def motus4_merge_report = file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" )
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
