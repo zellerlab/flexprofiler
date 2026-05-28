@@ -111,3 +111,4 @@ We refer the reader to [the pipeline page](https://github.com/nf-core/taxprofile
 ## Citations
 
 An extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.
+a
