@@ -22,8 +22,8 @@
             "@id": "./",
             "@type": "Dataset",
             "creativeWorkStatus": "Stable",
-            "datePublished": "2026-02-18T12:55:47+00:00",
-            "description": "# zellerlab/flexprofiler\n\n## Introduction\n\n**zellerlab/flexprofiler** is a bioinformatics best-practice analysis pipeline for (microbiome) taxonomic classification and profiling of shotgun and 16S metagenomic data. It allows for in-parallel taxonomic identification of reads or taxonomic abundance estimation with multiple classification and profiling tools against multiple databases, and produces standardised output tables for facilitating results comparison between different tools and databases.\nIt aims to enable microbiome profiling not only of single datasets but also of collections of studies for meta-analisis.\n\n**zellerlab/flexprofiler** is an adaptation of [**nf-core/taxprofiler**](https://github.com/nf-core/taxprofiler) for the needs of the Zeller lab.\nMany features of **nf-core/taxprofiler** that are not needed for the Zeller lab have been removed for simplicity, and support for 16S sequencing data and meta-analyses has been added.\nThis is not strictly a fork of **nf-core/taxprofiler**, as the two pipelines are planned to diverge consistently with their different intended use.\nWe plan to contribute to **nf-core** modules or other components of more general interest, and to implement relevent **nf-core** developments in this pipeline on an irregular schedule.\n\n## Pipeline simplified overview\n\n1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)\n2. Read pre-processing\n   - Adapter clipping and merging: [fastp](https://github.com/OpenGene/fastp)\n   - Host-read removal: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/)\n3. Performs taxonomic classification and/or profiling using one or more of:\n   - [mOTUs](https://motus-tool.org/)\n4. Standardises output tables (tool-specific and [`Taxpasta`](https://taxpasta.readthedocs.io))\n5. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))\n\n## Usage\n\n> [!NOTE]\n> If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/usage/installation) on how to set-up Nextflow. Make sure to [test your setup](https://nf-co.re/docs/usage/introduction#how-to-run-a-pipeline) with `-profile test` before running the workflow on actual data.\n\nFirst, prepare a samplesheet with your input data that looks as follows:\n\n```csv title=\"samplesheet.csv\"\nsample,run_accession,instrument_platform,fastq_1,fastq_2,fasta\n2612,run1,ILLUMINA,2612_run1_R1.fq.gz,,\n2612,run2,ILLUMINA,2612_run2_R1.fq.gz,,\n2612,run3,ILLUMINA,2612_run3_R1.fq.gz,2612_run3_R2.fq.gz,\n```\n\nEach row represents a fastq file (single-end), a pair of fastq files (paired end), or a fasta (with long reads).\n\nAdditionally, you will need a database sheet that looks as follows:\n\n```csv title=\"databases.csv\"\ntool,db_name,db_params,db_path\nkraken2,db2,--quick,/<path>/<to>/kraken2/testdb-kraken2.tar.gz\nmetaphlan,db1,,/<path>/<to>/metaphlan/metaphlan_database/\n```\n\nThat includes directories or `.tar.gz` archives containing databases for the tools you wish to run the pipeline against.\n\nNow, you can run the pipeline using:\n\n```bash\nnextflow run zellerlab/flexprofiler \\\n   -profile <docker/singularity/.../institute> \\\n   --input samplesheet.csv \\\n   --databases databases.csv \\\n   --outdir <OUTDIR>  \\\n   --run_motus\n```\n\n> [!WARNING]\n> Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).\n\nFor more details and further functionality, please refer to the [usage documentation](docs/usage.md) and the [parameter documentation](docs/parameters.md).\n\n\n### Database download\n\nTo use **zellerlab/flexprofiler** you need the databases that the profiling tools that you want to run require.\nThese can be downloaded using [this script](utils/fetch_databases.sh), which requires as argument the a path where the databases will be downloaded.\nThe script also generates a `flexprofiler_databases.csv` file in the local directory, which can be used in input for the pipeline.\n\n```bash\nfetch_databases.sh <out_database_path>\n```\n\n> [!IMPORTANT]\n> If you are a member of the Zeller lab, most likely you do not need to download the databases as this has already been done for you in a centralised location.\n> Databases have been already set up for the following compute environments with corresponding profiles:\n> - LUMC SHARK cluster (nextflow profile name: `zellerlab_shark`)\n>\n> You just need to use the correct profile in the nextflow run so that they are loaded correctly, for example:\n>```bash\n>nextflow run zellerlab/flexprofiler -profile zellerlab_shark <YOUR OTHER NEXTFLOW ARGUMENTS>\n>```\n\n\n## Pipeline output\n\nTo see the results of an example test run with a full size dataset refer to the [results](https://nf-co.re/taxprofiler/results) tab on the nf-core website pipeline page.\nFor more details about the output files and reports, please refer to the\n[output documentation](https://nf-co.re/taxprofiler/output).\n\n## Credits\n\n**zellerlab/flexprofiler** is developped and maintained by Saul Pierotti.\n**nf-core/taxprofiler** was originally written by James A. Fellows Yates, Sofia Stamouli, Moritz E. Beber, Lili Andersson-Li, and the nf-core/taxprofiler team.\nWe refer the reader to [the pipeline page](https://github.com/nf-core/taxprofiler) for further credits.\n\n### Team\n\n- [Saul Pierotti](https://github.com/saulpierotti)\n\n## Citations\n\nAn extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.\n",
+            "datePublished": "2026-05-28T17:28:35+00:00",
+            "description": "<h1>\n  <picture>\n    <source media=\"(prefers-color-scheme: dark)\" srcset=\"docs/images/zellerlab-flexprofiler_logo_dark.png\">\n    <img alt=\"zellerlab/flexprofiler\" src=\"docs/images/zellerlab-flexprofiler_logo_generic.png\">\n  </picture>\n</h1>\n\n## Introduction\n\n**zellerlab/flexprofiler** is a bioinformatics best-practice analysis pipeline for (microbiome) taxonomic classification and profiling of shotgun and 16S metagenomic data. It allows for in-parallel taxonomic identification of reads or taxonomic abundance estimation with multiple classification and profiling tools against multiple databases, and produces standardised output tables for facilitating results comparison between different tools and databases.\nIt aims to enable microbiome profiling not only of single datasets but also of collections of studies for meta-analisis.\n\n**zellerlab/flexprofiler** is an adaptation of [**nf-core/taxprofiler**](https://github.com/nf-core/taxprofiler) for the needs of the Zeller lab.\nMany features of **nf-core/taxprofiler** that are not needed for the Zeller lab have been removed for simplicity, and support for 16S sequencing data and meta-analyses has been added.\nThis is not strictly a fork of **nf-core/taxprofiler**, as the two pipelines are planned to diverge consistently with their different intended use.\nWe plan to contribute to **nf-core** modules or other components of more general interest, and to implement relevent **nf-core** developments in this pipeline on an irregular schedule.\n\n## Pipeline simplified overview\n\n1. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))\n2. Read pre-processing\n   - Adapter clipping and merging: [fastp](https://github.com/OpenGene/fastp)\n   - Host-read removal: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/)\n3. Performs taxonomic classification and/or profiling using one or more of:\n   - [mOTUs](https://motus-tool.org/)\n4. Standardises and collates output tables (tool-specific)\n5. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))\n\n## For Zellerlab internal users\nA set of pre-configured options used internally in the group is documented [here](docs/zellerlab.md).\n\n## Usage\n\n> [!NOTE]\n> If you are new to Nextflow and nf-core, please refer to [this page](https://nf-co.re/docs/usage/installation) on how to set-up Nextflow. Make sure to [test your setup](https://nf-co.re/docs/usage/introduction#how-to-run-a-pipeline) with `-profile test` before running the workflow on actual data.\n\nFirst, prepare a samplesheet with your input data that looks as follows:\n\n```csv title=\"samplesheet.csv\"\nsample,run_accession,instrument_platform,fastq_1,fastq_2,fasta\n2612,run1,ILLUMINA,2612_run1_R1.fq.gz,,\n2612,run2,ILLUMINA,2612_run2_R1.fq.gz,,\n2612,run3,ILLUMINA,2612_run3_R1.fq.gz,2612_run3_R2.fq.gz,\n```\n\nEach row represents a fastq file (single-end), a pair of fastq files (paired end), or a fasta (with long reads).\n\nAdditionally, you will need a database sheet that looks as follows:\n\n```csv title=\"databases.csv\"\ntool,db_name,db_params,db_path\nkraken2,db2,--quick,/<path>/<to>/kraken2/testdb-kraken2.tar.gz\nmetaphlan,db1,,/<path>/<to>/metaphlan/metaphlan_database/\n```\n\nThat includes directories or `.tar.gz` archives containing databases for the tools you wish to run the pipeline against.\n\nNow, you can run the pipeline using:\n\n```bash\nnextflow run zellerlab/flexprofiler \\\n   -profile <docker/singularity/.../institute> \\\n   --input samplesheet.csv \\\n   --databases databases.csv \\\n   --outdir <OUTDIR>  \\\n   --run_motus\n```\n\n> [!WARNING]\n> Please provide pipeline parameters via the CLI or Nextflow `-params-file` option. Custom config files including those provided by the `-c` Nextflow option can be used to provide any configuration _**except for parameters**_; see [docs](https://nf-co.re/docs/usage/getting_started/configuration#custom-configuration-files).\n\nFor more details and further functionality, please refer to the [usage documentation](docs/usage.md) and the [parameter documentation](docs/parameters.md).\n\n\n### Database download\n\nTo use **zellerlab/flexprofiler** you need the databases that the profiling tools that you want to run require.\nThese can be downloaded using [this script](utils/fetch_databases.sh), which requires as argument the a path where the databases will be downloaded.\nThe script also generates a `flexprofiler_databases.csv` file in the local directory, which can be used in input for the pipeline.\n\n```bash\nfetch_databases.sh <out_database_path>\n```\n\n> [!IMPORTANT]\n> If you are a member of the Zeller lab, most likely you do not need to download the databases as this has already been done for you in a centralised location.\n> Databases have been already set up for the following compute environments with corresponding profiles:\n> - LUMC SHARK cluster (nextflow profile name: `zellerlab_shark`)\n>\n> You just need to use the correct profile in the nextflow run so that they are loaded correctly, for example:\n>```bash\n>nextflow run zellerlab/flexprofiler -profile zellerlab_shark <YOUR OTHER NEXTFLOW ARGUMENTS>\n>```\n\n\n## Pipeline output\n\nFor more details about the output files and reports, please refer to the\n[output documentation](docs/output.md).\n\n## Credits\n\n**zellerlab/flexprofiler** is developped and maintained by Saul Pierotti.\n**nf-core/taxprofiler** was originally written by James A. Fellows Yates, Sofia Stamouli, Moritz E. Beber, Lili Andersson-Li, and the nf-core/taxprofiler team.\nWe refer the reader to [the pipeline page](https://github.com/nf-core/taxprofiler) for further credits.\n\n### Team\n\n- [Saul Pierotti](https://github.com/saulpierotti)\n\n## Citations\n\nAn extensive list of references for the tools used by the pipeline can be found in the [`CITATIONS.md`](CITATIONS.md) file.\n",
             "hasPart": [
                 {
                     "@id": "main.nf"
@@ -99,7 +99,7 @@
             },
             "mentions": [
                 {
-                    "@id": "#26c9bd1b-2e0d-4e04-a69b-f22fb74fcdeb"
+                    "@id": "#b16e44fa-8e5d-4f92-a2ae-b81ba5a404fc"
                 }
             ],
             "name": "zellerlab/flexprofiler"
@@ -126,25 +126,16 @@
                 "SoftwareSourceCode",
                 "ComputationalWorkflow"
             ],
-            "creator": [
-                {
-                    "@id": "#64467552+LilyAnderssonLee@users.noreply.github.com"
-                },
-                {
-                    "@id": "#jfy133@gmail.com"
-                },
+            "author": [
                 {
                     "@id": "https://orcid.org/0000-0002-5942-0793"
-                },
-                {
-                    "@id": "#jfy133@gmail.com"
-                },
-                {
-                    "@id": "https://orcid.org/0009-0006-0893-3771"
                 }
             ],
-            "dateCreated": "",
-            "dateModified": "2026-02-18T13:55:48Z",
+            "dateCreated": [
+                "",
+                "2026-02-24T18:03:09Z"
+            ],
+            "dateModified": "2026-05-28T19:28:35Z",
             "dct:conformsTo": "https://bioschemas.org/profiles/ComputationalWorkflow/1.0-RELEASE/",
             "keywords": [
                 "nf-core",
@@ -169,10 +160,10 @@
             },
             "url": [
                 "https://github.com/zellerlab/flexprofiler",
-                "https://nf-co.re/zellerlab/flexprofiler/0.0.1/"
+                "https://nf-co.re/zellerlab/flexprofiler/0.0.2/"
             ],
             "version": [
-                "0.0.1"
+                "0.0.2"
             ]
         },
         {
@@ -188,11 +179,11 @@
             "version": "!>=25.04.2"
         },
         {
-            "@id": "#26c9bd1b-2e0d-4e04-a69b-f22fb74fcdeb",
+            "@id": "#b16e44fa-8e5d-4f92-a2ae-b81ba5a404fc",
             "@type": "TestSuite",
             "instance": [
                 {
-                    "@id": "#a9268ca5-aa49-4ae3-af52-cceb568cb723"
+                    "@id": "#9d9abab0-0490-4435-b5be-d8185be4beaf"
                 }
             ],
             "mainEntity": {
@@ -201,7 +192,7 @@
             "name": "Test suite for zellerlab/flexprofiler"
         },
         {
-            "@id": "#a9268ca5-aa49-4ae3-af52-cceb568cb723",
+            "@id": "#9d9abab0-0490-4435-b5be-d8185be4beaf",
             "@type": "TestInstance",
             "name": "GitHub Actions workflow for testing zellerlab/flexprofiler",
             "resource": "repos/zellerlab/flexprofiler/actions/workflows/nf-test.yml",
@@ -330,28 +321,12 @@
             "url": "https://nf-co.re/"
         },
         {
-            "@id": "#64467552+LilyAnderssonLee@users.noreply.github.com",
-            "@type": "Person",
-            "email": "64467552+LilyAnderssonLee@users.noreply.github.com",
-            "name": "Lili Andersson-Li"
-        },
-        {
-            "@id": "#jfy133@gmail.com",
-            "@type": "Person",
-            "email": "jfy133@gmail.com",
-            "name": "James Fellows Yates"
-        },
-        {
             "@id": "https://orcid.org/0000-0002-5942-0793",
             "@type": "Person",
-            "email": "saulpierotti@gmail.com",
-            "name": "Saul Pierotti"
-        },
-        {
-            "@id": "https://orcid.org/0009-0006-0893-3771",
-            "@type": "Person",
-            "email": "91951607+sofstam@users.noreply.github.com",
-            "name": "Sofia Stamouli"
+            "affiliation": "Leiden University Medical Center, Leiden, The Netherlands",
+            "email": "s.pierotti@lumc.nl",
+            "name": "Saul Pierotti",
+            "url": "https://github.com/saulpierotti"
         }
     ]
 }
