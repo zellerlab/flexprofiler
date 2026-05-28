@@ -32,14 +32,11 @@ process MOTUS_MERGE {
         $args \\
         -o ${prefix}.${suffix}
 
-    ## Take version from the mOTUs/profile module output, as cannot reconstruct
-    ## version without having database staged in this directory.
-    VERSION=\$(cat ${profile_version_yml} | grep '/*motus:.*' | sed 's/.*otus: //g')
-
     ## mOTUs version number is not available from command line.
     ## mOTUs save the version number in index database folder.
     ## mOTUs will check the database version is same version as exec version.
     if [ "$db" == "" ]; then
+        VERSION=\$(echo \$(motus -h 2>&1) | sed 's/^.*Version: //; s/References.*\$//')
     else
         VERSION=\$(grep motus $db/db_mOTU_versions | sed 's/motus\\t//g')
     fi
