@@ -65,19 +65,18 @@ nextflow_pipeline {
             def stable_name         = getAllFilesFromDir( params.outdir, includeDir: true , ignore: TestUtils.getUnstableName(), relative: true )
             def software_versions   = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
             def motus3_merge_report = file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" )
+            def collinsella_aerofaciens_mOTU = "ref_mOTU_v31_03626	k__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]"
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
                 { assert snapshot (
-                    getAllFilesFromDir ( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 'Collinsella aerofaciens [ref_mOTU_v31_03626]' " + file.text.contains( "Collinsella aerofaciens [ref_mOTU_v31_03626]" ) },
+                    getAllFilesFromDir ( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains '${collinsella_aerofaciens_mOTU}' " + file.text.contains( collinsella_aerofaciens_mOTU ) },
                     getAllFilesFromDir ( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 'unassigned' " + file.text.contains( "unassigned" ) },
                     getAllFilesFromDir ( "${params.outdir}/motus3", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished computation': " + file.text.contains ( "Finished computation" ) },
-                    //"${ motus4_merge_report.getName() } contains 'unassigned': " + motus3_merge_report.text.contains( 'mOTUv4.0_unassigned	d__;p___A;c__;o__;f__;g__;s__' ),
-                    //"${ motus4_merge_report.getName() } contains 'Methanobrevibacter_A smithii': " + motus3_merge_report.text.contains( 's__Methanobrevibacter_A smithii' ),
-                    // file("$outputDir/motus/motus_db1_combined_reports.txt").getName() + " contains string 'unassigned': " + file("$outputDir/motus/motus_db1_combined_reports.txt").text.contains("unassigned"),
-                    // file("$outputDir/taxpasta/motus_db1.tsv").getName() + " contains string '165179': " + file("$outputDir/taxpasta/motus_db1.tsv").text.contains("165179"),
+                    "${ motus3_merge_report.getName() } contains 'unassigned': " + motus3_merge_report.text.contains( "unassigned" ),
+                    "${ motus3_merge_report.getName() } contains '${collinsella_aerofaciens_mOTU}': " + motus3_merge_report.text.contains( collinsella_aerofaciens_mOTU ),
                 ).match("motus3") },
             )
         }
