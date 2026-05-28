@@ -2,8 +2,9 @@
 // Standardise output files e.g. aggregation
 //
 
-include { MOTUS4_MERGE } from '../../modules/local/motus4/merge/main'
-include { CAYMAN_MERGE } from '../../modules/local/cayman/merge/main'
+include { MOTUS4_MERGE                 } from '../../modules/local/motus4/merge/main'
+include { MOTUS_MERGE  as MOTUS3_MERGE } from '../../../modules/nf-core/motus/merge'
+include { CAYMAN_MERGE                 } from '../../modules/local/cayman/merge/main'
 
 workflow STANDARDISATION_PROFILES {
     take:
@@ -41,11 +42,17 @@ workflow STANDARDISATION_PROFILES {
     */
 
 
-    // mOTUs
+    // mOTUs v4
     ch_profiles_for_motus4 = groupProfiles(ch_input_profiles.motus4)
     ch_input_for_motus4merge = combineProfilesWithDatabase(ch_profiles_for_motus4, ch_input_databases.motus4)
     MOTUS4_MERGE(ch_input_for_motus4merge.profile, ch_input_for_motus4merge.db)
     ch_versions = ch_versions.mix(MOTUS4_MERGE.out.versions)
+    
+    // mOTUs v3
+    ch_profiles_for_motus3 = groupProfiles(ch_input_profiles.motus3)
+    ch_input_for_motus3merge = combineProfilesWithDatabase(ch_profiles_for_motus3, ch_input_databases.motus3)
+    MOTUS3_MERGE(ch_input_for_motus3merge.profile, ch_input_for_motus3merge.db)
+    ch_versions = ch_versions.mix(MOTUS3_MERGE.out.versions)
     
     // cayman
     ch_profiles_for_cayman = groupProfiles(ch_input_profiles.cayman)
