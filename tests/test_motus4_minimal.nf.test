@@ -5,7 +5,7 @@ nextflow_pipeline {
     script "../main.nf"
     tag "pipeline"
     tag "test_motus4_minimal"
-    profile "test_motus4"
+    profile "test_motus4,zellerlab_minimal"
 
     test("test_motus4_minimal") {
         setup {
@@ -47,10 +47,6 @@ nextflow_pipeline {
                 databases                     = "${launchDir}/database.csv"
                 hostremoval_reference         = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
                 shortread_hostremoval_index   = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/bowtie2_index/chm13v2.0"
-                skip_preprocessing_qc         = true
-                skip_postprocessing_qc        = true
-                skip_hostremoval_qc           = true
-                skip_multiqc                  = true
             }
         }
 
