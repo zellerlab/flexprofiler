@@ -21,6 +21,7 @@ Note that you need to have singularity installed for this to work.
 The following profiles are available:
 - `zellerlab_shark`: for use on the LUMC shark cluster, sets paths to databases etc.
 - `zellerlab_metagenomics`: for short read metagenomics profiling, sets defaults for preprocessing and collation
+- `zellerlab_minimal`: skip all non-essential QC steps, useful for large meta-analysis runs
 
 ## Containers and environments
 All the pipeline steps are set up to use appropriate Singularity containers, so you need to have the singularity profile enabled (see above) and the singularity program should be available in your environment (for the SHARK cluster if you use [this script](../utils/run_shark.sh) the singularity module is automatically loaded so you don't need to do anything).

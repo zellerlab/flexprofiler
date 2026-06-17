@@ -156,3 +156,11 @@ Less common options for the pipeline, typically set in a config file.
 | `help` | Display the help message. | `['boolean', 'string']` |  |  |  |
 | `help_full` | Display the full detailed help message. | `boolean` |  |  |  |
 | `show_hidden` | Display hidden parameters in the help message (only works when --help or --help_full are provided). | `boolean` |  |  |  |
+
+## Other parameters
+
+| Parameter | Description | Type | Default | Required | Hidden |
+|-----------|-----------|-----------|-----------|-----------|-----------|
+| `skip_multiqc` | Should the generation of the multiwc report be skipped? | `boolean` |  |  |  |
+| `skip_postprocessing_qc` | Specify to skip sequencing quality control of preprocessed sequencing reads | `boolean` |  |  |  |
+| `skip_hostremoval_qc` | Skip the generation of alignment statistics for hostremoval | `boolean` |  |  |  |

@@ -259,7 +259,6 @@ workflow FLEXPROFILER {
     }
 
     if (params.perform_runmerging) {
-
         ch_reads_for_cat_branch = ch_shortreads_hostremoved
             .mix(ch_longreads_hostremoved)
             .map { meta, reads ->
@@ -413,16 +412,21 @@ workflow FLEXPROFILER {
         ch_multiqc_files = ch_multiqc_files.mix(STANDARDISATION_PROFILES.out.mqc.collect { it[1] }.ifEmpty([]))
     }
 
-    MULTIQC(
-        ch_multiqc_files.collect(),
-        ch_multiqc_config.toList(),
-        ch_multiqc_custom_config.toList(),
-        ch_multiqc_logo.toList(),
-        [],
-        [],
-    )
+    if (!params.skip_multiqc){
+        MULTIQC(
+            ch_multiqc_files.collect(),
+            ch_multiqc_config.toList(),
+            ch_multiqc_custom_config.toList(),
+            ch_multiqc_logo.toList(),
+            [],
+            [],
+        )
+        multiqc_report = MULTIQC.out.report.toList()
+    } else {
+        multiqc_report = Channel.empty()
+    }
 
     emit:
-    multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
+    multiqc_report = multiqc_report // channel: /path/to/multiqc_report.html
     versions       = ch_versions // channel: [ path(versions.yml) ]
 }

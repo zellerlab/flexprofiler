@@ -647,5 +647,19 @@
         {
             "$ref": "#/$defs/generic_options"
         }
-    ]
+    ],
+    "properties": {
+        "skip_multiqc": {
+            "type": "boolean",
+            "description": "Should the generation of the multiwc report be skipped?"
+        },
+        "skip_postprocessing_qc": {
+            "type": "boolean",
+            "description": "Specify to skip sequencing quality control of preprocessed sequencing reads"
+        },
+        "skip_hostremoval_qc": {
+            "type": "boolean",
+            "description": "Skip the generation of alignment statistics for hostremoval"
+        }
+    }
 }

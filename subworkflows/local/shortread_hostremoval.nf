@@ -31,17 +31,18 @@ workflow SHORTREAD_HOSTREMOVAL {
     ch_multiqc_files = ch_multiqc_files.mix(BOWTIE2_ALIGN.out.log)
 
     // Indexing whole BAM for host removal statistics
-    SAMTOOLS_INDEX(BOWTIE2_ALIGN.out.bam)
-    ch_versions = ch_versions.mix(SAMTOOLS_INDEX.out.versions.first())
+    if (!params.skip_hostremoval_qc) {
+        SAMTOOLS_INDEX(BOWTIE2_ALIGN.out.bam)
+        ch_versions = ch_versions.mix(SAMTOOLS_INDEX.out.versions.first())
 
-    bam_bai = BOWTIE2_ALIGN.out.bam.join(SAMTOOLS_INDEX.out.bai, remainder: true)
+        bam_bai = BOWTIE2_ALIGN.out.bam.join(SAMTOOLS_INDEX.out.bai, remainder: true)
 
-    SAMTOOLS_STATS(bam_bai, [[], reference])
-    ch_versions = ch_versions.mix(SAMTOOLS_STATS.out.versions.first())
-    ch_multiqc_files = ch_multiqc_files.mix(SAMTOOLS_STATS.out.stats)
+        SAMTOOLS_STATS(bam_bai, [[], reference])
+        ch_versions = ch_versions.mix(SAMTOOLS_STATS.out.versions.first())
+        ch_multiqc_files = ch_multiqc_files.mix(SAMTOOLS_STATS.out.stats)
+    }
 
     emit:
-    stats    = SAMTOOLS_STATS.out.stats
     reads    = BOWTIE2_ALIGN.out.fastq // channel: [ val(meta), [ reads ] ]
     versions = ch_versions // channel: [ versions.yml ]
     mqc      = ch_multiqc_files
