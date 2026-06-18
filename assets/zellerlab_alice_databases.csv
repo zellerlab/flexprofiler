@@ -1,0 +1,2 @@
+tool,db_name,db_params,db_path
+motus4,db_mOTUv4,,/home/${USER}/flexprofiler_databases/motus_v4.0.4/db_mOTU
