@@ -9,7 +9,7 @@ process MOTUS4_MERGE {
 
     input:
     tuple val(meta), path(input)
-    path db // to stop docker saying it can't find it... would have to have the module in upstream steps anyway
+    path db, stageAs: 'db_mOTU' // motus4_patch.py expects the database at ./db_mOTU
 
     output:
     tuple val(meta), path("*.txt") , optional: true, emit: txt
@@ -22,9 +22,13 @@ process MOTUS4_MERGE {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
+    # motus merge treats a single -i argument as a file listing the profiles,
+    # so always pass a list to also support a single input profile
+    printf '%s\\n' ${input} > profile_list.txt
+
     motus4_patch.py \\
         merge \\
-        -i ${input} \\
+        -i profile_list.txt \\
         $args \\
         -o ${prefix}.txt
 

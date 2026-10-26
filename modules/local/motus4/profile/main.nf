@@ -9,7 +9,7 @@ process MOTUS4_PROFILE {
 
     input:
     tuple val(meta), path(reads)
-    path db
+    path db, stageAs: 'db_mOTU' // motus4_patch.py expects the database at ./db_mOTU
 
     output:
     tuple val(meta), path("*.out"), emit: out

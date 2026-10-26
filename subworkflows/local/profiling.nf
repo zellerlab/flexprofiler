@@ -42,14 +42,41 @@ workflow PROFILING {
     //  will have nothing to join to and will be discarded
     // Final output [DUMP: reads_plus_db] [['id':'2612', 'run_accession':'combined', 'instrument_platform':'ILLUMINA', 'single_end':false, 'is_fasta':false, 'type':'short'], <reads_path>/2612.merged.fastq.gz, ['tool':'malt', 'db_name':'malt95', 'db_params':'"-id 90"', 'type':'short'], <db_path>/malt95]
 
-    ch_input_for_profiling = reads
-        .map { meta, input_reads ->
-            [[type: meta.type], meta, input_reads]
-        }
-        .combine(ch_dbs, by: 0)
-        .map { _db_type, meta, input_reads, db_meta, db ->
-            [meta, input_reads, db_meta, db]
-        }
+    // mOTUs v4 needs read names to be identical across PE mates, without /1 /2 suffix.
+    // Reads are renamed once here, before being paired with the motus4 databases
+    if (params.run_motus4 && params.motus4_rename_reads) {
+        ch_reads_for_rename = reads
+            .branch { meta, _input_reads ->
+                pe: !meta.single_end
+                other: true
+            }
+
+        ch_input_for_motus4_rename_reads = ch_reads_for_rename.pe
+            .flatMap { meta, input_reads ->
+                [
+                    [ meta + [paired_idx: 1], input_reads[0] ],
+                    [ meta + [paired_idx: 2], input_reads[1] ]
+                ]
+            }
+
+        MOTUS4_RENAME_READS(ch_input_for_motus4_rename_reads)
+        ch_versions = ch_versions.mix(MOTUS4_RENAME_READS.out.versions.first())
+
+        ch_reads_for_motus4 = MOTUS4_RENAME_READS.out.output
+            .map { meta, input_reads ->
+                [ groupKey(meta.findAll { k, _v -> k != "paired_idx" }, 2), [meta.paired_idx, input_reads] ]
+            }
+            .groupTuple()
+            .map { meta, read_list ->
+                [ meta.getGroupTarget(), read_list.sort { idx_read -> idx_read[0] }.collect { idx_read -> idx_read[1] } ]
+            }
+            .mix(ch_reads_for_rename.other)
+    } else {
+        ch_reads_for_motus4 = reads
+    }
+
+    ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool != 'motus4' })
+        .mix(combineReadsWithDatabases(ch_reads_for_motus4, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool == 'motus4' }))
         .filter{
             // TODO: this is an initial way to simplify development and focus on adding profilers instead than supporting any data modality
             // Support for long reads and fasta will be enabled on a case-by-case basis depending on need
@@ -77,51 +104,11 @@ workflow PROFILING {
     // channel element order in sync with each other
 
     if (params.run_motus4) {
-        if (params.motus4_rename_reads) {
-            // mOTUs needs the read names to be identical across PE reads, without /1 /2 suffix
-            // this step takes care of this
-            ch_input_for_motus4_raw = ch_input_for_profiling.motus4
-                .branch { read_meta, input_reads, db_meta, db -> 
-                    se: read_meta.single_end
-                    pe: !read_meta.single_end
-                }
-            
-            ch_input_for_motus4_rename_reads = ch_input_for_motus4_raw.pe
-                .map { read_meta, input_reads, db_meta, db -> [read_meta, input_reads] }
-                .flatMap { meta, input_reads ->
-                    [
-                        [ meta + [paired_idx: 1], input_reads[0] ],
-                        [ meta + [paired_idx: 2], input_reads[1] ]
-                    ]
-                }
-
-            MOTUS4_RENAME_READS(ch_input_for_motus4_rename_reads)
-            ch_versions = ch_versions.mix(MOTUS4_RENAME_READS.out.versions.first())
-
-            ch_input_for_motus4_profile = MOTUS4_RENAME_READS.out.output
-                .map {
-                    meta, input_reads -> [ meta.findAll { k, v -> k != "paired_idx" }, [meta.paired_idx, input_reads] ]
-                }
-                .groupTuple(by: 0)
-                .map {
-                    meta, read_list ->
-                    def r1 = read_list.find { idx, the_read -> idx == 1 }[1]
-                    def r2 = read_list.find { idx, the_read -> idx == 2 }[1]
-                    [ meta, [r1, r2] ]
-                }
-                .join(ch_input_for_motus4_raw.pe.map { read_meta, input_reads, db_meta, db -> [read_meta, db_meta, db] }, failOnDuplicate: true, failOnMismatch: true)
-                .mix(ch_input_for_motus4_raw.se)
-                .multiMap { read_meta, input_reads, db_meta, db ->
-                    reads: [read_meta + db_meta, input_reads]
-                    db: db
-                }
-        } else {
-            ch_input_for_motus4_profile = ch_input_for_profiling.motus4
-                .multiMap { read_meta, input_reads, db_meta, db ->
-                    reads: [read_meta + db_meta, input_reads]
-                    db: db
-                }
-        }
+        ch_input_for_motus4_profile = ch_input_for_profiling.motus4
+            .multiMap { read_meta, input_reads, db_meta, db ->
+                reads: [read_meta + db_meta, input_reads]
+                db: db
+            }
 
         MOTUS4_PROFILE(ch_input_for_motus4_profile.reads, ch_input_for_motus4_profile.db)
         ch_versions = ch_versions.mix(MOTUS4_PROFILE.out.versions.first())
@@ -165,6 +152,20 @@ workflow PROFILING {
 
 
 // Custom Functions
+
+/**
+* Pair reads with all databases of the matching read type (short/long).
+*
+* @param ch_reads A channel of [ meta, reads ], where meta contains the key `type`
+* @param ch_databases A channel of [ [type: type], db_meta, db ]
+* @return A channel of [ meta, reads, db_meta, db ]
+*/
+def combineReadsWithDatabases(ch_reads, ch_databases) {
+    return ch_reads
+        .map { meta, input_reads -> [[type: meta.type], meta, input_reads] }
+        .combine(ch_databases, by: 0)
+        .map { _db_type, meta, input_reads, db_meta, db -> [meta, input_reads, db_meta, db] }
+}
 
 /**
 * Combine profiles with their original database, then separate into two channels.

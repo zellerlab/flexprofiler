@@ -97,7 +97,16 @@ workflow PIPELINE_INITIALISATION {
     // Validate and create channel from input file provided through params.input
     //
 
-    Channel.fromList(samplesheetToList(input, "assets/schema_input.json"))
+    def samplesheet_rows = samplesheetToList(input, "assets/schema_input.json")
+    if (params.perform_runmerging) {
+        validateInputSamplesheet(samplesheet_rows)
+    }
+    // Samples with more than one run are published as analysis-ready reads only after run merging
+    def runs_per_sample = samplesheet_rows.countBy { row -> row[0].id }
+    Channel.fromList(samplesheet_rows)
+        .map { meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
+            [meta + [is_multirun: runs_per_sample[meta.id] > 1], run_accession, instrument_platform, fastq_1, fastq_2, fasta]
+        }
         .set { ch_samplesheet }
 
     //
@@ -128,14 +137,12 @@ workflow PIPELINE_INITIALISATION {
     if (params.shortread_complexityfilter_tool == 'fastp' && (params.perform_shortread_qc == false || params.shortread_qc_tool != 'fastp')) {
         error("ERROR: [zellerlab/flexprofiler] cannot use fastp complexity filtering if preprocessing not turned on and/or tool is not fastp. Please specify --perform_shortread_qc and/or --shortread_qc_tool 'fastp'")
     }
+    // The reference is needed also when an index is supplied, e.g. for host removal statistics
     if (params.perform_shortread_hostremoval && !params.hostremoval_reference) {
-        error("ERROR: [zellerlab/flexprofiler] --shortread_hostremoval requested but no --hostremoval_reference FASTA supplied. Check input.")
+        error("ERROR: [zellerlab/flexprofiler] --perform_shortread_hostremoval requested but no --hostremoval_reference FASTA supplied (required also when providing --shortread_hostremoval_index). Check input.")
     }
-    if (params.perform_shortread_hostremoval && !params.hostremoval_reference && params.shortread_hostremoval_index) {
-        error("ERROR: [zellerlab/flexprofiler] --shortread_hostremoval_index provided but no --hostremoval_reference FASTA supplied. Check input.")
-    }
-    if (params.perform_longread_hostremoval && !params.hostremoval_reference && params.longread_hostremoval_index) {
-        error("ERROR: [zellerlab/flexprofiler] --longread_hostremoval_index provided but no --hostremoval_reference FASTA supplied. Check input.")
+    if (params.perform_longread_hostremoval && !params.hostremoval_reference) {
+        error("ERROR: [zellerlab/flexprofiler] --perform_longread_hostremoval requested but no --hostremoval_reference FASTA supplied (required also when providing --longread_hostremoval_index). Check input.")
     }
     //if (!params.shortread_qc_mergepairs && params.run_malt) {
     //    log.warn("[zellerlab/flexprofiler] MALT does not accept uncollapsed paired-reads. Pairs will be profiled as separate files.")
@@ -213,18 +220,29 @@ workflow PIPELINE_COMPLETION {
     FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-// Validate channels from input samplesheet
+// Validate that all runs of each sample can be merged together
 //
-def validateInputSamplesheet(input) {
-    def (metas, fastqs, fasta) = input[1..3]
-
-    // Check that multiple runs of the same sample are of the same datatype i.e. single-end / paired-end
-    def endedness_ok = metas.collect { meta -> meta.single_end }.unique().size == 1
-    if (!endedness_ok) {
-        error("Please check input samplesheet -> Multiple runs of a sample must be of the same datatype i.e. single-end or paired-end: ${metas[0].id}")
+def validateInputSamplesheet(rows) {
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
+    // With pair merging, paired-end reads become single-end before run merging, so endedness can differ
+    def check_endedness = !(params.perform_shortread_qc && params.shortread_qc_mergepairs)
+    rows.groupBy { row -> row[0].id }.each { sample, sample_rows ->
+        def datatypes = sample_rows.collect { row ->
+            def datatype = [row[2], row[5] ? 'FASTA' : 'FASTQ']
+            if (check_endedness) {
+                datatype << (row[4] ? 'paired-end' : 'single-end')
+            }
+            datatype
+        }.unique()
+        if (datatypes.size() > 1) {
+            error(
+                "Please check input samplesheet -> with --perform_runmerging, all runs of a sample must have the same " +
+                "instrument platform, file type (FASTQ/FASTA) and, unless pairs are merged with --shortread_qc_mergepairs, " +
+                "endedness (single/paired-end).\n" +
+                "Sample '${sample}' has: ${datatypes.collect { datatype -> datatype.join(' ') }.join('; ')}"
+            )
+        }
     }
-
-    return [metas[0], fastqs, fasta]
 }
 
 //
