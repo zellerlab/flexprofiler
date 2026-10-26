@@ -435,6 +435,12 @@
                     "type": "boolean",
                     "description": "Turn on profiling with cayman. Requires database to be present CSV file passed to --databases",
                     "fa_icon": "fas fa-toggle-on"
+                },
+                "run_gqlib": {
+                    "type": "boolean",
+                    "description": "Turn on gene-level profiling with gqlib. Requires database to be present CSV file passed to --databases",
+                    "help_text": "The gqlib database directory must contain a gene catalogue with its bwa index. Reads are counted on all genes of the catalogue (GQLIB_COUNT). If the directory also contains an annotation table (*.annotation.tsv or *.annotation.tsv.gz: tab-separated with header, gene ids in the first column, one column per functional category, multiple features in a cell separated by commas), the gene counts are summarised for each category (GQLIB_ROLLUP)",
+                    "fa_icon": "fas fa-toggle-on"
                 }
             },
             "fa_icon": "fas fa-align-center"

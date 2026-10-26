@@ -18,15 +18,17 @@ input:
         description: |
           Groovy Map containing sample information
           e.g. `[ id:'test', single_end:false ]`
-    - input:
+    - bam:
         type: file
         description: |
-          Single or paired ended input fastq files
+          Unsorted BAM file from bwa mem against the cayman gene catalogue, with alignments
+          grouped by read name and unmapped reads included
+        pattern: "*.bam"
         ontologies: []
   - db:
       type: directory
       description: |
-        required database files for cayman: GMGC10 sequences (.fna.gz), annotation file (.csv), and bwa index
+        cayman database directory: only the annotation file (.csv) is used
         pattern: "*/"
 output:
   out:

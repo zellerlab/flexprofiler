@@ -8,7 +8,7 @@ process CAYMAN_PROFILE {
         : 'biocontainers/cayman:0.10.2--pyh7e72e81_0'}"
 
     input:
-    tuple val(meta), path(reads)
+    tuple val(meta), path(bam)
     path db
 
     output:
@@ -24,27 +24,18 @@ process CAYMAN_PROFILE {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def inputs = meta.single_end ? "--singles $reads" : "-1 ${reads[0]} -2 ${reads[1]}"
-    def bwa_index = task.ext.bwa_index ?: "${db}/*.fna.gz"
     def annot_file = task.ext.annot_file ?: "${db}/*.csv"
     """
-    cayman profile \\
-        $inputs \\
+    # alignment is done separately by BWA_MEM, cayman_patch.py makes cayman read
+    # the alignment file instead of running bwa mem (the bwa index is not used)
+    cayman_patch.py profile \\
+        --singles $bam \\
         --out_prefix $prefix \\
         $annot_file \\
-        $bwa_index \\
+        no_bwa_index \\
         $args \\
-        &> ${prefix}.cayman.log || {
-        exit_code=\$?
-        # cayman exits with 1 when bwa mem is killed for lack of memory, as it sees an
-        # interrupted alignment stream: report it as 137 (SIGKILL) so that the
-        # out-of-memory retry strategy applies
-        if grep -q -i "alignment stream" ${prefix}.cayman.log; then
-            exit 137
-        fi
-        exit \$exit_code
-    }
-        
+        &> ${prefix}.cayman.log
+
     VERSION=\$(cayman --version|sed 's/cayman //')
 
     cat <<-END_VERSIONS > versions.yml

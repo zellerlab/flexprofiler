@@ -30,6 +30,11 @@
                         "git_sha": "41dfa3f7c0ffabb96a6a813fe321c6d1cc5b6e46",
                         "installed_by": ["modules"]
                     },
+                    "bwa/mem": {
+                        "branch": "master",
+                        "git_sha": "2fb127c8fd13de0adaa676df7169131e45c0b114",
+                        "installed_by": ["modules"]
+                    },
                     "cat/fastq": {
                         "branch": "master",
                         "git_sha": "41dfa3f7c0ffabb96a6a813fe321c6d1cc5b6e46",
