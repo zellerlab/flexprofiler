@@ -27,6 +27,7 @@ We plan to contribute to **nf-core** modules or other components of more general
    - [mOTUs v3](https://motus-tool.org/)
    - [mOTUs v4](https://motus-tool.org/)
    - [Cayman](https://github.com/zellerlab/cayman)
+   - [gqlib](https://github.com/cschu/gqlib) (gene-level profiling against a gene catalogue, with optional functional roll-up)
 5. Standardises and collates output tables (tool-specific)
 6. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
 

@@ -293,6 +293,7 @@ def toolCitationText() {
         "Taxonomic classification or profiling was carried out with:",
         params.run_motus4 ? "mOTUs 4 (Ruscheweyh et al. 2022)," : "",
         params.run_cayman ? "Cayman (Ducarmon et al. 2026)," : "",
+        params.run_gqlib ? "gqlib (https://github.com/cschu/gqlib)," : "",
         ".",
     ].join(' ').trim()
 
@@ -315,7 +316,8 @@ def toolCitationText() {
         params.perform_longread_hostremoval ? text_longreadhostremoval : "",
         [
             params.run_motus4,
-            params.run_cayman
+            params.run_cayman,
+            params.run_gqlib
         ].any()
             ? text_classification
             : "",
@@ -366,6 +368,7 @@ def toolBibliographyText() {
     def text_classification = [
         params.run_motus4 ? "<li>Ruscheweyh, H.-J., Milanese, A., Paoli, L., Karcher, N., Clayssen, Q., Keller, M. I., Wirbel, J., Bork, P., Mende, D. R., Zeller, G., & Sunagawa, S. (2022). Cultivation-independent genomes greatly expand taxonomic-profiling capabilities of mOTUs across various environments. Microbiome, 10(1), 212. <a href=\"https://doi.org/10.1186/s40168-022-01410-z\">10.1186/s40168-022-01410-z</a></li>" : "",
         params.run_cayman ? "<li>Ducarmon, Q.R., Karcher, N., Giri, S. et al. Cayman enables large-scale analysis of gut microbiome carbohydrate-active enzyme repertoires. Nat Microbiol (2026). <a href=\"https://doi.org/10.1038/s41564-026-02318-2\">https://doi.org/10.1038/s41564-026-02318-2</a></li>" : "",
+        params.run_gqlib ? "<li>Schudoma, C. gqlib: gene quantification library (gffquant). <a href=\"https://github.com/cschu/gqlib\">https://github.com/cschu/gqlib</a></li>" : "",
     ].join(' ').trim()
 
     def text_visualisation = [

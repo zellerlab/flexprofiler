@@ -6,8 +6,7 @@ include { BIOAWK as MOTUS4_RENAME_READS } from '../../modules/nf-core/bioawk/mai
 include { MOTUS4_PROFILE                } from '../../modules/local/motus4/profile/main'
 include { MOTUS_PROFILE  as MOTUS3_PROFILE  } from '../../modules/nf-core/motus/profile'
 include { CAYMAN_PROFILE                } from '../../modules/local/cayman/profile/main'
-include { BWA_MEM as CAYMAN_ALIGN      } from '../../modules/nf-core/bwa/mem/main'
-include { BWA_MEM as GQLIB_ALIGN       } from '../../modules/nf-core/bwa/mem/main'
+include { BWA_MEM as BWA_ALIGN         } from '../../modules/nf-core/bwa/mem/main'
 include { GQLIB_COUNT                   } from '../../modules/local/gqlib/count/main'
 include { GQLIB_ROLLUP                  } from '../../modules/local/gqlib/rollup/main'
 
@@ -79,7 +78,17 @@ workflow PROFILING {
         ch_reads_for_motus4 = reads
     }
 
-    ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool != 'motus4' })
+    // cayman and gqlib both profile a bwa alignment to the database: the databases with the same
+    // path are grouped, so that the reads are aligned only once to each of them
+    ch_dbs_bwa = ch_dbs
+        .filter { _type, db_meta, _db -> db_meta.tool in ['cayman', 'gqlib'] && params["run_${db_meta.tool}"] }
+        .groupTuple(by: [0, 2])
+        .map { type, db_metas, db ->
+            def db_names = db_metas.collect { db_meta -> db_meta.db_name }.unique().sort()
+            [type, [tool: 'bwa', db_name: db_names.join('-'), type: type.type, profilers: db_metas], db]
+        }
+
+    ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> !(db_meta.tool in ['motus4', 'cayman', 'gqlib']) }.mix(ch_dbs_bwa))
         .mix(combineReadsWithDatabases(ch_reads_for_motus4, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool == 'motus4' }))
         .filter{
             // TODO: this is an initial way to simplify development and focus on adding profilers instead than supporting any data modality
@@ -94,8 +103,7 @@ workflow PROFILING {
         .branch { _meta, _input_reads, db_meta, _db ->
             motus4: db_meta.tool == 'motus4'
             motus3: db_meta.tool == 'motus3'
-            cayman: db_meta.tool == 'cayman'
-            gqlib: db_meta.tool == 'gqlib'
+            bwa: db_meta.tool == 'bwa'
             unknown: true
         }
 
@@ -135,46 +143,49 @@ workflow PROFILING {
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS3_PROFILE.out.log)
     }
 
-    if (params.run_cayman) {
-        ch_input_for_cayman = ch_input_for_profiling.cayman
+    if (params.run_cayman || params.run_gqlib) {
+        ch_input_for_align = ch_input_for_profiling.bwa
             .multiMap { read_meta, input_reads, db_meta, db ->
                 reads: [read_meta + db_meta, input_reads]
                 db: [read_meta + db_meta, db]
             }
 
-        // the bam is not sorted, as cayman expects the alignments grouped by read
-        CAYMAN_ALIGN(ch_input_for_cayman.reads, ch_input_for_cayman.db, [[], []], false)
+        // the bam is not sorted, as cayman and gqlib expect the alignments grouped by read
+        BWA_ALIGN(ch_input_for_align.reads, ch_input_for_align.db, [[], []], false)
 
-        ch_input_for_cayman_profile = CAYMAN_ALIGN.out.bam
-            .join(ch_input_for_cayman.db)
+        // spread out each alignment to the profilers using its database
+        ch_bams_for_profiling = BWA_ALIGN.out.bam
+            .join(ch_input_for_align.db)
+            .flatMap { meta, bam, db ->
+                meta.profilers.collect { db_meta -> [meta.subMap(meta.keySet() - 'profilers') + db_meta, bam, db] }
+            }
+            .branch { meta, _bam, _db ->
+                cayman: meta.tool == 'cayman'
+                gqlib: meta.tool == 'gqlib'
+            }
+    }
+
+    if (params.run_cayman) {
+        ch_input_for_cayman = ch_bams_for_profiling.cayman
             .multiMap { meta, bam, db ->
                 bam: [meta, bam]
                 db: db
             }
 
-        CAYMAN_PROFILE(ch_input_for_cayman_profile.bam, ch_input_for_cayman_profile.db)
+        CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.db)
         ch_versions = ch_versions.mix(CAYMAN_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(CAYMAN_PROFILE.out.log)
     }
 
     if (params.run_gqlib) {
-        ch_input_for_gqlib = ch_input_for_profiling.gqlib
-            .multiMap { read_meta, input_reads, db_meta, db ->
-                reads: [read_meta + db_meta, input_reads]
-                db: [read_meta + db_meta, db]
-            }
-
-        // the bam is not sorted, as gqlib expects the alignments grouped by read
-        GQLIB_ALIGN(ch_input_for_gqlib.reads, ch_input_for_gqlib.db, [[], []], false)
-
-        GQLIB_COUNT(GQLIB_ALIGN.out.bam)
+        GQLIB_COUNT(ch_bams_for_profiling.gqlib.map { meta, bam, _db -> [meta, bam] })
         ch_versions = ch_versions.mix(GQLIB_COUNT.out.versions.first())
 
         // functional roll-up of the gene counts, only for databases with an annotation table
         ch_input_for_gqlib_rollup = GQLIB_COUNT.out.gene_counts
             .join(GQLIB_COUNT.out.read_counts)
-            .join(ch_input_for_gqlib.db)
+            .join(ch_bams_for_profiling.gqlib.map { meta, _bam, db -> [meta, db] })
             .filter { _meta, _gene_counts, _read_counts, db ->
                 db.listFiles().any { f -> f.name ==~ /.*\.annotation\.tsv(\.gz)?/ }
             }
