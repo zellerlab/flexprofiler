@@ -1,4 +1,3 @@
-// NOTE: cayman returns error 1 for out of memory
 process CAYMAN_PROFILE {
     tag "$meta.id"
     label 'process_medium'
@@ -35,7 +34,16 @@ process CAYMAN_PROFILE {
         $annot_file \\
         $bwa_index \\
         $args \\
-        &> ${prefix}.cayman.log
+        &> ${prefix}.cayman.log || {
+        exit_code=\$?
+        # cayman exits with 1 when bwa mem is killed for lack of memory, as it sees an
+        # interrupted alignment stream: report it as 137 (SIGKILL) so that the
+        # out-of-memory retry strategy applies
+        if grep -q -i "alignment stream" ${prefix}.cayman.log; then
+            exit 137
+        fi
+        exit \$exit_code
+    }
         
     VERSION=\$(cayman --version|sed 's/cayman //')
 

@@ -33,7 +33,12 @@ process MOTUS4_PROFILE {
         -t $task.cpus \\
         -n $prefix \\
         -o ${prefix}.out \\
-        2>| >(tee ${prefix}.log >&2)
+        2> ${prefix}.log || {
+        exit_code=\$?
+        # show the log in .command.err, which is included in the error report
+        cat ${prefix}.log >&2
+        exit \$exit_code
+    }
     
     # no way to get the version number without triggering an exit code 2
     VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
