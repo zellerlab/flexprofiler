@@ -104,6 +104,14 @@ workflow FLEXPROFILER {
             }
             return [meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta]
         }
+        .filter { meta, _run_accession, _instrument_platform, _fastq_1, _fastq_2, _fasta ->
+            // TODO: this is an initial way to simplify development and focus on adding profilers instead than supporting any data modality
+            // Support for long reads and fasta will be enabled on a case-by-case basis depending on need
+            if (meta.is_fasta || meta.instrument_platform != "ILLUMINA") {
+                log.warn("[zellerlab/flexprofiler] currently accepts only ILLUMINA FASTQ as input. Skipping sample ${meta.id}, run ${meta.run_accession}.")
+            }
+            !meta.is_fasta && meta.instrument_platform == "ILLUMINA"
+        }
         .branch { meta, _run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
             fastq_pe: !meta.single_end && fastq_2
             return [meta + [type: "short"], [fastq_1, fastq_2]]
