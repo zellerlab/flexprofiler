@@ -32,6 +32,7 @@
             },
             "db_component": {
                 "type": "string",
+                "description": "Role of the db_path for tools that need several database files. Only used by cayman and gqlib, which need two rows with the same tool and db_name: 'align', with db_path the gene catalogue fasta that the reads are aligned to with bwa mem (the bwa index files, as created by `bwa index <fasta>`, must be in the same directory: <fasta>.amb, .ann, .bwt, .pac, .sa); 'annot', with db_path the annotation file passed to the profiler (the .csv annotation table for cayman, the .sqlite3 database for gqlib). Reads are aligned only once when cayman and gqlib share db_name and 'align' fasta. Leave empty for the other tools, whose db_path is the whole database.",
                 "enum": ["align", "annot"],
                 "errorMessage": "Invalid db_component. Must be 'align' (gene catalogue fasta, with its bwa index alongside) or 'annot' (annotation file). Only used by cayman and gqlib.",
                 "meta": ["db_component"]
@@ -44,6 +45,7 @@
             },
             "db_path": {
                 "type": "string",
+                "description": "Path to the database. For motus4 and motus3, the db_mOTU directory (or a .tar.gz of it). For cayman and gqlib, the file given by db_component: the gene catalogue fasta for 'align', the annotation file for 'annot'.",
                 "exists": true,
                 "format": "path",
                 "errorMessage": "db_path should be either a file path or a directory."
