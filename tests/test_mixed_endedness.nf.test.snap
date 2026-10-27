@@ -87,13 +87,13 @@
         "content": [
             [
                 "mOTU\t2612_mixed_db_mOTU",
-                "mOTUv4.0_000924\t18",
+                "mOTUv4.0_000924\t17",
                 "mOTUv4.0_014686\t15",
                 "mOTUv4.0_unassigned\t124"
             ],
             [
                 "#mOTU\t2612_mixed_db_mOTU",
-                "ref_mOTU_v31_03626\t6",
+                "ref_mOTU_v31_03626\t7",
                 "ref_mOTU_v31_03695\t19",
                 "unassigned\t1"
             ],
@@ -110,7 +110,7 @@
                 "GMGC10.266_871_379.GLGB\t20.0"
             ]
         ],
-        "timestamp": "2026-10-27T19:36:45.661914",
+        "timestamp": "2026-10-27T20:28:30.386788",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

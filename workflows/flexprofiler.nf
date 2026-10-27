@@ -272,11 +272,14 @@ workflow FLEXPROFILER {
             .mix(ch_longreads_hostremoved)
             .map { meta, reads ->
                 def meta_new = meta - meta.subMap('run_accession')
-                [meta_new, reads]
+                [meta_new, meta.run_accession, reads]
             }
             .groupTuple()
-            .map { meta, reads ->
-                [meta, reads.flatten()]
+            // groupTuple collects the runs in the order in which they finish, so they
+            // are sorted to concatenate them always in the same order (the result of
+            // mOTUs depends on the order of the reads)
+            .map { meta, run_accessions, reads ->
+                [meta, [run_accessions, reads].transpose().sort { it[0].toString() }.collect { it[1] }.flatten()]
             }
             .branch { meta, reads ->
                 cat: (meta.single_end && reads.size() > 1) || (!meta.single_end && reads.size() > 2)

@@ -4,7 +4,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## v0.0.4 [unreleased]
+## v0.0.4 [27-10-2026]
 
 ### Added
 - gqlib functional profiling of gene catalogues (`--run_gqlib`), with the profiles merged across samples for each functional category (KEGG, CAZy, COG, GO, ...)
@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - motus4 profiling of a single sample, which failed when merging the profiles
+- The motus4 profiles change slightly between runs, because mOTUs 4 assigns at random, without a seed, the reads aligned equally well to several genes of a marker gene cluster: it is now seeded
+- The runs of a sample are concatenated in the order of their run accession, instead of the order in which their processing finishes, so that the results of mOTUs do not depend on it
+- bowtie2 host removal keeps the reads in the input order (`--reorder`), instead of the order in which its threads process them, for the same reason
 - `utils/fetch_databases.sh` writes the database sheet in the current format, saves the mOTUs v3 database to its own directory instead of over the mOTUs v4 one, and stops at the first error
 - Outdated and wrong paths, profiles and descriptions in the documentation
 - Minor bug fixes
