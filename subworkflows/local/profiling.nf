@@ -79,13 +79,13 @@ workflow PROFILING {
     }
 
     // cayman and gqlib both profile a bwa alignment to the database: the databases with the same
-    // path are grouped, so that the reads are aligned only once to each of them
+    // path and name are grouped, so that the reads are aligned only once to each of them
     ch_dbs_bwa = ch_dbs
         .filter { _type, db_meta, _db -> db_meta.tool in ['cayman', 'gqlib'] && params["run_${db_meta.tool}"] }
-        .groupTuple(by: [0, 2])
-        .map { type, db_metas, db ->
-            def db_names = db_metas.collect { db_meta -> db_meta.db_name }.unique().sort()
-            [type, [tool: 'bwa', db_name: db_names.join('-'), type: type.type, profilers: db_metas], db]
+        .map { type, db_meta, db -> [type, db_meta.db_name, db_meta, db] }
+        .groupTuple(by: [0, 1, 3])
+        .map { type, db_name, db_metas, db ->
+            [type, [tool: 'bwa', db_name: db_name, type: type.type, profilers: db_metas], db]
         }
 
     ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> !(db_meta.tool in ['motus4', 'cayman', 'gqlib']) }.mix(ch_dbs_bwa))
