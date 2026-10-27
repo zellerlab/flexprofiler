@@ -4,6 +4,7 @@ Flexprofiler expects a csv file with the relevant database paths.
 Refer to the [usage documentation](usage.md) for details on how to set this up.
 These instruction explain how databases for the different profiling tools can be generated.
 The relevant tools are assumed to be installed and in your path for the following instructions.
+The script [`utils/fetch_databases.sh`](../utils/fetch_databases.sh) runs all of them and writes the corresponding database sheet.
 
 ## mOTUs v4
 
@@ -46,3 +47,45 @@ bwa index $CAYMAN_DB/${CAYMAN_DB}.fna.gz
 :::note
 The pipeline does not run `cayman profile`, which aligns the reads itself: the reads are aligned with `bwa mem` (shared with gqlib), and the profiling library used by cayman, gqlib, is run directly on the alignment, as `cayman profile` does. Only the cayman annotations in the `.csv` format of the release above are supported: the `.bed` annotations, which `cayman profile` also accepts, are not.
 :::
+
+## gqlib
+
+gqlib uses the same gene catalogue as cayman, with its bwa index (see above), and an annotation database in sqlite3 format, built with gqlib from the [eggNOG-mapper](https://github.com/eggnogdb/eggnog-mapper) annotation of the genes of the catalogue.
+
+:::warning
+These instructions have not been tested.
+:::
+
+The database used in the Zeller lab (`GMGC10.human-gut.95nr.0.5pv.20230422.2101.sqlite3`) was built from the annotation of the proteins of the GMGC10 human gut gene catalogue with eggNOG-mapper 2.1.7 in diamond mode (see [the test data documentation](../assets/test-data/README.md#gqlib-annotation-database) for the details).
+The proteins of the catalogue are not available for download, so here eggNOG-mapper translates the genes of the catalogue itself (`--itype CDS`), which should give the same proteins.
+eggNOG-mapper 2.1.7 downloads, and expects, the eggNOG database 5.0.2; the version used for the Zeller lab database is not recorded, but it is most likely the same.
+The annotation of the full catalogue takes long (days with a few cpus) and needs ~50GB of memory with `--dbmem`.
+
+```
+# eggNOG-mapper 2.1.7 and its database (eggNOG 5.0.2)
+mkdir eggnog_db
+download_eggnog_data.py -y --data_dir eggnog_db
+
+# annotation of the gene catalogue (see the cayman section above for its download)
+CAYMAN_DB=GMGC10.human-gut.95nr.0.5.percent.prevalence
+gzip -cd $CAYMAN_DB/${CAYMAN_DB}.fna.gz > ${CAYMAN_DB}.fna
+mkdir emapper_tmp
+emapper.py \
+    -i ${CAYMAN_DB}.fna \
+    --itype CDS \
+    --data_dir eggnog_db \
+    --output emapper_output \
+    -m diamond \
+    --cpu 8 \
+    --dbmem \
+    --temp_dir emapper_tmp
+
+# the gqlib database (gqlib 2.14.4); v2.1.2 is the parser for the output of eggNOG-mapper >= 2.1.2
+python -m gqlib.bin.build_gene_database \
+    $CAYMAN_DB/GMGC10.human-gut.95nr.0.5pv.emapper_v2.1.7.sqlite3 \
+    emapper_output.emapper.annotations \
+    --initialise_db \
+    --emapper_version v2.1.2
+```
+
+In the database sheet, `db_path` is the gene catalogue fasta (as for cayman) and `annot_db_path` the sqlite3 database.

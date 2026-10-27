@@ -2,7 +2,7 @@
 
 ## Introduction
 
-zellerlab/flexprofiler is a pipeline for highly-parallelised taxonomic anf functional classification and profiling of shotgun metagenomic and 16S data across multiple tools simultaneously.
+zellerlab/flexprofiler is a pipeline for highly-parallelised taxonomic and functional classification and profiling of shotgun metagenomic and 16S data across multiple tools simultaneously.
 In addition to multiple classification and profiling tools, at the same time it allows you to performing taxonomic classification and profiling across multiple databases and settings per tool, as well as produces standardised output tables to allow immediate cross comparison of results between tools.
 
 > [!NOTE]
@@ -26,7 +26,7 @@ zellerlab/flexprofiler also includes optional pre-processing (adapter clipping, 
 These are also opt in with a `--perform_<step>` flag.
 In some cases, the pre- and post-processing steps may also require additional files. Please check the parameters tab of this documentation for more information.
 Please see the rest of this page for information about how to prepare input samplesheets and databases and how to run Nextflow pipelines.
-See the [parameters](docs/parameters.md) documentation for more information about specific options the pipeline also offers.
+See the [parameters](parameters.md) documentation for more information about specific options the pipeline also offers.
 
 ## Samplesheet inputs
 
@@ -35,7 +35,7 @@ For PACBIO_SMRT data, please convert BAM files to FASTQ format before input.
 You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline.
 Use this parameter to specify its location.
 It has to be a comma-separated file with 6 columns, and a header row as shown in the examples below.
-Furthermore, zellerlab/flexprofiler also requires a second comma-separated file of 3 columns with a header row as in the examples below.
+Furthermore, zellerlab/flexprofiler also requires a second comma-separated file, the database sheet, with a header row as in the examples below (see [Full database sheet](#full-database-sheet)).
 This samplesheet is then specified on the command line as follows:
 
 ```console
@@ -111,7 +111,7 @@ FASTA input will not go through any preprocessing steps, and will go directly to
 ### Full database sheet
 
 zellerlab/flexprofiler supports multiple databases being classified/profiled against in parallel for each tool.
-Databases can be supplied either in the form of a compressed `.tar.gz` archive of a directory containing all relevant database files or the path to a directory on the filesystem.
+Databases can be supplied either in the form of a compressed `.tar.gz` archive of a directory containing all relevant database files or the path to a directory on the filesystem, except for cayman and gqlib, whose database is a gene catalogue fasta with its bwa index and an annotation file.
 
 :::warning
 zellerlab/flexprofiler does not provide any databases by default, nor does it currently generate them for you.
@@ -154,7 +154,7 @@ Column specifications are as follows:
 | `db_name`   | A unique name per tool for the particular database [required].                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `db_params` | Any parameters of the given classifier/profiler that you wish to specify that the classifier/profiling tool should use when profiling against this specific database. Can be empty to use classifier/profiler defaults. Must not be surrounded by quotes [required]. We generally do not recommend specifying parameters here that turn on/off saving of output files or specifying particular file extensions - this should be already addressed via pipeline parameters. |
 | `db_type`   | An optional column to distinguish between short- and long-read databases. If the column is empty, the pipeline will assume all databases (and their settings specified in `db_params`!) will be applicable for both short and long read data. Possible values: `long`, `short`, or `short;long`. If the `db_type` column is missing from the database.csv, it will take the default value short;long                                                                       |
-| `db_path`   | Path to the database. Can either be a path to a directory containing the database index files or a `.tar.gz` file which contains the compressed database directory with the same name as the tar archive, minus `.tar.gz` [required].                                                                                                                                                                                                                                      |
+| `db_path`   | Path to the database. Can either be a path to a directory containing the database index files or a `.tar.gz` file which contains the compressed database directory with the same name as the tar archive, minus `.tar.gz`. For cayman and gqlib, the gene catalogue fasta, with its bwa index alongside [required].                                                                                                                                                                                                                                      |
 | `annot_db_name` | Only for `cayman` and `gqlib` [required for them]: a name for the annotation in `annot_db_path`, unique per `tool` and `db_name`. To profile several annotations of the same gene catalogue, add one row for each with the same `db_name` and `db_path` and a different `annot_db_name`: the reads are aligned only once. Leave empty for the other tools. |
 | `annot_db_path` | Only for `cayman` and `gqlib` [required for them]: the annotation file of the gene catalogue in `db_path` (`.csv` for cayman, `.bed` annotations are not supported, see [Cayman](databases.md#cayman); `.sqlite3` for gqlib). Leave empty for the other tools. |
 
@@ -231,9 +231,9 @@ zellerlab/flexprofiler offers [`falco`](https://github.com/smithlabcode/falco) a
 
 ### Preprocessing Steps
 
-zellerlab/flexprofiler offers four main preprocessing steps for preprocessing raw sequencing reads:
+zellerlab/flexprofiler offers the following preprocessing steps for raw sequencing reads:
 
-- [**Paired-end read repair**](#paired-end-repair): correctly pair read order in PE files that have become unpaired.
+- [**Paired-end read repair**](#paired-end-read-repair): correctly pair read order in PE files that have become unpaired.
 - [**Read processing**](#read-processing): adapter clipping and pair-merging.
 - [**Redundancy estimation**](#redundancy-estimation): short-read metagenome coverage estimation.
 - [**Complexity filtering**](#complexity-filtering): removal of low-sequence complexity reads.
@@ -244,10 +244,10 @@ zellerlab/flexprofiler offers four main preprocessing steps for preprocessing ra
 You can save the 'final' reads used for classification/profiling from any combination of these steps with `--save_analysis_ready_fastqs`.
 :::
 
-#### Pared-read repair
+#### Paired-end read repair
 
 If sequencing files are processed with tools that are not PE-aware, reads may become unpaired (that is, not in the same order) across PE files.
-This breaks almost every PE tool, so PE repair is done using [BBDUK's repair.sh](https://github.com/BioInfoTools/BBMap/blob/master/sh/repair.sh) BEFORE any other step when `--perform_repair_pe_order` is set.
+This breaks almost every PE tool, so PE repair is done using [BBMap's repair.sh](https://github.com/BioInfoTools/BBMap/blob/master/sh/repair.sh) BEFORE any other step when `--perform_repair_pe_order` is set.
 This is also before FASTQC raw is run, because with incorrectly paired reads the FASTQC output is nonsensical.
 
 :::info
@@ -321,7 +321,7 @@ There are currently three options for short-read complexity filtering: [`bbduk`]
 There are two options for long-read quality filtering: [`Filtlong`](https://github.com/rrwick/Filtlong) and [`nanoq`](https://github.com/esteinig/nanoq), with `nanoq` being the default option.
 
 The tools offer different algorithms and parameters for removing low complexity reads and quality filtering.
-We therefore recommend reviewing the pipeline's [parameter documentation](docs/parameters.md) and the documentation of the tools (see links above) to decide on optimal methods and parameters for your dataset.
+We therefore recommend reviewing the pipeline's [parameter documentation](parameters.md) and the documentation of the tools (see links above) to decide on optimal methods and parameters for your dataset.
 
 You can optionally save the FASTQ output of the run merging with the `--save_complexityfiltered_reads`.
 If running with `fastp`, complexity filtering happens inclusively within the earlier shortread preprocessing step.
@@ -354,7 +354,7 @@ If you have multiple taxa or sequences you wish to remove (e.g., the host genome
 For samples that may have been sequenced over multiple runs, or for FASTQ files split into multiple chunks, you can activate the ability to merge across all runs or chunks with `--perform_runmerging`.
 For more information how to set up your input samplesheet, see [Multiple runs of the same sample](#multiple-runs-of-the-same-sample).
 Activating this functionality will concatenate the FASTQ files with the same sample name _after_ the optional preprocessing steps and _before_ classification/profiling.
-Note that libraries with runs of different pairing types will **not** be merged.
+All runs of a sample must have the same pairing type (single- or paired-end), unless pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`), otherwise the pipeline stops with an error.
 
 You can optionally save the FASTQ output of the run merging with the `--save_runmerged_reads`.
 
@@ -376,7 +376,7 @@ For advice as to which tool to run in your context, please see the documentation
 
 mOTUs v4 has a number of breaking changes compared to v3, in particular:
 
-- The taxonomy is based on GDBM and not NCBI
+- The taxonomy is based on GTDB and not NCBI
 - Many command line options have been removed
 
 To run mOTUs v4, you need to specify the parameter `--run_motus4`.
@@ -391,8 +391,17 @@ You also need to provide appropriate databases (see the [database documentation]
 
 ##### Cayman
 
-To run mOTUs v4, you need to specify the parameter `--run_cayman`.
+To run cayman, you need to specify the parameter `--run_cayman`.
 You also need to provide appropriate databases (see the [database documentation](databases.md) for details).
+The reads are aligned to the gene catalogue with `bwa mem`, and the profiling library used by cayman, gqlib, is run directly on the alignment, as `cayman profile` does: only the cayman `.csv` annotations are supported.
+
+##### gqlib
+
+To run gqlib, you need to specify the parameter `--run_gqlib`.
+You also need to provide appropriate databases (see the [database documentation](databases.md) for details).
+gqlib counts the reads aligned to each gene of a gene catalogue and summarises the counts for each functional category of its annotation database (e.g. KEGG orthologs, CAZy, COG categories, GO terms).
+The reads are aligned to each gene catalogue only once, and the alignment is shared by cayman and gqlib and by all the annotations of the catalogue.
+The alignments can be saved with `--save_bwa_alignments`.
 
 ### Updating the pipeline
 
@@ -445,9 +454,9 @@ They are loaded in sequence, so later profiles can overwrite earlier profiles.
 If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`.
 This is _not_ recommended, since it can lead to different results on different machines dependent on the computer environment.
 
-- `test_<tool_name>`
-  - A profile with a complete configuration for automated testing
-  - Includes links to test data so needs no other parameters
+- `test_<tool_name>` and `test_all`
+  - Profiles with a complete configuration for the automated tests of one tool or of all the tools, run with [nf-test](https://www.nf-test.com/) (`nf-test test --tag pipeline --profile +docker`)
+  - The paths to the test data are relative to the directory where nf-test runs the pipeline, so these profiles work only in nf-test
 - `docker`
   - A generic configuration profile to be used with [Docker](https://docker.com/)
 - `singularity`
