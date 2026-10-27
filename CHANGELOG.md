@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - In the database sheet, the `db_path` of cayman is the gene catalogue fasta (indexed with `bwa index`) instead of the directory with the gene catalogue and its annotation, and the annotation `.csv` is given in the new `annot_db_path` column, with a name in `annot_db_name`
-- cayman runs the gqlib domain profiler, which `cayman profile` (0.10.2) uses, directly on the shared alignment, with the same results: only the `.csv` annotations are supported, and the software versions report gqlib
+- cayman runs the gqlib domain profiler, which `cayman profile` (0.13.0) uses, directly on the shared alignment, with the same results: only the `.csv` annotations are supported, and the software versions report gqlib
 - The tests use small subsets of the databases and of the host genome in `assets/test-data`, with nothing to download, and a single database sheet for all the profilers
 - `zellerlab_shark` excludes the node res-hpc-mem02, where motus fails
 - Lower resource requirements
