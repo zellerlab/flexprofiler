@@ -3,4 +3,4 @@
 channels:
   - bioconda
 dependencies:
-  - cayman==0.10.2
+  - gqlib==2.14.4

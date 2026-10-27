@@ -4,8 +4,8 @@ process CAYMAN_PROFILE {
 
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/cayman:0.10.2--pyh7e72e81_0'
-        : 'biocontainers/cayman:0.10.2--pyh7e72e81_0'}"
+        ? 'https://depot.galaxyproject.org/singularity/gqlib:2.14.4--pyhdfd78af_0'
+        : 'biocontainers/gqlib:2.14.4--pyhdfd78af_0'}"
 
     input:
     tuple val(meta), path(bam)
@@ -25,20 +25,26 @@ process CAYMAN_PROFILE {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    # alignment is done separately by BWA_MEM, cayman_patch.py runs the cayman
-    # profiler on the alignment file instead of running bwa mem
-    cayman_patch.py \\
+    # `cayman profile` runs bwa mem itself, then the gqlib domain profiler: the alignment is done
+    # separately by BWA_ALIGN, and the gqlib domain profiler is run directly on it, as cayman 0.10.2
+    # does. The cayman annotation csv is in the hmmer format.
+    python -m gqlib \\
+        --mode domain \\
+        --db_format hmmer \\
+        --bam $bam \\
+        --db $annot \\
         --out_prefix $prefix \\
         $args \\
-        $annot \\
-        $bam \\
         &> ${prefix}.cayman.log
 
-    VERSION=\$(cayman --version|sed 's/cayman //')
+    # gqlib names the category of the annotation `feature`, cayman names it `cazy`
+    mv ${prefix}.feature.txt.gz ${prefix}.cazy.txt.gz
+
+    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        cayman: \$VERSION
+        gqlib: \$VERSION
     END_VERSIONS
     """
 
@@ -50,11 +56,11 @@ process CAYMAN_PROFILE {
     touch "${prefix}.gene_counts.txt.gz"
     touch "${prefix}.cayman.log"
 
-    VERSION=\$(cayman --version|sed 's/cayman //')
+    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        cayman: \$VERSION
+        gqlib: \$VERSION
     END_VERSIONS
     """
 

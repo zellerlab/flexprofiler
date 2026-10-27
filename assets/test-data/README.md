@@ -52,6 +52,8 @@ gzip -cd ERX5474937_ERR5766181_2.fastq.gz \
     | gzip -n > ERX5474937_ERR5766181_unordered_2.fastq.gz
 ```
 
+`samplesheet_mixed.csv` combines in one run the reads of ERX5474937 as they are, with the suffixes and with the pairs in a different order, the last two also as two runs of one sample (`2613_mixed`), and the single-end reads of ERX5474936.
+
 ### FASTA
 
 One of the files was converted to FASTA file with seqtk 1.3-r106

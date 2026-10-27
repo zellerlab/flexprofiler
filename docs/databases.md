@@ -42,3 +42,7 @@ mv gene_catalogues/$CAYMAN_DB* $CAYMAN_DB
 mv annots/$CAYMAN_DB* $CAYMAN_DB
 bwa index $CAYMAN_DB/${CAYMAN_DB}.fna.gz
 ```
+
+:::note
+The pipeline does not run `cayman profile`, which aligns the reads itself: the reads are aligned with `bwa mem` (shared with gqlib), and the profiling library used by cayman, gqlib, is run directly on the alignment, as `cayman profile` does. Only the cayman annotations in the `.csv` format of the release above are supported: the `.bed` annotations, which `cayman profile` also accepts, are not.
+:::
