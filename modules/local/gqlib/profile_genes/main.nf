@@ -1,4 +1,4 @@
-process GQLIB_COUNT {
+process GQLIB_PROFILE_GENES {
     tag "$meta.id"
     label 'process_medium'
 
@@ -8,11 +8,11 @@ process GQLIB_COUNT {
         : 'biocontainers/gqlib:2.14.4--pyhdfd78af_0'}"
 
     input:
-    tuple val(meta), path(bam)
+    tuple val(meta), path(bam), path(annotation_db)
 
     output:
-    tuple val(meta), path("*.gene_counts.txt.gz"), emit: gene_counts
-    tuple val(meta), path("*.read_counts.txt"   ), emit: read_counts
+    tuple val(meta), path("*.txt.gz"            ), emit: out
+    tuple val(meta), path("*.gene_counts.txt.gz"), emit: gene_counts, optional: true
     tuple val(meta), path("*.aln_stats.txt.gz"  ), emit: aln_stats
     tuple val(meta), path("*.gqlib.log"         ), emit: log
     path "versions.yml" , emit: versions
@@ -24,10 +24,11 @@ process GQLIB_COUNT {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    # gqlib_patch.py runs only the gene counting, the functional roll-up is done by GQLIB_ROLLUP
-    gqlib_patch.py \\
+    # alignment is done separately by BWA_MEM, gqlib takes the alignment file as input
+    python -m gqlib \\
         --mode genes \\
         --bam $bam \\
+        --db $annotation_db \\
         --out_prefix $prefix \\
         $args \\
         &> ${prefix}.gqlib.log
@@ -44,7 +45,6 @@ process GQLIB_COUNT {
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch "${prefix}.gene_counts.txt.gz"
-    touch "${prefix}.read_counts.txt"
     touch "${prefix}.aln_stats.txt.gz"
     touch "${prefix}.gqlib.log"
 
