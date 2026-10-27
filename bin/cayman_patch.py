@@ -1,31 +1,78 @@
 #!/usr/bin/env python3
 # cayman profile always runs bwa mem itself and streams its output to the profiler
-# this patch replaces the aligner with a reader of pre-computed alignment files, so
-# that the alignment can run in a separate process
-# usage is the same as `cayman profile`, but the files passed as reads must be
-# alignment files (SAM/BAM) in the order emitted by bwa mem (grouped by read name,
-# with unmapped reads included) and the bwa index is not checked for existence
+# this script runs the cayman profiler on pre-computed alignment files instead, so that
+# the alignment can run in a separate process, mirroring cayman.functions.run_profile
+# (cayman 0.10.2) minus the alignment
+# alignment files (SAM/BAM) must be in the order emitted by bwa mem (grouped by read
+# name, with unmapped reads included), and paired-end counting is applied based on
+# the read group in the alignments (ID:2)
 
+import argparse
+import logging
+import os
+import pathlib
 import sys
-from types import SimpleNamespace
 from unittest.mock import patch
-from cayman.__main__ import main
+from gqlib.db.db_import import SmallDatabaseImporter
+from gqlib.profilers import RegionQuantifier
+from cayman.handle_args import handle_args
 
+# reuse the `cayman profile` arguments that are meaningful without the alignment: handle_args
+# parses right away, so parse_args is patched to return the parser (it also sets up logging)
+with patch.object(argparse.ArgumentParser, 'parse_args', new=lambda self, args=None: self):
+    (subparsers,) = handle_args(sys.argv[1:])._subparsers._group_actions
+parser = argparse.ArgumentParser()
+for action in subparsers.choices['profile']._actions:
+    if action.dest in ('annotation_db', 'out_prefix', 'min_identity', 'min_seqlen'):
+        parser._add_action(action)
+parser.add_argument('bam', nargs='+', help='Alignment files (SAM/BAM) produced by bwa mem.')
+args = parser.parse_args()
 
-class AlignmentFileReader:
-    def __init__(self, *args, **kwargs):
-        pass
+logger = logging.getLogger()
 
-    def run(self, input_files, single_end_reads=False):
-        assert len(input_files) == 1, "pass a single alignment file per read set (e.g. --singles <bam>)"
-        # cayman reads the alignments from proc.stdout, and pysam autodetects SAM/BAM
-        return SimpleNamespace(stdout=open(input_files[0], 'rb')), f"reading {input_files[0]}"
+# same input checks as cayman
+for bam in args.bam:
+    if not os.path.isfile(bam):
+        raise ValueError(f"{bam} is not a valid alignment file")
+if not os.path.exists(args.annotation_db):
+    raise ValueError(f"{args.annotation_db} is not a valid annotation database")
+if os.path.dirname(args.out_prefix):
+    pathlib.Path(os.path.dirname(args.out_prefix)).mkdir(exist_ok=True, parents=True)
 
+db_format = None
+with open(args.annotation_db) as db_in:
+    for line in db_in:
+        line = line.strip()
+        if line and line[0] != '#':
+            if ',' in line:
+                db_format = 'hmmer'
+                break
+            if '\t' in line:
+                db_format = 'bed'
+                break
+if db_format is None:
+    logger.error("Cannot determine database format in %s.", args.annotation_db)
+    raise ValueError(f"Cannot determine database format in {args.annotation_db}.")
+logger.info("Identified database format as `%s`.", db_format)
 
-with (
-    patch('cayman.functions.BwaMemRunner', new=AlignmentFileReader),
-    patch('cayman.functions.check_bwa_index', new=lambda prefix: True)
-):
-    if __name__ == '__main__':
-        sys.argv[0] = sys.argv[0].removesuffix('.exe')
-        sys.exit(main())
+db_importer = SmallDatabaseImporter(logger, args.annotation_db, single_category='cazy', db_format=db_format)
+logger.info("Finished loading database.")
+
+profiler = RegionQuantifier(
+    db=db_importer,
+    out_prefix=args.out_prefix,
+    ambig_mode='1overN',
+    reference_type='domain',
+)
+for bam in args.bam:
+    logger.info("Reading alignments: %s", bam)
+    try:
+        # aln_format only sets the pysam open mode, and pysam autodetects SAM/BAM when reading
+        with open(bam, 'rb') as aln_stream:
+            profiler.count_alignments(aln_stream, aln_format='bam', min_identity=args.min_identity, min_seqlen=args.min_seqlen)
+    except Exception as err:
+        logger.error("Encountered problems digesting the alignment file %s:", bam)
+        logger.error("%s", err)
+        logger.error("Shutting down.")
+        sys.exit(1)
+profiler.finalise(restrict_reports=('raw', 'rpkm'))

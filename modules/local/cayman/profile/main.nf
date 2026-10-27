@@ -26,14 +26,13 @@ process CAYMAN_PROFILE {
     def prefix = task.ext.prefix ?: "${meta.id}"
     def annot_file = task.ext.annot_file ?: "${db}/*.csv"
     """
-    # alignment is done separately by BWA_MEM, cayman_patch.py makes cayman read
-    # the alignment file instead of running bwa mem (the bwa index is not used)
-    cayman_patch.py profile \\
-        --singles $bam \\
+    # alignment is done separately by BWA_MEM, cayman_patch.py runs the cayman
+    # profiler on the alignment file instead of running bwa mem
+    cayman_patch.py \\
         --out_prefix $prefix \\
-        $annot_file \\
-        no_bwa_index \\
         $args \\
+        $annot_file \\
+        $bam \\
         &> ${prefix}.cayman.log
 
     VERSION=\$(cayman --version|sed 's/cayman //')
