@@ -26,7 +26,7 @@ process CAYMAN_PROFILE {
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     # `cayman profile` runs bwa mem itself, then the gqlib domain profiler: the alignment is done
-    # separately by BWA_ALIGN, and the gqlib domain profiler is run directly on it, as cayman 0.10.2
+    # separately by BWA_ALIGN, and the gqlib domain profiler is run directly on it, as cayman 0.13.0
     # does. The cayman annotation csv is in the hmmer format.
     python -m gqlib \\
         --mode domain \\

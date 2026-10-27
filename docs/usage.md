@@ -402,6 +402,7 @@ You also need to provide appropriate databases (see the [database documentation]
 gqlib counts the reads aligned to each gene of a gene catalogue and summarises the counts for each functional category of its annotation database (e.g. KEGG orthologs, CAZy, COG categories, GO terms).
 The reads are aligned to each gene catalogue only once, and the alignment is shared by cayman and gqlib and by all the annotations of the catalogue.
 The alignments can be saved with `--save_bwa_alignments`.
+The reads are counted as by [gffquant](https://github.com/cschu/gff_quantifier) in [nevermore](https://github.com/cschu/nevermore) (`--mode genes --ambig_mode 1overN`, alignment identity >= 97% and length >= 45 bp): see [how gqlib and cayman count the reads](output.md#how-gqlib-and-cayman-count-the-reads) for the counting model and the metrics in the count tables.
 
 ### Updating the pipeline
 

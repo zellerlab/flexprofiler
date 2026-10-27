@@ -466,11 +466,61 @@ The `total_reads` and `filtered_reads` rows of the tables are the reads aligned 
     - `<sample_id>_<db_name>_<annot_db_name>.aln_stats.txt.gz`: Alignment statistics
     - `<sample_id>_<db_name>_<annot_db_name>.gqlib.log`: The log, with the read counts
   - `merge/<db_name>/<annot_db_name>/`
-    - `<db_name>_<annot_db_name>.<category>.uniq_<metric>.txt.gz`: The counts of each feature of a category (rows) in all the samples (columns), for each of the metrics `raw`, `lnorm`, `scaled` and `rpkm`, including the gene counts (`gene_counts`)
+    - `<db_name>_<annot_db_name>.<category>.<uniq|combined>_<metric>.txt.gz`: The counts of each feature of a category (rows) in all the samples (columns), for each of the metrics `raw`, `lnorm`, `scaled` and `rpkm`, including the gene counts (`gene_counts`)
 
 </details>
 
 The `total_reads` and `filtered_reads` rows of the category tables are the reads aligned to the gene catalogue and those passing the alignment filters (identity >= 97% and length >= 45), and the `category` row the reads assigned to any feature of the category. The gene count tables do not have these rows. Without `--perform_runmerging`, the files are per run.
+
+#### What gqlib does
+
+gqlib is the library of [gffquant](https://github.com/cschu/gff_quantifier), a functional profiler: from the alignments of the reads to a set of reference sequences, it counts the reads aligned to each annotated region of the references, and passes the counts on to the functional features the region is annotated with (e.g. the KEGG orthologs, pathways and GO terms of a gene). The result is a count table per functional category (e.g. `KEGG_ko`), with the abundance of each feature of the category in the sample.
+
+gffquant has three modes, depending on the references and on how they are annotated:
+
+- **`genes`** (used by gqlib in this pipeline): the references are the genes of a gene catalogue (e.g. GMGC), and the annotation gives the functional features of each gene. As every aligned read falls in an annotated gene, there is no need to look for overlaps between alignments and annotated regions. In gffquant the annotation is a gzipped table following the GMGC convention (the gene id in the first column, the functional categories from the seventh); gqlib reads it from a sqlite3 database built from that table (see the [database documentation](databases.md#gqlib)).
+- **`domain`** (used by cayman): the references are again the genes of a gene catalogue, but the annotated regions are domains within the genes (the CAZy domains, with their coordinates in the gene, in the cayman `.csv` annotation), so only the alignments overlapping a domain count for it.
+- **`genome`** (not used): the references are genome contigs, annotated with the coordinates of their genes in a gff3 file, and the alignments are assigned to the genes they overlap.
+
+gffquant also aligns the reads itself (with bwa or minimap2), or takes an existing alignment. In this pipeline the reads are aligned separately with `bwa mem`, with the same settings, and gqlib and cayman take the alignment as input.
+
+#### How gqlib and cayman count the reads
+
+gqlib counts the reads as gffquant, with the same settings as the gffquant profiler of [nevermore](https://github.com/cschu/nevermore) (`--mode genes --ambig_mode 1overN`, and the default alignment filters). cayman uses the same counting, on the CAZy domains of the genes instead of the whole genes.
+
+- **Alignment filters**: an alignment is counted only if its identity (matches over aligned length) is at least 97% and its aligned length at least 45 bp. `aln_stats.txt.gz` reports the alignments (not the reads) in total (`Total`), passing the filters (`Passed`), and removed by the identity (`Seqid`) and length (`Length`) filters.
+- **Reads and pairs**: all the alignments of a read are processed together, so the alignment must be grouped by read name (the bwa output is, and it is not sorted by position). The two mates of a pair have the same name, and count as one read: each mate contributes half of the count of the pair.
+- **Ambiguous reads**: a read with a single alignment contributes 1 to its gene. A read with `N` alignments passing the filters (`bwa mem -a` reports all the alignments of a read, not only the best one) contributes `1/N` to the gene of each of them (`1overN`, as the `dist1` mode of NGLess), counted separately for each mate of a pair. `N` includes the alignments to genes without annotation in a category, whose share is not counted in that category.
+- **From genes to features**: the counts of a gene are added to each feature it is annotated with in a category (e.g. all its KEGG orthologs), so a gene with several features counts once for each of them, and the counts of the features of a category can sum to more than the counts of the genes.
+
+The count tables have one row per feature, and one column per metric:
+
+| Column    | Value                                                                                                                                                                         |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `*_raw`    | The counts of the reads                                                                                                                                                        |
+| `*_lnorm`  | The counts normalised by the length of each gene (`count / length`), summed over the genes of the feature                                                                      |
+| `*_scaled` | `lnorm * sum(raw) / sum(lnorm)`, with the sums over the genes annotated in the category (over all the genes for `gene_counts`): counts corrected for gene length, on the scale of the raw counts |
+| `*_rpkm`   | `lnorm * 10^9 / filtered_reads`: reads per kilobase of gene per million reads passing the filters                                                                             |
+
+The `uniq_` columns count only the reads with a single alignment. The `combined_` columns count also the ambiguous reads, with their `1/N` contributions, and are present only if the sample has ambiguous reads (otherwise they would be the same as the `uniq_` columns). cayman reports only the `raw` and `rpkm` metrics.
+
+For example, take a gene catalogue with three genes, and their KEGG orthologs:
+
+| Gene | Length   | `KEGG_ko`     |
+| ---- | -------- | ------------- |
+| A    | 1,000 bp | `K1` and `K2` |
+| B    | 2,000 bp | `K1`          |
+| C    | 500 bp   | none          |
+
+and 10 single-end reads passing the alignment filters (`filtered_reads` = 10): 6 aligned only to A, 2 only to B, and 2 aligned both to A and to C.
+
+1. **Genes** (`gene_counts`): the 8 reads with a single alignment count 1 each, so `uniq_raw` is 6 for A and 2 for B. The 2 ambiguous reads count `1/2` for A and `1/2` for C each, so `combined_raw` is 6 + 1 = 7 for A, 2 for B and 1 for C.
+2. **Features** (`KEGG_ko`): the counts of each gene go to all its orthologs. `uniq_raw` is 6 + 2 = 8 for `K1` (from A and B) and 6 for `K2` (from A), and `combined_raw` 7 + 2 = 9 for `K1` and 7 for `K2`. The share of the ambiguous reads going to C, which has no ortholog, is not counted in `KEGG_ko`, and A is counted for both its orthologs, so `K1` and `K2` sum to 14 `uniq_raw` counts from 8 reads.
+3. **Length normalisation**: `uniq_lnorm` is 6 / 1,000 = 0.006 for A and 2 / 2,000 = 0.001 for B, so 0.007 for `K1` and 0.006 for `K2`. B has a third of the reads of A, but is twice as long, so its share of `K1` is smaller in `lnorm` than in `raw`.
+4. **Scaling**: the genes with a KEGG ortholog (A and B) sum to 8 in `uniq_raw` and 0.007 in `uniq_lnorm`, so `uniq_scaled` is `lnorm * 8 / 0.007`: 8 for `K1` and 6.86 for `K2` (compared to 8 and 6 raw). In `gene_counts`, the sums are over all the genes, and `uniq_scaled` is 6.86 for A and 1.14 for B: they sum to the 8 reads, but split according to the length-normalised counts.
+5. **RPKM**: `uniq_rpkm` is `lnorm * 10^9 / 10`: 700,000 for `K1` and 600,000 for `K2`. These are comparable across samples with different sequencing depths, while `raw` and `scaled` are not.
+
+With paired-end reads, the same holds for each pair: a pair with both mates aligned only to A counts `1/2` + `1/2` = 1 for A.
 
 <!--
 ### Bracken

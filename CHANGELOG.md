@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tests for gqlib, the minimal profile, read names with /1 and /2 suffixes, paired-end reads in a different order in the two files, a mix of these in one run, and samples with paired-end and single-end runs, and `test_all` profile with all the profilers
 - Count checks of the profiles and of the read counts in the tests
 - `utils/fetch_databases.sh` builds the gqlib database from the eggNOG-mapper annotation of the gene catalogue (not tested; `SKIP_GQLIB=1` to skip it)
-- Documentation of the outputs of mOTUs v3, cayman, gqlib and bwa, and of the gqlib database
+- Documentation of the outputs of mOTUs v3, cayman, gqlib and bwa, of the gqlib database, and of how gqlib and cayman count the reads (adapted from the gffquant documentation)
 
 ### Changed
 - In the database sheet, the `db_path` of cayman is the gene catalogue fasta (indexed with `bwa index`) instead of the directory with the gene catalogue and its annotation, and the annotation `.csv` is given in the new `annot_db_path` column, with a name in `annot_db_name`
@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The runs of a sample are concatenated in the order of their run accession, instead of the order in which their processing finishes, so that the results of mOTUs do not depend on it
 - bowtie2 host removal keeps the reads in the input order (`--reorder`), instead of the order in which its threads process them, for the same reason
 - The samples are in the same order (by name) in the merged profiles, instead of the order in which their profiling finishes
+- Merging of the gqlib and cayman profiles when only some samples have ambiguous reads (and so the `combined_` columns): the merged `combined_` tables were missing if the first sample had no ambiguous reads, and had the `uniq_` counts of the samples following one without ambiguous reads otherwise (a bug in `collate_counts` of gqlib 2.14.4)
+- The settings of cayman and gqlib (ambiguous reads and alignment filters) are given explicitly, instead of relying on the defaults of gqlib
 - `utils/fetch_databases.sh` writes the database sheet in the current format, saves the mOTUs v3 database to its own directory instead of over the mOTUs v4 one, and stops at the first error
 - Outdated and wrong paths, profiles and descriptions in the documentation
 - Minor bug fixes

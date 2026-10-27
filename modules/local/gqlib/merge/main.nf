@@ -29,8 +29,10 @@ process GQLIB_MERGE {
     mkdir counts
     ${links}
 
-    # one table per count column (uniq_raw, combined_raw, ...), as they are in the profiles
-    columns=\$(python -c 'import gzip, sys; print(*gzip.open(sys.argv[1], "rt").readline().split()[1:])' ${files[0]})
+    # one table per count column (uniq_raw, combined_raw, ...), as they are in the profiles: the
+    # combined_ columns are only in the profiles of the samples with ambiguous reads, and are added
+    # to the others, as collate_counts needs the same columns in all the profiles
+    columns=\$(gqlib_merge_columns.py counts/*.txt.gz)
     for column in \$columns; do
         python -m gqlib.bin.collate_counts counts \\
             --out_prefix ${prefix} \\
