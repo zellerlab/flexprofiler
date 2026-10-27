@@ -77,11 +77,10 @@ cd - > /dev/null
 rm -rf ${TMPDIR}/cayman
 
 # gqlib annotation database of the gene catalogue (NOT TESTED)
-# The database used in the Zeller lab was built from the eggNOG-mapper 2.1.7 annotation (diamond mode) of the
-# proteins of the gene catalogue, which are not available for download: here eggNOG-mapper translates the genes
-# itself (--itype CDS), which should give the same proteins. The eggNOG database is the one downloaded by
-# eggNOG-mapper 2.1.7, eggNOG 5.0.2 (the version expected by eggNOG-mapper 2.1.7, so most likely the one used for the
-# Zeller lab database, which is not recorded).
+# The database used in the Zeller lab was built from the eggNOG-mapper 2.1.7 annotation (diamond mode) of
+# GMGC10.human-gut.95nr.protein.0.5.percent.prevalence.faa, the proteins of the gene catalogue: here eggNOG-mapper
+# translates the genes itself (--itype CDS), which gives the same proteins (not tested). The eggNOG database is version 5.0.2
+# (inferred from the eggNOG-mapper version, 2.1.7, which downloads and expects it).
 # See assets/test-data/README.md in the pipeline for the details of the database.
 GQLIB_DB=${GMGC_TO}/GMGC10.human-gut.95nr.0.5pv.emapper_v2.1.7.sqlite3
 if [[ ${SKIP_GQLIB} != 1 ]] ; then

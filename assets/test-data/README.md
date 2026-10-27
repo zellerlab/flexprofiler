@@ -14,7 +14,7 @@ The following selected libraries were all sequenced on an Illumina MiSeq, and we
 - ERX5474930
 - ERX5474936
 
-Data was downloaded with nf-core/fetchNGS 1.5 (with Nextflow 21.10.06):
+Data was downloaded with nf-core/fetchNGS 1.5 (with Nextflow 21.10.06) (from the nf-core/taxprofiler documentation, not re-run):
 
 ```bash
 nextflow run nf-core/fetchngs --input maixner2021_acc_codes.txt --input_type sra
@@ -22,7 +22,7 @@ nextflow run nf-core/fetchngs --input maixner2021_acc_codes.txt --input_type sra
 
 FASTQ files are stored under `data/fastq/`
 
-Test data for long reads with ENA project accession ID: PRJEB29152. They were subsampled with seqtk 1.3-r106:
+Test data for long reads with ENA project accession ID: PRJEB29152. They were subsampled with seqtk 1.3-r106 (from the nf-core/taxprofiler documentation, not re-run):
 
 ```bash
 seqtk sample ERR3201952.fastq.gz 10000 > ERR3201952.fastq.gz
@@ -56,7 +56,7 @@ gzip -cd ERX5474937_ERR5766181_2.fastq.gz \
 
 ### FASTA
 
-One of the files was converted to FASTA file with seqtk 1.3-r106
+One of the files was converted to FASTA file with seqtk 1.3-r106 (from the nf-core/taxprofiler documentation, not re-run):
 
 ```bash
 seqtk seq -a  ERX5474930_ERR5766174_1.fastq.gz > ERX5474930_ERR5766174_1.fa.gz
@@ -166,7 +166,7 @@ gzip -dc GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz \
 bwa index data/gmgc10/GMGC10.human-gut.95nr.0.5.percent.prevalence.test_subset.fna.gz
 ```
 
-The fasta and its index are stored under `data/gmgc10/`. All the reads that would align elsewhere in the full catalogue are either unaligned or aligned to these two genes, so the profiles of the test data differ from those with the full catalogue.
+The fasta and its index are stored under `data/gmgc10/`. All the reads that would align elsewhere in the full catalogue are either unaligned or aligned to these two genes (not tested), so the profiles of the test data differ from those with the full catalogue.
 
 ### cayman annotation
 
@@ -189,7 +189,7 @@ gqlib annotates the alignments to a gene catalogue with an sqlite3 database (`an
 
 The full database (`GMGC10.human-gut.95nr.0.5pv.20230422.2101.sqlite3`, ~2GB, available on the lab shared storage) was built with gqlib from the eggNOG-mapper annotation table of the gene catalogue.
 
-The annotation table was generated (13 Oct 2022) with eggNOG-mapper 2.1.7 in diamond mode, from the protein sequences of the gene catalogue (`GMGC10.human-gut.95nr.protein.0.5.percent.prevalence.faa`), as recorded in its header:
+The annotation table was generated (13 Oct 2022) with eggNOG-mapper 2.1.7 in diamond mode, from the protein sequences of the gene catalogue (`GMGC10.human-gut.95nr.protein.0.5.percent.prevalence.faa`), with the eggNOG database version 5.0.2 (inferred from the eggNOG-mapper version, which downloads and expects it), as recorded in its header:
 
 ```bash
 emapper.py \
@@ -201,6 +201,8 @@ emapper.py \
     --dbmem \
     --temp_dir tmp
 ```
+
+The protein file (`GMGC10.human-gut.95nr.protein.0.5.percent.prevalence.faa`) is internal to the Bork group at EMBL and not publicly available. To regenerate the annotation table, run eggNOG-mapper on the nucleotide sequences of the gene catalogue (`GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz`), which it translates itself (`--itype CDS`, see the gqlib section of [the database documentation](../../docs/databases.md#gqlib)).
 
 This is not the eggNOG-mapper annotation table available from the [GMGC downloads](https://gmgc.embl.de/download.cgi) (`GMGC10.emapper2.annotations.tsv.gz`), which was generated with eggNOG-mapper 1.0.3 and has a different format and set of columns (for example, it has no PFAMs).
 
@@ -215,7 +217,7 @@ python -m gqlib.bin.build_gene_database \
 ```
 
 - `--emapper_version v2.1.2` is the parser for the output of eggNOG-mapper >= 2.1.2 (the annotations are from eggNOG-mapper 2.1.7, `annot_db_name` `emapper_v2.1.7` in the test). It reads the columns eggNOG_OGs, COG_cat, GOs, EC, KEGG_ko, KEGG_Pathway, KEGG_Module, KEGG_Reaction, KEGG_rclass, BRITE, KEGG_TC, CAZy, BiGG_Reaction and PFAMs, which become the categories of the database and the profiles. The older formats (`v1`, `v2`) have different columns and category names.
-- The table is read twice: the first pass encodes each category and feature as an integer (`category` and `feature` tables, also dumped to `<db>.code_map.json.gz`), the second stores the encoded annotations of each gene (`annotatedsequence` table, one row per annotated gene, `annotation_str` as `<category_id>=<feature_id>,<feature_id>;...`). Genes without annotations are not stored.
+- The table is read twice: the first pass encodes each category and feature as an integer (`category` and `feature` tables, also dumped to `<db>.code_map.json.gz`), the second stores the encoded annotations of each gene (`annotatedsequence` table, one row per annotated gene, `annotation_str` as `<category_id>=<feature_id>,<feature_id>;...`). Genes without annotations are not stored (from the gqlib 2.14.4 code, not tested).
 - The database is left in WAL journal mode.
 
 #### Building the test subset

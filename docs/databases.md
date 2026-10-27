@@ -56,9 +56,9 @@ gqlib uses the same gene catalogue as cayman, with its bwa index (see above), an
 These instructions have not been tested.
 :::
 
-The database used in the Zeller lab (`GMGC10.human-gut.95nr.0.5pv.20230422.2101.sqlite3`) was built from the annotation of the proteins of the GMGC10 human gut gene catalogue with eggNOG-mapper 2.1.7 in diamond mode (see [the test data documentation](../assets/test-data/README.md#gqlib-annotation-database) for the details).
-The proteins of the catalogue are not available for download, so here eggNOG-mapper translates the genes of the catalogue itself (`--itype CDS`), which should give the same proteins.
-eggNOG-mapper 2.1.7 downloads, and expects, the eggNOG database 5.0.2; the version used for the Zeller lab database is not recorded, but it is most likely the same.
+The database used in the Zeller lab (`GMGC10.human-gut.95nr.0.5pv.20230422.2101.sqlite3`) was built from the annotation with eggNOG-mapper 2.1.7 in diamond mode of `GMGC10.human-gut.95nr.protein.0.5.percent.prevalence.faa`, the proteins of the GMGC10 human gut gene catalogue (95% non-redundant, genes present in at least 0.5% of the samples), the same catalogue whose genes the reads are aligned to (see [the test data documentation](../assets/test-data/README.md#gqlib-annotation-database) for the details).
+Here eggNOG-mapper translates the genes of the catalogue itself (`--itype CDS`), which gives the same proteins (not tested).
+The eggNOG database is version 5.0.2 (inferred from the eggNOG-mapper version, 2.1.7, which downloads and expects it).
 The annotation of the full catalogue takes long (days with a few cpus) and needs ~50GB of memory with `--dbmem`.
 
 ```
