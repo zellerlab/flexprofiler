@@ -6,27 +6,16 @@ nextflow_pipeline {
     profile "test_gqlib"
 
     test("test_gqlib") {
-        setup {
-            // test databases restricted to what the test reads hit (see assets/test-data/README.md)
-            def test_data = "${baseDir}/assets/test-data/data"
-            new File( "${launchDir}/database.csv" ).text = """\
-                tool,db_name,db_params,db_path,annot_db_name,annot_db_path
-                gqlib,GMGC10.human-gut.95nr.0.5.percent.prevalence,,${test_data}/gmgc10/GMGC10.human-gut.95nr.0.5.percent.prevalence.test_subset.fna.gz,emapper_v2.1.7,${test_data}/gqlib/GMGC10.human-gut.95nr.0.5pv.20230422.2101.test_subset.sqlite3
-                """.stripIndent()
-        }
-
         when {
             params {
-                outdir                = "${outputDir}"
-                databases             = "${launchDir}/database.csv"
-                // the human mitochondrial genome, so that host removal is fast; its bowtie2 index is built by the pipeline
-                hostremoval_reference = "${baseDir}/assets/test-data/data/hostremoval/NC_012920.1.fna.gz"
+                outdir = "${outputDir}"
             }
         }
 
         then {
             def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
             def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             // total_reads is in the functional profiles, not in the gene counts
             def gqlib_genes       = getAllFilesFromDir( "${params.outdir}/gqlib/profile_genes", include: [ '**.gene_counts.txt.gz' ] )
             def gqlib_ko          = getAllFilesFromDir( "${params.outdir}/gqlib/profile_genes", include: [ '**.KEGG_ko.txt.gz' ] )
@@ -35,11 +24,24 @@ nextflow_pipeline {
             def gqlib_merge_ko    = path( "${gqlib_merge_dir}/GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.KEGG_ko.uniq_raw.txt.gz" )
             def gqlib_merge_genes_rows = gqlib_merge_genes.linesGzip
             def gqlib_merge_ko_rows    = gqlib_merge_ko.linesGzip
+            // the lines of the merged table of a category with a normalisation
+            def gqlib_merge_lines = { category, norm -> path( "${gqlib_merge_dir}/GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.${category}.uniq_${norm}.txt.gz" ).linesGzip }
+            // the rows of a merged table for some features (first column), with the counts of each sample
+            def rows_of           = { lines, features -> lines.findAll { line -> line.split( "\t" )[0] in features } }
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+                // for each normalisation (--restrict_metrics in conf/modules.config)
+                { assert snapshot (
+                    [ 'raw', 'lnorm', 'scaled', 'rpkm' ].collectEntries { norm -> [
+                        norm,
+                        rows_of( gqlib_merge_lines( 'gene_counts', norm ), [ 'gene', 'GMGC10.266_871_379.GLGB', 'GMGC10.266_660_280.AMY' ] ) +
+                            rows_of( gqlib_merge_lines( 'KEGG_ko', norm ), [ 'feature', 'total_reads', 'filtered_reads', 'ko:K00700' ] ),
+                    ] }
+                ).match( "counts" ) },
                 { assert snapshot (
                     gqlib_genes.collect { file -> "${file.getName()} contains 'GMGC10.266_871_379.GLGB': " + path( file.toString() ).linesGzip.any { it.startsWith( "GMGC10.266_871_379.GLGB\t" ) } },
                     gqlib_ko.collect { file -> "${file.getName()} contains 'total_reads': " + path( file.toString() ).linesGzip.any { it.startsWith( "total_reads\t" ) } },

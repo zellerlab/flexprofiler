@@ -6,35 +6,33 @@ nextflow_pipeline {
     profile "test_cayman"
 
     test("test_cayman") {
-        setup {
-            // test databases restricted to what the test reads hit (see assets/test-data/README.md)
-            def test_data = "${baseDir}/assets/test-data/data"
-            new File( "${launchDir}/database.csv" ).text = """\
-                tool,db_name,db_params,db_path,annot_db_name,annot_db_path
-                cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,${test_data}/gmgc10/GMGC10.human-gut.95nr.0.5.percent.prevalence.test_subset.fna.gz,cayman_v3,${test_data}/cayman/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.test_subset.csv
-                """.stripIndent()
-        }
-
         when {
             params {
-                outdir                = "${outputDir}"
-                databases             = "${launchDir}/database.csv"
-                // the human mitochondrial genome, so that host removal is fast; its bowtie2 index is built by the pipeline
-                hostremoval_reference = "${baseDir}/assets/test-data/data/hostremoval/NC_012920.1.fna.gz"
+                outdir = "${outputDir}"
             }
         }
 
         then {
             def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
             def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             def cayman_profiles   = getAllFilesFromDir( "${params.outdir}/cayman", include: [ '**.cazy.txt.gz' ] )
             def cayman_merge      = path( "${params.outdir}/cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz" )
             def cayman_merge_rows = cayman_merge.linesGzip
+            def cayman_merge_rpkm = path( "${params.outdir}/cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_rpkm.txt.gz" )
+            // the rows of a merged table for some features (first column), with the counts of each sample
+            def rows_of           = { lines, features -> lines.findAll { line -> line.split( "\t" )[0] in features } }
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+                // the raw counts and the rpkm
+                { assert snapshot (
+                    rows_of( cayman_merge_rows, [ 'feature', 'total_reads', 'filtered_reads', 'GH13', 'CBM48' ] ),
+                    rows_of( cayman_merge_rpkm.linesGzip, [ 'feature', 'total_reads', 'filtered_reads', 'GH13', 'CBM48' ] ),
+                ).match( "counts" ) },
                 { assert snapshot (
                     cayman_profiles.collect { file -> "${file.getName()} contains 'total_reads': " + path( file.toString() ).linesGzip.any { it.startsWith( "total_reads\t" ) } },
                     cayman_profiles.collect { file -> "${file.getName()} contains 'GH13': " + path( file.toString() ).linesGzip.any { it.startsWith( "GH13\t" ) } },

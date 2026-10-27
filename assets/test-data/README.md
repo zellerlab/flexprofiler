@@ -2,6 +2,8 @@
 
 > This test data and documentation have been adapted from the [nf-core/taxprofiler test data](https://github.com/nf-core/test-datasets/tree/taxprofiler)
 
+The samplesheets (`samplesheet*.csv`) and the database sheet (`databases.csv`, with the databases of all the profilers) used by the `test_*` profiles give the paths relative to the directory where nf-test launches the pipeline (`.nf-test/tests/<hash>/`), so they work only in the nf-test tests.
+
 ### FASTQ
 
 The main test data used for zellerlab/flexprofiler is from [Maixner et al. (2021) _Curr. Bio._](https://doi.org/10.1016/j.cub.2021.09.031), with ENA project accession ID: PRJEB44507.
@@ -24,6 +26,30 @@ Test data for long reads with ENA project accession ID: PRJEB29152. They were su
 
 ```bash
 seqtk sample ERR3201952.fastq.gz 10000 > ERR3201952.fastq.gz
+```
+
+#### Read names with /1 and /2 suffixes
+
+In the files above, the /1 and /2 of the mates are in the comment of the read names (`@ERR5766181.1 M00380:...:10763/1`), so the read names of the mates are identical. To test that the pipeline handles read names with the suffixes (`@ERR5766181.1/1 M00380:...:10763`), as mOTUs v4 requires identical names (`--motus4_rename_reads`), the suffix was moved to the read name in a copy of ERX5474937 (sample 2613 in the tests), `ERX5474937_ERR5766181_suffixed_{1,2}.fastq.gz`, used in `samplesheet_read_suffixes.csv`:
+
+```bash
+for i in 1 2; do
+    gzip -cd ERX5474937_ERR5766181_$i.fastq.gz \
+        | awk -v s="/$i" 'NR % 4 == 1 { n = split($0, f, " "); name = f[1] s; comment = substr($0, length(f[1]) + 2); sub("/[12]$", "", comment); print (comment == "" ? name : name " " comment); next } { print }' \
+        | gzip -n > ERX5474937_ERR5766181_suffixed_$i.fastq.gz
+done
+```
+
+#### Paired-end reads in a different order in the two files
+
+To test the repair of the order of the pairs (`--perform_repair_pe_order`), the reads of the second file of ERX5474937 (sample 2613 in the tests) were sorted by sequence, `ERX5474937_ERR5766181_unordered_2.fastq.gz`. It is used with the original first file in `samplesheet_unordered_pairs.csv`:
+
+```bash
+gzip -cd ERX5474937_ERR5766181_2.fastq.gz \
+    | paste - - - - \
+    | LC_ALL=C sort -t $'\t' -k2,2 -k1,1 \
+    | tr '\t' '\n' \
+    | gzip -n > ERX5474937_ERR5766181_unordered_2.fastq.gz
 ```
 
 ### FASTA

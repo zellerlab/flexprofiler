@@ -20,6 +20,7 @@ workflow PROFILING {
     ch_raw_classifications = Channel.empty()
     // These per-read ID taxonomic assingment
     ch_raw_profiles = Channel.empty()
+    ch_logs = Channel.empty()
     // These are count tables
     
     // TODO: add a step to produce a total read count here
@@ -120,6 +121,7 @@ workflow PROFILING {
         ch_versions = ch_versions.mix(MOTUS4_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS4_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS4_PROFILE.out.log)
+        ch_logs = ch_logs.mix(MOTUS4_PROFILE.out.log)
     }
 
     if (params.run_motus3) {
@@ -134,6 +136,7 @@ workflow PROFILING {
         ch_versions = ch_versions.mix(MOTUS3_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS3_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS3_PROFILE.out.log)
+        ch_logs = ch_logs.mix(MOTUS3_PROFILE.out.log)
     }
 
     if (params.run_cayman || params.run_gqlib) {
@@ -167,6 +170,7 @@ workflow PROFILING {
         CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.annot)
         ch_versions = ch_versions.mix(CAYMAN_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
+        ch_logs = ch_logs.mix(CAYMAN_PROFILE.out.log)
     }
 
     if (params.run_gqlib) {
@@ -179,11 +183,13 @@ workflow PROFILING {
         GQLIB_PROFILE_GENES(ch_input_for_gqlib.bam, ch_input_for_gqlib.annot)
         ch_versions = ch_versions.mix(GQLIB_PROFILE_GENES.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(GQLIB_PROFILE_GENES.out.profiles)
+        ch_logs = ch_logs.mix(GQLIB_PROFILE_GENES.out.log)
     }
 
     emit:
     classifications = ch_raw_classifications
     profiles        = ch_raw_profiles // channel: [ val(meta), [ reads ] ] - should be text files or biom
+    logs            = ch_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman and gqlib, with meta.tool and meta.db_name
     versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }

@@ -27,9 +27,9 @@
     },
     "number_of_tasks": {
         "content": [
-            31
+            32
         ],
-        "timestamp": "2026-05-28T14:45:42.924668",
+        "timestamp": "2026-10-27T18:12:51.388318",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -67,6 +67,9 @@
                 "MOTUS3_PROFILE": {
                     "motus3": "3.1.0"
                 },
+                "READ_COUNTS": {
+                    "python": "3.9.5"
+                },
                 "SAMTOOLS_INDEX": {
                     "samtools": 1.2
                 },
@@ -78,7 +81,22 @@
                 }
             }
         ],
-        "timestamp": "2026-10-27T16:43:10.92781",
+        "timestamp": "2026-10-27T18:12:51.379484",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
+    "counts": {
+        "content": [
+            [
+                "#mOTU\t2613_db_mOTU\t2612_se_db_mOTU\t2612_db_mOTU",
+                "ref_mOTU_v31_03626\t4\t2\t7",
+                "ref_mOTU_v31_03695\t7\t3\t20",
+                "unassigned\t0\t0\t1"
+            ]
+        ],
+        "timestamp": "2026-10-27T18:12:51.414373",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -203,6 +221,7 @@
                 "multiqc/multiqc_data/multiqc_fastqc.txt",
                 "multiqc/multiqc_data/multiqc_fastqc_fastqc-1.txt",
                 "multiqc/multiqc_data/multiqc_general_stats.txt",
+                "multiqc/multiqc_data/multiqc_read_counts_table.txt",
                 "multiqc/multiqc_data/multiqc_samtools_stats.txt",
                 "multiqc/multiqc_data/multiqc_software_versions.txt",
                 "multiqc/multiqc_data/multiqc_sources.txt",
@@ -258,6 +277,7 @@
                 "multiqc/multiqc_plots/pdf/motus-identification-types-pct.pdf",
                 "multiqc/multiqc_plots/pdf/motus-mapping-inserts-cnt.pdf",
                 "multiqc/multiqc_plots/pdf/motus-mapping-inserts-pct.pdf",
+                "multiqc/multiqc_plots/pdf/read_counts_table.pdf",
                 "multiqc/multiqc_plots/pdf/samtools-stats-dp.pdf",
                 "multiqc/multiqc_plots/pdf/samtools_alignment_plot-cnt.pdf",
                 "multiqc/multiqc_plots/pdf/samtools_alignment_plot-pct.pdf",
@@ -310,6 +330,7 @@
                 "multiqc/multiqc_plots/png/motus-identification-types-pct.png",
                 "multiqc/multiqc_plots/png/motus-mapping-inserts-cnt.png",
                 "multiqc/multiqc_plots/png/motus-mapping-inserts-pct.png",
+                "multiqc/multiqc_plots/png/read_counts_table.png",
                 "multiqc/multiqc_plots/png/samtools-stats-dp.png",
                 "multiqc/multiqc_plots/png/samtools_alignment_plot-cnt.png",
                 "multiqc/multiqc_plots/png/samtools_alignment_plot-pct.png",
@@ -362,12 +383,15 @@
                 "multiqc/multiqc_plots/svg/motus-identification-types-pct.svg",
                 "multiqc/multiqc_plots/svg/motus-mapping-inserts-cnt.svg",
                 "multiqc/multiqc_plots/svg/motus-mapping-inserts-pct.svg",
+                "multiqc/multiqc_plots/svg/read_counts_table.svg",
                 "multiqc/multiqc_plots/svg/samtools-stats-dp.svg",
                 "multiqc/multiqc_plots/svg/samtools_alignment_plot-cnt.svg",
                 "multiqc/multiqc_plots/svg/samtools_alignment_plot-pct.svg",
                 "multiqc/multiqc_report.html",
                 "pipeline_info",
                 "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml",
+                "read_counts",
+                "read_counts/read_counts.tsv",
                 "samtools",
                 "samtools/stats",
                 "samtools/stats/2612_ERR5766176.stats",
@@ -376,7 +400,46 @@
                 "samtools/stats/2613_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-10-27T16:43:10.957637",
+        "timestamp": "2026-10-27T18:12:51.402073",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
+    "read_counts": {
+        "content": [
+            [
+                [
+                    "sample",
+                    "raw_reads",
+                    "qc_reads",
+                    "host_removed_pairs",
+                    "motus3_db_mOTU_pairs"
+                ],
+                [
+                    "2612",
+                    "2528240",
+                    "2513136",
+                    "1256238",
+                    "431"
+                ],
+                [
+                    "2612_se",
+                    "801532",
+                    "800818",
+                    "800776",
+                    "91"
+                ],
+                [
+                    "2613",
+                    "1075088",
+                    "1067004",
+                    "533422",
+                    "390"
+                ]
+            ]
+        ],
+        "timestamp": "2026-10-27T18:12:51.406227",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

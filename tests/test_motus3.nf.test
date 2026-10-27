@@ -6,34 +6,28 @@ nextflow_pipeline {
     profile "test_motus3"
 
     test("test_motus3") {
-        setup {
-            // test databases restricted to what the test reads hit (see assets/test-data/README.md)
-            def test_data = "${baseDir}/assets/test-data/data"
-            new File( "${launchDir}/database.csv" ).text = """\
-                tool,db_name,db_params,db_path
-                motus3,db_mOTU,,${test_data}/motus3/db_mOTU
-                """.stripIndent()
-        }
-
         when {
             params {
-                outdir                = "${outputDir}"
-                databases             = "${launchDir}/database.csv"
-                // the human mitochondrial genome, so that host removal is fast; its bowtie2 index is built by the pipeline
-                hostremoval_reference = "${baseDir}/assets/test-data/data/hostremoval/NC_012920.1.fna.gz"
+                outdir = "${outputDir}"
             }
         }
 
         then {
             def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
             def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             def motus3_merge      = file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" )
+            // the rows of the merged motus report for some mOTUs, with the counts of each sample (without the taxonomy)
+            def rows_of           = { lines, motus -> lines.collect { line -> line.split( "\t" ) as List }.findAll { cols -> cols[0] in motus }.collect { cols -> ( [ cols[0] ] + cols[2..-1] ).join( "\t" ) } }
             def collinsella_aerofaciens_mOTU = "ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]"
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+                // Collinsella aerofaciens, Methanobrevibacter smithii and the unassigned
+                { assert snapshot ( rows_of( motus3_merge.readLines(), [ '#mOTU', 'ref_mOTU_v31_03626', 'ref_mOTU_v31_03695', 'unassigned' ] ) ).match( "counts" ) },
                 { assert snapshot (
                     getAllFilesFromDir( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains '${collinsella_aerofaciens_mOTU}' " + file.text.contains( collinsella_aerofaciens_mOTU ) },
                     getAllFilesFromDir( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 'unassigned' " + file.text.contains( "unassigned" ) },

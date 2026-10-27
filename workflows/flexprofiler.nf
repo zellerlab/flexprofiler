@@ -29,6 +29,7 @@ include { LONGREAD_HOSTREMOVAL          } from '../subworkflows/local/longread_h
 include { SHORTREAD_COMPLEXITYFILTERING } from '../subworkflows/local/shortread_complexityfiltering'
 include { PROFILING                     } from '../subworkflows/local/profiling'
 include { STANDARDISATION_PROFILES      } from '../subworkflows/local/standardisation_profiles'
+include { READ_COUNTS                   } from '../modules/local/read_counts/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -305,6 +306,31 @@ workflow FLEXPROFILER {
     ch_versions = ch_versions.mix(PROFILING.out.versions)
 
     /*
+        MODULE: READ COUNTS
+    */
+
+    // per-sample read counts after each step, parsed from the logs: [ sample, kind, db_name, annot_db_name, file ]
+    ch_read_count_files = PROFILING.out.logs
+        .map { meta, log_file -> [meta.id, meta.tool, meta.db_name, meta.annot_db_name ?: '', log_file] }
+    if (params.perform_shortread_qc) {
+        ch_read_count_files = ch_read_count_files.mix(
+            SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [meta.id, 'fastp', '', '', json] }
+        )
+    }
+    if (params.perform_shortread_hostremoval) {
+        ch_read_count_files = ch_read_count_files.mix(
+            SHORTREAD_HOSTREMOVAL.out.bowtie2_log.map { meta, log_file -> [meta.id, 'bowtie2', '', '', log_file] }
+        )
+    }
+    // the files are staged in numbered folders, in the order of the manifest
+    ch_read_count_files = ch_read_count_files.toSortedList { a, b -> a[0..3].join('\t') <=> b[0..3].join('\t') ?: a[4].name <=> b[4].name }
+    ch_read_count_manifest = ch_read_count_files
+        .map { entries -> entries.withIndex().collect { entry, i -> ([i + 1] + entry[0..3]).join('\t') + '\n' }.join('') }
+        .collectFile(name: 'read_counts_manifest.tsv')
+    READ_COUNTS(ch_read_count_files.map { entries -> entries.collect { entry -> entry[4] } }, ch_read_count_manifest)
+    ch_versions = ch_versions.mix(READ_COUNTS.out.versions)
+
+    /*
         SUBWORKFLOW: PROFILING STANDARDISATION
     */
     if (params.run_profile_standardisation) {
@@ -415,6 +441,7 @@ workflow FLEXPROFILER {
     }
 
     ch_multiqc_files = ch_multiqc_files.mix(PROFILING.out.mqc.collect { it[1] }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(READ_COUNTS.out.mqc)
 
     if (params.run_profile_standardisation) {
         ch_multiqc_files = ch_multiqc_files.mix(STANDARDISATION_PROFILES.out.mqc.collect { it[1] }.ifEmpty([]))

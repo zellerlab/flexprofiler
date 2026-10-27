@@ -10,6 +10,8 @@ report_section_order:
     order: -1002
   general_stats":
     order: 1000
+  read_counts:
+    order: 950
   fastqc:
     order: 900
   fastqc-1:

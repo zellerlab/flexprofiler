@@ -44,6 +44,7 @@ workflow SHORTREAD_HOSTREMOVAL {
 
     emit:
     reads    = BOWTIE2_ALIGN.out.fastq // channel: [ val(meta), [ reads ] ]
+    bowtie2_log = BOWTIE2_ALIGN.out.log // channel: [ val(meta), log ]
     versions = ch_versions // channel: [ versions.yml ]
     mqc      = ch_multiqc_files
 }

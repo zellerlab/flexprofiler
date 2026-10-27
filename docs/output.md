@@ -41,6 +41,7 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 - [ganon](#ganon) - Taxonomic classifier and profile that uses Interleaved Bloom Filters as indices based on k-mers/minimizers.
 - [TAXPASTA](#taxpasta) - Tool to standardise taxonomic profiles as well as merge profiles across samples from the same database and classifier/profiler.
 -->
+- [Read counts](#read-counts) - Per-sample read counts after QC, host removal and alignment to each profiling database
 - [MultiQC](#multiqc) - Aggregate report describing results and QC from the whole pipeline
 - [Pipeline information](#pipeline-information) - Report metrics generated during the workflow execution
 
@@ -672,6 +673,34 @@ The following report files are used for the taxpasta step:
 Please aware the outputs of each tool's standardised profile _may not_ be directly comparable between each tool. Some may report raw read counts, whereas others may report abundance information. Please always refer to the list above, for which information is used for each tool.
 :::
 -->
+
+### Read counts
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `read_counts/`
+  - `read_counts.tsv`: one row per sample, with the reads left after each step.
+
+</details>
+
+The counts are parsed from the logs of the tools, and the counts of the runs of a sample are summed. The table is also in the MultiQC report, in the section Read counts. A column is present only if its step was run: the raw and QC reads only with `--shortread_qc_tool fastp`, the host-removed pairs only with `--perform_shortread_hostremoval`, and one column per profiler and database.
+
+| Column                      | Unit                                     | Source                                                                                                     |
+| --------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `raw_reads`                 | reads, each mate counted                 | fastp, reads before filtering                                                                              |
+| `qc_reads`                  | reads, each mate counted                 | fastp, reads after filtering                                                                               |
+| `host_removed_pairs`        | read pairs (single-end: reads)           | bowtie2, pairs not aligned concordantly to the host genome (single-end: reads not aligned), i.e. the reads given to the profilers |
+| `motus4_<db_name>_pairs`    | read pairs                               | mOTUs v4, inserts aligned to the database and passing the mOTUs filters (`Read N aligned inserts`)         |
+| `motus3_<db_name>_pairs`    | read pairs                               | mOTUs v3, inserts aligned to the database and passing the mOTUs filters (`Total number of inserts`)        |
+| `cayman_<db_name>_pairs`    | read pairs                               | cayman, reads aligned to the gene catalogue and passing the filters (`Reads passing filters`)              |
+| `gqlib_<db_name>_pairs`     | read pairs                               | gqlib, reads aligned to the gene catalogue and passing the filters (`Reads passing filters`)               |
+
+For cayman and gqlib, the alignment and its filters are the same for all the annotations of a gene catalogue, so there is one column per gene catalogue. A count that could not be found in a log is reported as `NA`, with a warning in the log of the task.
+
+:::note
+With `--shortread_qc_mergepairs`, fastp merges the overlapping pairs into single reads, so the columns after QC count fragments (merged pairs and unmerged reads) rather than pairs. Long reads have no QC and host removal counts.
+:::
 
 ### MultiQC
 
