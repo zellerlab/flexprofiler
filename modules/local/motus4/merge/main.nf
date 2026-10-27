@@ -21,16 +21,15 @@ process MOTUS4_MERGE {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
+    // motus merge needs at least 2 profiles, and a single profile has already the format of a merged one
+    def merge_cmd = input instanceof Path
+        ? "cp ${input} ${prefix}.txt"
+        : "motus4_patch.py merge -i profile_list.txt $args -o ${prefix}.txt"
     """
-    # motus merge treats a single -i argument as a file listing the profiles,
-    # so always pass a list to also support a single input profile
+    # motus merge treats a single -i argument as a file listing the profiles, so a list is passed
     printf '%s\\n' ${input} > profile_list.txt
 
-    motus4_patch.py \\
-        merge \\
-        -i profile_list.txt \\
-        $args \\
-        -o ${prefix}.txt
+    $merge_cmd
 
     # no way to get the version number without triggering an exit code 2
     VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)

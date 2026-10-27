@@ -1,7 +1,7 @@
 sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
 2613,ERR5766181,ILLUMINA,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_1.fastq.gz,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_2.fastq.gz,
 2613_suffixed,ERR5766181,ILLUMINA,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_suffixed_1.fastq.gz,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_suffixed_2.fastq.gz,
-2613_unordered,ERR5766181,ILLUMINA,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_1.fastq.gz,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_unordered_2.fastq.gz,
+2613_unordered,ERR5766181,ILLUMINA,../../../assets/test-data/data/fastq/mixed/2613_unordered_1.fastq.gz,../../../assets/test-data/data/fastq/mixed/2613_unordered_2.fastq.gz,
 2612_se,ERR5766180,ILLUMINA,../../../assets/test-data/data/fastq/ERX5474936_ERR5766180_1.fastq.gz,,
-2613_mixed,ERR5766181_suffixed,ILLUMINA,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_suffixed_1.fastq.gz,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_suffixed_2.fastq.gz,
-2613_mixed,ERR5766181_unordered,ILLUMINA,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_1.fastq.gz,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_unordered_2.fastq.gz,
+2613_mixed,ERR5766181_suffixed,ILLUMINA,../../../assets/test-data/data/fastq/mixed/2613_mixed_suffixed_1.fastq.gz,../../../assets/test-data/data/fastq/mixed/2613_mixed_suffixed_2.fastq.gz,
+2613_mixed,ERR5766181_unordered,ILLUMINA,../../../assets/test-data/data/fastq/mixed/2613_mixed_unordered_1.fastq.gz,../../../assets/test-data/data/fastq/mixed/2613_mixed_unordered_2.fastq.gz,

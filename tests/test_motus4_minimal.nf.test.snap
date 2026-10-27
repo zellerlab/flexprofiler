@@ -1,9 +1,9 @@
 {
     "number_of_tasks": {
         "content": [
-            14
+            15
         ],
-        "timestamp": "2026-10-27T16:30:11.274261",
+        "timestamp": "2026-10-27T18:58:49.572798",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -35,12 +35,15 @@
                 "MOTUS4_PROFILE": {
                     "motus4": "4.0.4"
                 },
+                "READ_COUNTS": {
+                    "python": "3.9.5"
+                },
                 "Workflow": {
                     "zellerlab/flexprofiler": "v0.0.3"
                 }
             }
         ],
-        "timestamp": "2026-10-27T16:30:11.262643",
+        "timestamp": "2026-10-27T18:58:49.565912",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -65,6 +68,21 @@
         "meta": {
             "nf-test": "0.9.4",
             "nextflow": "25.10.4"
+        }
+    },
+    "counts": {
+        "content": [
+            [
+                "mOTU\t2612_db_mOTU\t2612_se_db_mOTU\t2613_db_mOTU",
+                "mOTUv4.0_000924\t18\t3\t6",
+                "mOTUv4.0_014686\t16\t3\t7",
+                "mOTUv4.0_unassigned\t116\t32\t75"
+            ]
+        ],
+        "timestamp": "2026-10-27T18:58:49.582781",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
         }
     },
     "filenames": {
@@ -105,10 +123,51 @@
                 "motus4/profile/db_mOTU/2613_db_mOTU.out",
                 "motus4/profile/db_mOTU/2613_db_mOTU.out.mgc",
                 "pipeline_info",
-                "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml"
+                "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml",
+                "read_counts",
+                "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-10-27T16:30:11.281961",
+        "timestamp": "2026-10-27T18:58:49.578307",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
+    "read_counts": {
+        "content": [
+            [
+                [
+                    "sample",
+                    "raw_reads",
+                    "qc_reads",
+                    "host_removed_pairs",
+                    "motus4_db_mOTU_pairs"
+                ],
+                [
+                    "2612",
+                    "2528240",
+                    "2513136",
+                    "1256238",
+                    "601"
+                ],
+                [
+                    "2612_se",
+                    "801532",
+                    "800818",
+                    "800776",
+                    "132"
+                ],
+                [
+                    "2613",
+                    "1075088",
+                    "1067004",
+                    "533422",
+                    "310"
+                ]
+            ]
+        ],
+        "timestamp": "2026-10-27T18:58:49.579664",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

@@ -37,8 +37,11 @@ process CAYMAN_PROFILE {
         $args \\
         &> ${prefix}.cayman.log
 
-    # gqlib names the category of the annotation `feature`, cayman names it `cazy`
-    mv ${prefix}.feature.txt.gz ${prefix}.cazy.txt.gz
+    # gqlib names the category of the annotation `feature`, cayman names it `cazy`, and cayman does
+    # not report the `category` row (the counts of the reads assigned to any CAZy domain)
+    gzip -cd ${prefix}.feature.txt.gz \\
+        | awk -F '\\t' '\$1 != "category"' \\
+        | gzip -n > ${prefix}.cazy.txt.gz
 
     VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
 

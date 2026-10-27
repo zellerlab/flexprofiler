@@ -52,7 +52,7 @@ gzip -cd ERX5474937_ERR5766181_2.fastq.gz \
     | gzip -n > ERX5474937_ERR5766181_unordered_2.fastq.gz
 ```
 
-`samplesheet_mixed.csv` combines in one run the reads of ERX5474937 as they are, with the suffixes and with the pairs in a different order, the last two also as two runs of one sample (`2613_mixed`), and the single-end reads of ERX5474936.
+`samplesheet_mixed.csv` combines in one run the reads of ERX5474937 as they are, with the suffixes and with the pairs in a different order, the last two also as two runs of one sample (`2613_mixed`), and the single-end reads of ERX5474936. `samplesheet_mixed_endedness.csv` has a sample with a paired-end run (ERX5474932) and a single-end run (ERX5474936), `2612_mixed`, which can be merged only with `--shortread_qc_mergepairs`. As the samplesheet does not allow the same file in two rows, the files used more than once are symbolic links in `data/fastq/mixed/`.
 
 ### FASTA
 

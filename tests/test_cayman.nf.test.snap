@@ -56,7 +56,7 @@
                     "gqlib": "2.14.4"
                 },
                 "CAYMAN_PROFILE": {
-                    "cayman": "0.10.2"
+                    "gqlib": "2.14.4"
                 },
                 "FASTP_PAIRED": {
                     "fastp": "0.24.0"
@@ -87,7 +87,7 @@
                 }
             }
         ],
-        "timestamp": "2026-10-27T18:34:19.567685",
+        "timestamp": "2026-10-27T19:23:57.174773",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
