@@ -119,7 +119,7 @@ This must be performed manually by the user.
 See the [databases documentation](databases.md) for details.
 :::
 
-The pipeline takes the paths and specific classification/profiling parameters of the tool of these databases as input via a four (or five) column comma-separated sheet.
+The pipeline takes the paths and specific classification/profiling parameters of the tool of these databases as input via a comma-separated sheet.
 The optional `db_type` column allows to use specific database/parameters against specific data types.
 By specifying if a database is for short-or long-reads (or even both), the samples sequenced with Illumina are combined with the short-read databases and the samples sequenced with Nanopore are combined with long-read databases.
 If `db_type` is not provided, it is assumed the database and parameters are applicable for both short- and long-read data.
@@ -134,17 +134,16 @@ In the second example database sheet, the `db_type` column has been provided.
 The valid options are `short`, `long` and `short;long`.
 
 ```csv
-tool,db_name,db_params,db_component,db_path
-motus4,db_mOTU,,,/path/to/db_mOTU
-cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,align,/path/to/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz
-cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,annot,/path/to/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv
+tool,db_name,db_params,db_path,annot_db_name,annot_db_path
+motus4,db_mOTU,,/path/to/db_mOTU,,
+cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,/path/to/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz,cayman_v3,/path/to/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv
+gqlib,GMGC10.human-gut.95nr.0.5.percent.prevalence,,/path/to/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz,emapper_v2.1.7,/path/to/GMGC10.human-gut.95nr.0.5pv.20230422.2101.sqlite3
 ```
 
 ```csv
-tool,db_name,db_params,db_component,db_type,db_path
-motus4,db_mOTU,,,short,/path/to/db_mOTU
-cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,align,long,/path/to/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz
-cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,annot,long,/path/to/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv
+tool,db_name,db_params,db_type,db_path,annot_db_name,annot_db_path
+motus4,db_mOTU,,short,/path/to/db_mOTU,,
+cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,long,/path/to/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz,cayman_v3,/path/to/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv
 ```
 
 Column specifications are as follows:
@@ -154,9 +153,10 @@ Column specifications are as follows:
 | `tool`      | Profiling tool (supported by zellerlab/flexprofiler) that the database has been indexed for [required].                                                                                                                                                                                                                                                                                                                                                                    |
 | `db_name`   | A unique name per tool for the particular database [required].                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `db_params` | Any parameters of the given classifier/profiler that you wish to specify that the classifier/profiling tool should use when profiling against this specific database. Can be empty to use classifier/profiler defaults. Must not be surrounded by quotes [required]. We generally do not recommend specifying parameters here that turn on/off saving of output files or specifying particular file extensions - this should be already addressed via pipeline parameters. |
-| `db_component` | Only for `cayman` and `gqlib`, which need two rows per database with the same `tool` and `db_name`: one with `align`, whose `db_path` is the gene catalogue fasta (with the `bwa index` files next to it), and one with `annot`, whose `db_path` is the annotation file (`.csv` for cayman, `.sqlite3` for gqlib). Leave empty for the other tools. |
 | `db_type`   | An optional column to distinguish between short- and long-read databases. If the column is empty, the pipeline will assume all databases (and their settings specified in `db_params`!) will be applicable for both short and long read data. Possible values: `long`, `short`, or `short;long`. If the `db_type` column is missing from the database.csv, it will take the default value short;long                                                                       |
 | `db_path`   | Path to the database. Can either be a path to a directory containing the database index files or a `.tar.gz` file which contains the compressed database directory with the same name as the tar archive, minus `.tar.gz` [required].                                                                                                                                                                                                                                      |
+| `annot_db_name` | Only for `cayman` and `gqlib` [required for them]: a name for the annotation in `annot_db_path`, unique per `tool` and `db_name`. To profile several annotations of the same gene catalogue, add one row for each with the same `db_name` and `db_path` and a different `annot_db_name`: the reads are aligned only once. Leave empty for the other tools. |
+| `annot_db_path` | Only for `cayman` and `gqlib` [required for them]: the annotation file of the gene catalogue in `db_path` (`.csv` for cayman, `.sqlite3` for gqlib). Leave empty for the other tools. |
 
 :::tip
 You can also specify the same database directory/file twice (ensuring unique `db_name`s) and specify different parameters for each database to compare the effect of different parameters during classification/profiling.
@@ -174,8 +174,8 @@ The database paths (`db_path`) for each tool are expected to contain:
 
 - [**mOTUs v4**:](databases.md#motus4) the directory `db_mOTU/` that is downloaded via `motus4 downloadMGDB`.
   - Note that you must use `motus downloadMGDB` and if installed via `conda`, will be placed in a specific `site-package` directory in the conda environment. For more details see the [mOTUs database documentation](databases.md#motus4).
-- [**Cayman**:](databases.md#cayman) for the `align` row the gene catalogue fasta, e.g. `GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz`, with the index files created by `bwa index` (`.amb`, `.ann`, `.bwt`, `.pac`, `.sa`) in the same directory; for the `annot` row the annotation `.csv`.
-- **gqlib**: the same `align` row as cayman (only the alignment is shared: reads are aligned only once when cayman and gqlib have the same `db_name` and fasta); for the `annot` row the gqlib `.sqlite3` database.
+- [**Cayman**:](databases.md#cayman) the gene catalogue fasta, e.g. `GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz`, with the index files created by `bwa index` (`.amb`, `.ann`, `.bwt`, `.pac`, `.sa`) in the same directory; `annot_db_path` is the annotation `.csv`.
+- **gqlib**: the same gene catalogue fasta as cayman; `annot_db_path` is the gqlib `.sqlite3` database. The reads are aligned only once to each gene catalogue: all the cayman and gqlib rows with the same `db_name` and `db_path` share the alignment.
 
 ## Running the pipeline
 

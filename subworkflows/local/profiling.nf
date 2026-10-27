@@ -77,14 +77,13 @@ workflow PROFILING {
         ch_reads_for_motus4 = reads
     }
 
-    // cayman and gqlib databases are made of two rows of the database sheet with the same tool and
-    // db_name: the gene catalogue fasta, with its bwa index alongside (db_component 'align'), and
-    // the annotation file (db_component 'annot').
-    // Only the alignment is shared between cayman and gqlib: the databases with the same name and
-    // gene catalogue fasta are grouped, so that the reads are aligned only once to each of them
+    // cayman and gqlib databases are the gene catalogue fasta (db_path), with its bwa index alongside,
+    // and the annotation file (annot_db_path). The alignment is shared by all the annotations of a
+    // gene catalogue, and between cayman and gqlib: the databases with the same name and gene
+    // catalogue fasta are grouped, so that the reads are aligned only once to each of them
     ch_dbs_bwa = ch_dbs
-        .filter { _type, db_meta, _db -> db_meta.tool in ['cayman', 'gqlib'] && params["run_${db_meta.tool}"] && db_meta.db_component == 'align' }
-        .map { type, db_meta, fasta -> [type, db_meta.db_name, fasta, db_meta.subMap(db_meta.keySet() - 'db_component')] }
+        .filter { _type, db_meta, _db -> db_meta.tool in ['cayman', 'gqlib'] && params["run_${db_meta.tool}"] }
+        .map { type, db_meta, fasta -> [type, db_meta.db_name, fasta, db_meta] }
         .groupTuple(by: [0, 1, 2])
         .map { type, db_name, fasta, db_metas ->
             // the index files are named as created by `bwa index <fasta>`
@@ -147,20 +146,11 @@ workflow PROFILING {
         // the bam is not sorted, as cayman and gqlib expect the alignments grouped by read
         BWA_ALIGN(ch_input_for_align.reads, ch_input_for_align.db, [[], []], false)
 
-        // spread out each alignment to the profilers using its gene catalogue, each with the
-        // annotation file of its database
+        // spread out each alignment to the profilers using its gene catalogue, each with its annotation file
         ch_bams_for_profiling = BWA_ALIGN.out.bam
             .flatMap { meta, bam ->
-                meta.profilers.collect { db_meta -> [meta.subMap(meta.keySet() - 'profilers') + db_meta, bam] }
+                meta.profilers.collect { db_meta -> [meta.subMap(meta.keySet() - 'profilers') + db_meta, bam, file(db_meta.annot_db_path)] }
             }
-            .map { meta, bam -> [[meta.type, meta.tool, meta.db_name], meta, bam] }
-            .combine(
-                ch_dbs
-                    .filter { _type, db_meta, _db -> db_meta.db_component == 'annot' }
-                    .map { type, db_meta, annot -> [[type.type, db_meta.tool, db_meta.db_name], annot] },
-                by: 0
-            )
-            .map { _key, meta, bam, annot -> [meta, bam, annot] }
             .branch { meta, _bam, _annot ->
                 cayman: meta.tool == 'cayman'
                 gqlib: meta.tool == 'gqlib'

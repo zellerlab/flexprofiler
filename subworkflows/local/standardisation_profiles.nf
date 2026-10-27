@@ -4,8 +4,9 @@
 
 include { MOTUS4_MERGE                 } from '../../modules/local/motus4/merge/main'
 include { MOTUS_MERGE  as MOTUS3_MERGE } from '../../modules/nf-core/motus/merge/main'
-include { CAYMAN_MERGE                 } from '../../modules/local/cayman/merge/main'
-include { GQLIB_MERGE                } from '../../modules/local/gqlib/merge/main'
+include { GQLIB_MERGE                  } from '../../modules/local/gqlib/merge/main'
+// cayman profiles have the same format as the gqlib ones
+include { GQLIB_MERGE  as CAYMAN_MERGE } from '../../modules/local/gqlib/merge/main'
 
 workflow STANDARDISATION_PROFILES {
     take:
@@ -35,8 +36,6 @@ workflow STANDARDISATION_PROFILES {
     ch_input_databases = databases.branch {
         motus4: it[0]['tool'] == 'motus4'
         motus3: it[0]['tool'] == 'motus3'
-        // each cayman database has an 'align' and an 'annot' row, only one is needed for merging
-        cayman: it[0]['tool'] == 'cayman' && it[0]['db_component'] == 'annot'
         unknown: true
     }
 
@@ -58,16 +57,12 @@ workflow STANDARDISATION_PROFILES {
     ch_versions = ch_versions.mix(MOTUS3_MERGE.out.versions)
     
     // cayman
-    ch_profiles_for_cayman = groupProfiles(ch_input_profiles.cayman)
-    ch_input_for_caymanmerge = combineProfilesWithDatabase(ch_profiles_for_cayman, ch_input_databases.cayman)
-    CAYMAN_MERGE(ch_input_for_caymanmerge.profile, ch_input_for_caymanmerge.db)
-    ch_versions = ch_versions.mix(CAYMAN_MERGE.out.versions)
+    ch_profiles_for_cayman = groupProfilesByCategory(ch_input_profiles.cayman)
+    CAYMAN_MERGE(ch_profiles_for_cayman)
+    ch_versions = ch_versions.mix(CAYMAN_MERGE.out.versions.first())
 
-    // gqlib, merged separately for each category (gene_counts, KEGG_ko, ...) of each database
-    ch_profiles_for_gqlib = ch_input_profiles.gqlib
-        .transpose()
-        .map { meta, profile -> [[id: meta.db_name, category: gqlibCategory(profile)], profile] }
-        .groupTuple()
+    // gqlib, merged separately for each category (gene_counts, KEGG_ko, ...) of each database and annotation
+    ch_profiles_for_gqlib = groupProfilesByCategory(ch_input_profiles.gqlib.transpose())
     GQLIB_MERGE(ch_profiles_for_gqlib)
     ch_versions = ch_versions.mix(GQLIB_MERGE.out.versions.first())
 
@@ -105,6 +100,25 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
             }
             [[id: db_name], profiles] 
         }
+}
+
+/**
+* Group gqlib (and cayman) profiles per reference database, annotation and category.
+*
+* @param ch_profiles A channel containing pairs of a meta map, which must contain
+*   the keys `db_name` and `annot_db_name`, and a single profile.
+* @return A channel with one element per reference database, annotation and
+*   category. Each element is a pair of a meta map with `id` (database and
+*   annotation names, as in the profile names), `db_name`, `annot_db_name` and
+*   `category` keys, and all corresponding profiles.
+*/
+def groupProfilesByCategory(ch_profiles) {
+    return ch_profiles
+        .map { meta, profile ->
+            def key = [id: "${meta.db_name}_${meta.annot_db_name}", db_name: meta.db_name, annot_db_name: meta.annot_db_name, category: gqlibCategory(profile)]
+            [key, profile]
+        }
+        .groupTuple()
 }
 
 /**

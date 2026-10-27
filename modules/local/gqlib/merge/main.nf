@@ -8,7 +8,7 @@ process GQLIB_MERGE {
         : 'biocontainers/gqlib:2.14.4--pyhdfd78af_0'}"
 
     input:
-    // the profiles of all the samples for one database (meta.id) and one category (meta.category)
+    // the profiles of all the samples for one database and annotation (meta.id) and one category (meta.category)
     tuple val(meta), path(input)
 
     output:
@@ -22,7 +22,7 @@ process GQLIB_MERGE {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     def files = input instanceof List ? input : [input]
-    // collate_counts takes the sample name from the file name, so the database name is removed from it
+    // collate_counts takes the sample name from the file name, so the database and annotation names are removed from it
     def suffix = "_${meta.id}.${meta.category}.txt.gz"
     def links = files.collect { "ln -s ../${it} counts/${it.name - suffix}.${meta.category}.txt.gz" }.join('\n    ')
     """

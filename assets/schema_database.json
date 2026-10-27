@@ -16,43 +16,75 @@
                     "gqlib"
                 ],
                 "errorMessage": "Invalid tool name. Please see documentation for all supported profilers. Currently these classifers are included: motus4, motus3, cayman, gqlib.",
-                "meta": ["tool"]
+                "meta": [
+                    "tool"
+                ]
             },
             "db_name": {
                 "type": "string",
                 "pattern": "^\\S+$",
-                "description": "Name of the database, unique per tool. For cayman and gqlib, the 'align' and 'annot' rows of a database must have the same db_name, which is how they are matched; cayman and gqlib also share the alignment when they have the same db_name and 'align' fasta.",
+                "description": "Name of the database, unique per tool (or, for cayman and gqlib, per tool and annot_db_name). For cayman and gqlib, the reads are aligned only once to each gene catalogue: the rows with the same db_name and db_path share the alignment, also between cayman and gqlib.",
                 "errorMessage": "The unique name of the database should be provided.",
-                "meta": ["db_name"]
+                "meta": [
+                    "db_name"
+                ]
             },
             "db_params": {
                 "type": "string",
                 "pattern": "^[^\"']*$",
                 "errorMessage": "Invalid database db_params entry. No quotes allowed.",
-                "meta": ["db_params"]
-            },
-            "db_component": {
-                "type": "string",
-                "description": "Role of the db_path for tools that need several database files. Only used by cayman and gqlib, which need exactly one 'align' and one 'annot' row per database, linked only by tool and db_name (which must be identical in both rows, as must db_type): 'align', with db_path the gene catalogue fasta that the reads are aligned to with bwa mem (the bwa index files <fasta>.amb, .ann, .bwt, .pac, .sa must be in the same directory; the pipeline does not build them, they must be created beforehand with `bwa index <fasta>`; the fasta itself is not read, only used to locate the index files, but it must exist); 'annot', with db_path the annotation file passed to the profiler (the .csv annotation table for cayman, the .sqlite3 database for gqlib). Only the alignment is shared between cayman and gqlib: reads are aligned only once when they have the same db_name and 'align' fasta. Leave empty for the other tools, whose db_path is the whole database.",
-                "enum": ["align", "annot"],
-                "errorMessage": "Invalid db_component. Must be 'align' (gene catalogue fasta, with its bwa index alongside) or 'annot' (annotation file). Only used by cayman and gqlib.",
-                "meta": ["db_component"]
+                "meta": [
+                    "db_params"
+                ]
             },
             "db_type": {
                 "type": "string",
-                "enum": ["short", "long", "short;long"],
+                "enum": [
+                    "short",
+                    "long",
+                    "short;long"
+                ],
                 "default": "short;long",
-                "meta": ["db_type"]
+                "meta": [
+                    "db_type"
+                ]
             },
             "db_path": {
                 "type": "string",
-                "description": "Path to the database. For motus4 and motus3, the db_mOTU directory (or a .tar.gz of it). For cayman and gqlib, the file given by db_component: the gene catalogue fasta for 'align' (with its pre-built bwa index alongside), the annotation file for 'annot'.",
+                "description": "Path to the database. For motus4 and motus3, the db_mOTU directory (or a .tar.gz of it). For cayman and gqlib, the gene catalogue fasta that the reads are aligned to with bwa mem: the bwa index files <fasta>.amb, .ann, .bwt, .pac, .sa must be in the same directory (the pipeline does not build them, they must be created beforehand with `bwa index <fasta>`); the fasta itself is not read, only used to locate the index files, but it must exist.",
                 "exists": true,
                 "format": "path",
                 "errorMessage": "db_path should be either a file path or a directory."
+            },
+            "annot_db_name": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "description": "Name of the annotation, unique per tool and db_name. Only used by cayman and gqlib, for which it is required. Several annotations of the same gene catalogue (db_name and db_path) are profiled from a single alignment: give each its own row with the same db_name and db_path and a different annot_db_name. Leave empty for the other tools.",
+                "errorMessage": "Invalid annot_db_name. It must not contain whitespace. Only used by cayman and gqlib.",
+                "meta": [
+                    "annot_db_name"
+                ]
+            },
+            "annot_db_path": {
+                "type": "string",
+                "description": "Path to the annotation file of the gene catalogue in db_path, passed to the profiler: the .csv annotation table for cayman, the .sqlite3 database for gqlib. Only used by cayman and gqlib, for which it is required. Leave empty for the other tools.",
+                "exists": true,
+                "format": "file-path",
+                "errorMessage": "annot_db_path should be the path to an existing file. Only used by cayman and gqlib.",
+                "meta": [
+                    "annot_db_path"
+                ]
             }
         },
-        "required": ["tool", "db_name", "db_path"]
+        "required": [
+            "tool",
+            "db_name",
+            "db_path"
+        ]
     },
-    "uniqueEntries": ["tool", "db_name", "db_component"]
+    "uniqueEntries": [
+        "tool",
+        "db_name",
+        "annot_db_name"
+    ]
 }

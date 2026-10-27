@@ -33,9 +33,8 @@ nextflow_pipeline {
             // create database sheet
             TestUtils.makeDatabaseSheet(
                 launchDir,
-                "cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,align,${human_gut_folder}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz\n" +
-                "cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,annot,${human_gut_folder}/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv\n",
-                "tool,db_name,db_params,db_component,db_path"
+                "cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,${human_gut_folder}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz,cayman_v3,${human_gut_folder}/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv\n",
+                "tool,db_name,db_params,db_path,annot_db_name,annot_db_path"
             )
 
             // download hostremoval reference genome and index
@@ -57,7 +56,7 @@ nextflow_pipeline {
         then {
             def stable_name         = getAllFilesFromDir( params.outdir, includeDir: true , ignore: TestUtils.getUnstableName(), relative: true )
             def software_versions   = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
-            def cayman_merge_report = file( "${params.outdir}/cayman/merge/cayman_GMGC10.human-gut.95nr.0.5.percent.prevalence_combined_reports_cayman_merged.txt.gz" )
+            def cayman_merge_report = file( "${params.outdir}/cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz" )
             def cayman_merge_report_content = new java.util.zip.GZIPInputStream(cayman_merge_report.newInputStream()).getText('UTF-8')
             assertAll(
                 { assert workflow.success },
