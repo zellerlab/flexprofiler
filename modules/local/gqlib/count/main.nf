@@ -2,11 +2,10 @@ process GQLIB_COUNT {
     tag "$meta.id"
     label 'process_medium'
 
-    // gqlib is installed as a dependency of cayman
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/cayman:0.10.2--pyh7e72e81_0'
-        : 'biocontainers/cayman:0.10.2--pyh7e72e81_0'}"
+        ? 'https://depot.galaxyproject.org/singularity/gqlib:2.14.4--pyhdfd78af_0'
+        : 'biocontainers/gqlib:2.14.4--pyhdfd78af_0'}"
 
     input:
     tuple val(meta), path(bam)
