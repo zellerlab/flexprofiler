@@ -79,28 +79,16 @@ workflow PROFILING {
 
     // cayman and gqlib databases are made of two rows of the database sheet with the same tool and
     // db_name: the gene catalogue fasta, with its bwa index alongside (db_component 'align'), and
-    // the annotation file (db_component 'annot')
-    ch_dbs_genes = ch_dbs
-        .filter { _type, db_meta, _db -> db_meta.tool in ['cayman', 'gqlib'] && params["run_${db_meta.tool}"] }
-        .map { type, db_meta, db -> [type, db_meta.tool, db_meta.db_name, db_meta, db] }
+    // the annotation file (db_component 'annot').
+    // Only the alignment is shared between cayman and gqlib: the databases with the same name and
+    // gene catalogue fasta are grouped, so that the reads are aligned only once to each of them
+    ch_dbs_bwa = ch_dbs
+        .filter { _type, db_meta, _db -> db_meta.tool in ['cayman', 'gqlib'] && params["run_${db_meta.tool}"] && db_meta.db_component == 'align' }
+        .map { type, db_meta, fasta -> [type, db_meta.db_name, fasta, db_meta.subMap(db_meta.keySet() - 'db_component')] }
         .groupTuple(by: [0, 1, 2])
-        .map { type, tool, db_name, db_metas, dbs ->
-            def components = [db_metas*.db_component, dbs].transpose().collectEntries()
-            if (db_metas.size() != 2 || components.keySet() != ['align', 'annot'] as Set) {
-                error("Database '${db_name}' for ${tool} needs exactly one row with db_component 'align' and one with db_component 'annot' in the database sheet, found: ${db_metas*.db_component}")
-            }
-            def db_meta = db_metas.find { m -> m.db_component == 'annot' }
+        .map { type, db_name, fasta, db_metas ->
             // the index files are named as created by `bwa index <fasta>`
-            def index = ['amb', 'ann', 'bwt', 'pac', 'sa'].collect { ext -> file("${components.align}.${ext}", checkIfExists: true) }
-            [type, db_meta.subMap(db_meta.keySet() - 'db_component'), index, components.annot]
-        }
-
-    // the databases with the same name and bwa index are grouped, so that the reads are aligned
-    // only once to each of them
-    ch_dbs_bwa = ch_dbs_genes
-        .map { type, db_meta, index, _annot -> [type, db_meta.db_name, index, db_meta] }
-        .groupTuple(by: [0, 1, 2])
-        .map { type, db_name, index, db_metas ->
+            def index = ['amb', 'ann', 'bwt', 'pac', 'sa'].collect { ext -> file("${fasta}.${ext}", checkIfExists: true) }
             [type, [tool: 'bwa', db_name: db_name, type: type.type, profilers: db_metas], index]
         }
 
@@ -159,13 +147,19 @@ workflow PROFILING {
         // the bam is not sorted, as cayman and gqlib expect the alignments grouped by read
         BWA_ALIGN(ch_input_for_align.reads, ch_input_for_align.db, [[], []], false)
 
-        // spread out each alignment to the profilers using its index, each with its annotation file
+        // spread out each alignment to the profilers using its gene catalogue, each with the
+        // annotation file of its database
         ch_bams_for_profiling = BWA_ALIGN.out.bam
             .flatMap { meta, bam ->
                 meta.profilers.collect { db_meta -> [meta.subMap(meta.keySet() - 'profilers') + db_meta, bam] }
             }
             .map { meta, bam -> [[meta.type, meta.tool, meta.db_name], meta, bam] }
-            .combine(ch_dbs_genes.map { type, db_meta, _index, annot -> [[type.type, db_meta.tool, db_meta.db_name], annot] }, by: 0)
+            .combine(
+                ch_dbs
+                    .filter { _type, db_meta, _db -> db_meta.db_component == 'annot' }
+                    .map { type, db_meta, annot -> [[type.type, db_meta.tool, db_meta.db_name], annot] },
+                by: 0
+            )
             .map { _key, meta, bam, annot -> [meta, bam, annot] }
             .branch { meta, _bam, _annot ->
                 cayman: meta.tool == 'cayman'
@@ -183,7 +177,6 @@ workflow PROFILING {
         CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.annot)
         ch_versions = ch_versions.mix(CAYMAN_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
-        ch_multiqc_files = ch_multiqc_files.mix(CAYMAN_PROFILE.out.log)
     }
 
     if (params.run_gqlib) {

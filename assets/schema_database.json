@@ -21,6 +21,7 @@
             "db_name": {
                 "type": "string",
                 "pattern": "^\\S+$",
+                "description": "Name of the database, unique per tool. For cayman and gqlib, the 'align' and 'annot' rows of a database must have the same db_name, which is how they are matched; cayman and gqlib also share the alignment when they have the same db_name and 'align' fasta.",
                 "errorMessage": "The unique name of the database should be provided.",
                 "meta": ["db_name"]
             },
@@ -32,7 +33,7 @@
             },
             "db_component": {
                 "type": "string",
-                "description": "Role of the db_path for tools that need several database files. Only used by cayman and gqlib, which need two rows with the same tool and db_name: 'align', with db_path the gene catalogue fasta that the reads are aligned to with bwa mem (the bwa index files, as created by `bwa index <fasta>`, must be in the same directory: <fasta>.amb, .ann, .bwt, .pac, .sa); 'annot', with db_path the annotation file passed to the profiler (the .csv annotation table for cayman, the .sqlite3 database for gqlib). Reads are aligned only once when cayman and gqlib share db_name and 'align' fasta. Leave empty for the other tools, whose db_path is the whole database.",
+                "description": "Role of the db_path for tools that need several database files. Only used by cayman and gqlib, which need exactly one 'align' and one 'annot' row per database, linked only by tool and db_name (which must be identical in both rows, as must db_type): 'align', with db_path the gene catalogue fasta that the reads are aligned to with bwa mem (the bwa index files, as created by `bwa index <fasta>`, must be in the same directory: <fasta>.amb, .ann, .bwt, .pac, .sa); 'annot', with db_path the annotation file passed to the profiler (the .csv annotation table for cayman, the .sqlite3 database for gqlib). Only the alignment is shared between cayman and gqlib: reads are aligned only once when they have the same db_name and 'align' fasta. Leave empty for the other tools, whose db_path is the whole database.",
                 "enum": ["align", "annot"],
                 "errorMessage": "Invalid db_component. Must be 'align' (gene catalogue fasta, with its bwa index alongside) or 'annot' (annotation file). Only used by cayman and gqlib.",
                 "meta": ["db_component"]

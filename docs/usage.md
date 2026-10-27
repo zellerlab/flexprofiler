@@ -175,7 +175,7 @@ The database paths (`db_path`) for each tool are expected to contain:
 - [**mOTUs v4**:](databases.md#motus4) the directory `db_mOTU/` that is downloaded via `motus4 downloadMGDB`.
   - Note that you must use `motus downloadMGDB` and if installed via `conda`, will be placed in a specific `site-package` directory in the conda environment. For more details see the [mOTUs database documentation](databases.md#motus4).
 - [**Cayman**:](databases.md#cayman) for the `align` row the gene catalogue fasta, e.g. `GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz`, with the index files created by `bwa index` (`.amb`, `.ann`, `.bwt`, `.pac`, `.sa`) in the same directory; for the `annot` row the annotation `.csv`.
-- **gqlib**: the same `align` row as cayman (reads are aligned only once when cayman and gqlib share `db_name` and fasta); for the `annot` row the gqlib `.sqlite3` database.
+- **gqlib**: the same `align` row as cayman (only the alignment is shared: reads are aligned only once when cayman and gqlib have the same `db_name` and fasta); for the `annot` row the gqlib `.sqlite3` database.
 
 ## Running the pipeline
 

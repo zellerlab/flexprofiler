@@ -112,7 +112,9 @@ workflow PIPELINE_INITIALISATION {
     //
     // Validate and create channel from databases file provided through params.databases
     //
-    Channel.fromList(samplesheetToList(databases, "assets/schema_database.json"))
+    def database_rows = samplesheetToList(databases, "assets/schema_database.json")
+    validateDatabaseSheet(database_rows)
+    Channel.fromList(database_rows)
         .set { ch_databases }
 
     //
@@ -243,6 +245,36 @@ def validateInputSamplesheet(rows) {
             )
         }
     }
+}
+
+//
+// Validate that each cayman and gqlib database has a matching 'align' and 'annot' row
+//
+def validateDatabaseSheet(rows) {
+    // rows: [ meta, db_path ]
+    def gene_tools = ['cayman', 'gqlib']
+    rows.each { meta, _db_path ->
+        if (meta.tool in gene_tools && !(meta.db_component in ['align', 'annot'])) {
+            error("Please check database sheet -> ${meta.tool} database '${meta.db_name}' has a row without db_component: it must be 'align' or 'annot'.")
+        }
+        if (!(meta.tool in gene_tools) && meta.db_component) {
+            error("Please check database sheet -> ${meta.tool} database '${meta.db_name}' has db_component '${meta.db_component}', which is only used by ${gene_tools.join(' and ')}.")
+        }
+    }
+    // the 'align' and 'annot' rows are matched by tool, db_name and db_type
+    rows.findAll { meta, _db_path -> meta.tool in gene_tools }
+        .groupBy { meta, _db_path -> [meta.tool, meta.db_name] }
+        .each { tool_db_name, db_rows ->
+            def (tool, db_name) = tool_db_name
+            def components = db_rows.collect { meta, _db_path -> meta.db_component }.sort()
+            if (components != ['align', 'annot']) {
+                error("Please check database sheet -> ${tool} database '${db_name}' needs exactly one row with db_component 'align' and one with db_component 'annot', with the same tool and db_name. Found: ${components.join(', ')}")
+            }
+            def db_types = db_rows.collect { meta, _db_path -> meta.db_type ?: 'short;long' }.unique()
+            if (db_types.size() > 1) {
+                error("Please check database sheet -> the 'align' and 'annot' rows of ${tool} database '${db_name}' must have the same db_type. Found: ${db_types.join(', ')}")
+            }
+        }
 }
 
 //
