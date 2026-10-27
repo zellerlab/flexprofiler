@@ -40,18 +40,19 @@ workflow LONGREAD_HOSTREMOVAL {
     SAMTOOLS_FASTQ(SAMTOOLS_VIEW.out.bam, false)
     ch_versions = ch_versions.mix(SAMTOOLS_FASTQ.out.versions.first())
 
-    // Indexing whole BAM for host removal statistics
-    SAMTOOLS_INDEX(MINIMAP2_ALIGN.out.bam)
-    ch_versions = ch_versions.mix(SAMTOOLS_INDEX.out.versions.first())
+    if (!params.skip_hostremoval_qc){
+        // Indexing whole BAM for host removal statistics
+        SAMTOOLS_INDEX(MINIMAP2_ALIGN.out.bam)
+        ch_versions = ch_versions.mix(SAMTOOLS_INDEX.out.versions.first())
 
-    bam_bai = MINIMAP2_ALIGN.out.bam.join(SAMTOOLS_INDEX.out.bai)
+        bam_bai = MINIMAP2_ALIGN.out.bam.join(SAMTOOLS_INDEX.out.bai)
 
-    SAMTOOLS_STATS(bam_bai, [[], reference])
-    ch_versions = ch_versions.mix(SAMTOOLS_STATS.out.versions.first())
-    ch_multiqc_files = ch_multiqc_files.mix(SAMTOOLS_STATS.out.stats)
+        SAMTOOLS_STATS(bam_bai, [[], reference])
+        ch_versions = ch_versions.mix(SAMTOOLS_STATS.out.versions.first())
+        ch_multiqc_files = ch_multiqc_files.mix(SAMTOOLS_STATS.out.stats)
+    }
 
     emit:
-    stats    = SAMTOOLS_STATS.out.stats //channel: [val(meta), [reads  ] ]
     reads    = SAMTOOLS_FASTQ.out.other // channel: [ val(meta), [ reads ] ]
     versions = ch_versions // channel: [ versions.yml ]
     mqc      = ch_multiqc_files

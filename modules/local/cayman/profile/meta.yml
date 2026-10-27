@@ -12,22 +12,29 @@ tools:
       doi: "10.1101/2024.01.08.574624"
       licence: ["MIT"]
       identifier: ""
+  - "gqlib":
+      description: "The profiling library used by cayman, run directly on the alignment from bwa mem"
+      tool_dev_url: "https://github.com/cschu/gqlib"
+      licence: ["MIT"]
+      identifier: ""
 input:
   - - meta:
         type: map
         description: |
           Groovy Map containing sample information
           e.g. `[ id:'test', single_end:false ]`
-    - input:
+    - bam:
         type: file
         description: |
-          Single or paired ended input fastq files
+          Unsorted BAM file from bwa mem against the cayman gene catalogue, with alignments
+          grouped by read name and unmapped reads included
+        pattern: "*.bam"
         ontologies: []
-  - db:
-      type: directory
+  - annot:
+      type: file
       description: |
-        required database files for cayman: GMGC10 sequences (.fna.gz), annotation file (.csv), and bwa index
-        pattern: "*/"
+        cayman annotation file of the gene catalogue
+        pattern: "*.csv"
 output:
   out:
     - - meta:

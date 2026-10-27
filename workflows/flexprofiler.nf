@@ -29,6 +29,7 @@ include { LONGREAD_HOSTREMOVAL          } from '../subworkflows/local/longread_h
 include { SHORTREAD_COMPLEXITYFILTERING } from '../subworkflows/local/shortread_complexityfiltering'
 include { PROFILING                     } from '../subworkflows/local/profiling'
 include { STANDARDISATION_PROFILES      } from '../subworkflows/local/standardisation_profiles'
+include { READ_COUNTS                   } from '../modules/local/read_counts/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -103,6 +104,14 @@ workflow FLEXPROFILER {
                 error("Error: Please check input samplesheet: for single-end reads entry `fastq_2` should be empty")
             }
             return [meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta]
+        }
+        .filter { meta, _run_accession, _instrument_platform, _fastq_1, _fastq_2, _fasta ->
+            // TODO: this is an initial way to simplify development and focus on adding profilers instead than supporting any data modality
+            // Support for long reads and fasta will be enabled on a case-by-case basis depending on need
+            if (meta.is_fasta || meta.instrument_platform != "ILLUMINA") {
+                log.warn("[zellerlab/flexprofiler] currently accepts only ILLUMINA FASTQ as input. Skipping sample ${meta.id}, run ${meta.run_accession}.")
+            }
+            !meta.is_fasta && meta.instrument_platform == "ILLUMINA"
         }
         .branch { meta, _run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
             fastq_pe: !meta.single_end && fastq_2
@@ -259,16 +268,18 @@ workflow FLEXPROFILER {
     }
 
     if (params.perform_runmerging) {
-
         ch_reads_for_cat_branch = ch_shortreads_hostremoved
             .mix(ch_longreads_hostremoved)
             .map { meta, reads ->
                 def meta_new = meta - meta.subMap('run_accession')
-                [meta_new, reads]
+                [meta_new, meta.run_accession, reads]
             }
             .groupTuple()
-            .map { meta, reads ->
-                [meta, reads.flatten()]
+            // groupTuple collects the runs in the order in which they finish, so they
+            // are sorted to concatenate them always in the same order (the result of
+            // mOTUs depends on the order of the reads)
+            .map { meta, run_accessions, reads ->
+                [meta, [run_accessions, reads].transpose().sort { it[0].toString() }.collect { it[1] }.flatten()]
             }
             .branch { meta, reads ->
                 cat: (meta.single_end && reads.size() > 1) || (!meta.single_end && reads.size() > 2)
@@ -296,6 +307,31 @@ workflow FLEXPROFILER {
 
     PROFILING(ch_reads_runmerged, ch_final_dbs)
     ch_versions = ch_versions.mix(PROFILING.out.versions)
+
+    /*
+        MODULE: READ COUNTS
+    */
+
+    // per-sample read counts after each step, parsed from the logs: [ sample, kind, db_name, annot_db_name, file ]
+    ch_read_count_files = PROFILING.out.logs
+        .map { meta, log_file -> [meta.id, meta.tool, meta.db_name, meta.annot_db_name ?: '', log_file] }
+    if (params.perform_shortread_qc) {
+        ch_read_count_files = ch_read_count_files.mix(
+            SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [meta.id, 'fastp', '', '', json] }
+        )
+    }
+    if (params.perform_shortread_hostremoval) {
+        ch_read_count_files = ch_read_count_files.mix(
+            SHORTREAD_HOSTREMOVAL.out.bowtie2_log.map { meta, log_file -> [meta.id, 'bowtie2', '', '', log_file] }
+        )
+    }
+    // the files are staged in numbered folders, in the order of the manifest
+    ch_read_count_files = ch_read_count_files.toSortedList { a, b -> a[0..3].join('\t') <=> b[0..3].join('\t') ?: a[4].name <=> b[4].name }
+    ch_read_count_manifest = ch_read_count_files
+        .map { entries -> entries.withIndex().collect { entry, i -> ([i + 1] + entry[0..3]).join('\t') + '\n' }.join('') }
+        .collectFile(name: 'read_counts_manifest.tsv')
+    READ_COUNTS(ch_read_count_files.map { entries -> entries.collect { entry -> entry[4] } }, ch_read_count_manifest)
+    ch_versions = ch_versions.mix(READ_COUNTS.out.versions)
 
     /*
         SUBWORKFLOW: PROFILING STANDARDISATION
@@ -408,21 +444,27 @@ workflow FLEXPROFILER {
     }
 
     ch_multiqc_files = ch_multiqc_files.mix(PROFILING.out.mqc.collect { it[1] }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(READ_COUNTS.out.mqc)
 
     if (params.run_profile_standardisation) {
         ch_multiqc_files = ch_multiqc_files.mix(STANDARDISATION_PROFILES.out.mqc.collect { it[1] }.ifEmpty([]))
     }
 
-    MULTIQC(
-        ch_multiqc_files.collect(),
-        ch_multiqc_config.toList(),
-        ch_multiqc_custom_config.toList(),
-        ch_multiqc_logo.toList(),
-        [],
-        [],
-    )
+    if (!params.skip_multiqc){
+        MULTIQC(
+            ch_multiqc_files.collect(),
+            ch_multiqc_config.toList(),
+            ch_multiqc_custom_config.toList(),
+            ch_multiqc_logo.toList(),
+            [],
+            [],
+        )
+        multiqc_report = MULTIQC.out.report.toList()
+    } else {
+        multiqc_report = Channel.empty()
+    }
 
     emit:
-    multiqc_report = MULTIQC.out.report.toList() // channel: /path/to/multiqc_report.html
+    multiqc_report = multiqc_report // channel: /path/to/multiqc_report.html
     versions       = ch_versions // channel: [ path(versions.yml) ]
 }

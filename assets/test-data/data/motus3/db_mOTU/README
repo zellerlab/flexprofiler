@@ -1,0 +1,17 @@
+24 Mar 2023
+----------
+
+================= mOTUs database version 3.1.0 =================
+
+This database can be used with the mOTUs tool, see:
+https://github.com/motu-tool/mOTUs
+
+In this database there are 11,915 ref-mOTUs from progenomes2
+and 2,151 meta-mOTUs and 20,128 ext-mOTUs.
+
+The NCBI taxonomy used for this project can be found in:
+https://zenodo.org/record/3357977#.XUMDaJMzbOQ
+
+If you need any additional information, please open an issue on
+the github page (see below).
+

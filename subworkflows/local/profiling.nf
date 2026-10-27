@@ -6,6 +6,8 @@ include { BIOAWK as MOTUS4_RENAME_READS } from '../../modules/nf-core/bioawk/mai
 include { MOTUS4_PROFILE                } from '../../modules/local/motus4/profile/main'
 include { MOTUS_PROFILE  as MOTUS3_PROFILE  } from '../../modules/nf-core/motus/profile'
 include { CAYMAN_PROFILE                } from '../../modules/local/cayman/profile/main'
+include { BWA_MEM as BWA_ALIGN         } from '../../modules/nf-core/bwa/mem/main'
+include { GQLIB_PROFILE_GENES           } from '../../modules/local/gqlib/profile_genes/main'
 
 workflow PROFILING {
     take:
@@ -18,6 +20,7 @@ workflow PROFILING {
     ch_raw_classifications = Channel.empty()
     // These per-read ID taxonomic assingment
     ch_raw_profiles = Channel.empty()
+    ch_logs = Channel.empty()
     // These are count tables
     
     // TODO: add a step to produce a total read count here
@@ -42,28 +45,59 @@ workflow PROFILING {
     //  will have nothing to join to and will be discarded
     // Final output [DUMP: reads_plus_db] [['id':'2612', 'run_accession':'combined', 'instrument_platform':'ILLUMINA', 'single_end':false, 'is_fasta':false, 'type':'short'], <reads_path>/2612.merged.fastq.gz, ['tool':'malt', 'db_name':'malt95', 'db_params':'"-id 90"', 'type':'short'], <db_path>/malt95]
 
-    ch_input_for_profiling = reads
-        .map { meta, input_reads ->
-            [[type: meta.type], meta, input_reads]
-        }
-        .combine(ch_dbs, by: 0)
-        .map { _db_type, meta, input_reads, db_meta, db ->
-            [meta, input_reads, db_meta, db]
-        }
-        .filter{
-            // TODO: this is an initial way to simplify development and focus on adding profilers instead than supporting any data modality
-            // Support for long reads and fasta will be enabled on a case-by-case basis depending on need
-            // I can filter pairs of tools/samples accordingly at this step
-            read_meta, input_reads, db_meta, db ->
-            if (read_meta.is_fasta || read_meta.instrument_platform != "ILLUMINA") {
-                log.warn("[zellerlab/flexprofiler] currently accepts only ILLUMINA FASTQ as input. Skipping sample ${read_meta.id}.")
+    // mOTUs v4 needs read names to be identical across PE mates, without /1 /2 suffix.
+    // Reads are renamed once here, before being paired with the motus4 databases
+    if (params.run_motus4 && params.motus4_rename_reads) {
+        ch_reads_for_rename = reads
+            .branch { meta, _input_reads ->
+                pe: !meta.single_end
+                other: true
             }
-            !read_meta.is_fasta && read_meta.instrument_platform == "ILLUMINA"
+
+        ch_input_for_motus4_rename_reads = ch_reads_for_rename.pe
+            .flatMap { meta, input_reads ->
+                [
+                    [ meta + [paired_idx: 1], input_reads[0] ],
+                    [ meta + [paired_idx: 2], input_reads[1] ]
+                ]
+            }
+
+        MOTUS4_RENAME_READS(ch_input_for_motus4_rename_reads)
+        ch_versions = ch_versions.mix(MOTUS4_RENAME_READS.out.versions.first())
+
+        ch_reads_for_motus4 = MOTUS4_RENAME_READS.out.output
+            .map { meta, input_reads ->
+                [ groupKey(meta.findAll { k, _v -> k != "paired_idx" }, 2), [meta.paired_idx, input_reads] ]
+            }
+            .groupTuple()
+            .map { meta, read_list ->
+                [ meta.getGroupTarget(), read_list.sort { idx_read -> idx_read[0] }.collect { idx_read -> idx_read[1] } ]
+            }
+            .mix(ch_reads_for_rename.other)
+    } else {
+        ch_reads_for_motus4 = reads
+    }
+
+    // cayman and gqlib databases are the gene catalogue fasta (db_path), with its bwa index alongside,
+    // and the annotation file (annot_db_path). The alignment is shared by all the annotations of a
+    // gene catalogue, and between cayman and gqlib: the databases with the same name and gene
+    // catalogue fasta are grouped, so that the reads are aligned only once to each of them
+    ch_dbs_bwa = ch_dbs
+        .filter { _type, db_meta, _db -> db_meta.tool in ['cayman', 'gqlib'] && params["run_${db_meta.tool}"] }
+        .map { type, db_meta, fasta -> [type, db_meta.db_name, fasta, db_meta] }
+        .groupTuple(by: [0, 1, 2])
+        .map { type, db_name, fasta, db_metas ->
+            // the index files are named as created by `bwa index <fasta>`
+            def index = ['amb', 'ann', 'bwt', 'pac', 'sa'].collect { ext -> file("${fasta}.${ext}", checkIfExists: true) }
+            [type, [tool: 'bwa', db_name: db_name, type: type.type, profilers: db_metas], index]
         }
+
+    ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> !(db_meta.tool in ['motus4', 'cayman', 'gqlib']) }.mix(ch_dbs_bwa))
+        .mix(combineReadsWithDatabases(ch_reads_for_motus4, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool == 'motus4' }))
         .branch { _meta, _input_reads, db_meta, _db ->
             motus4: db_meta.tool == 'motus4'
             motus3: db_meta.tool == 'motus3'
-            cayman: db_meta.tool == 'cayman'
+            bwa: db_meta.tool == 'bwa'
             unknown: true
         }
 
@@ -77,56 +111,17 @@ workflow PROFILING {
     // channel element order in sync with each other
 
     if (params.run_motus4) {
-        if (params.motus4_rename_reads) {
-            // mOTUs needs the read names to be identical across PE reads, without /1 /2 suffix
-            // this step takes care of this
-            ch_input_for_motus4_raw = ch_input_for_profiling.motus4
-                .branch { read_meta, input_reads, db_meta, db -> 
-                    se: read_meta.single_end
-                    pe: !read_meta.single_end
-                }
-            
-            ch_input_for_motus4_rename_reads = ch_input_for_motus4_raw.pe
-                .map { read_meta, input_reads, db_meta, db -> [read_meta, input_reads] }
-                .flatMap { meta, input_reads ->
-                    [
-                        [ meta + [paired_idx: 1], input_reads[0] ],
-                        [ meta + [paired_idx: 2], input_reads[1] ]
-                    ]
-                }
-
-            MOTUS4_RENAME_READS(ch_input_for_motus4_rename_reads)
-            ch_versions = ch_versions.mix(MOTUS4_RENAME_READS.out.versions.first())
-
-            ch_input_for_motus4_profile = MOTUS4_RENAME_READS.out.output
-                .map {
-                    meta, input_reads -> [ meta.findAll { k, v -> k != "paired_idx" }, [meta.paired_idx, input_reads] ]
-                }
-                .groupTuple(by: 0)
-                .map {
-                    meta, read_list ->
-                    def r1 = read_list.find { idx, the_read -> idx == 1 }[1]
-                    def r2 = read_list.find { idx, the_read -> idx == 2 }[1]
-                    [ meta, [r1, r2] ]
-                }
-                .join(ch_input_for_motus4_raw.pe.map { read_meta, input_reads, db_meta, db -> [read_meta, db_meta, db] }, failOnDuplicate: true, failOnMismatch: true)
-                .mix(ch_input_for_motus4_raw.se)
-                .multiMap { read_meta, input_reads, db_meta, db ->
-                    reads: [read_meta + db_meta, input_reads]
-                    db: db
-                }
-        } else {
-            ch_input_for_motus4_profile = ch_input_for_profiling.motus4
-                .multiMap { read_meta, input_reads, db_meta, db ->
-                    reads: [read_meta + db_meta, input_reads]
-                    db: db
-                }
-        }
+        ch_input_for_motus4_profile = ch_input_for_profiling.motus4
+            .multiMap { read_meta, input_reads, db_meta, db ->
+                reads: [read_meta + db_meta, input_reads]
+                db: db
+            }
 
         MOTUS4_PROFILE(ch_input_for_motus4_profile.reads, ch_input_for_motus4_profile.db)
         ch_versions = ch_versions.mix(MOTUS4_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS4_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS4_PROFILE.out.log)
+        ch_logs = ch_logs.mix(MOTUS4_PROFILE.out.log)
     }
 
     if (params.run_motus3) {
@@ -141,24 +136,60 @@ workflow PROFILING {
         ch_versions = ch_versions.mix(MOTUS3_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS3_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS3_PROFILE.out.log)
+        ch_logs = ch_logs.mix(MOTUS3_PROFILE.out.log)
+    }
+
+    if (params.run_cayman || params.run_gqlib) {
+        ch_input_for_align = ch_input_for_profiling.bwa
+            .multiMap { read_meta, input_reads, db_meta, db ->
+                reads: [read_meta + db_meta, input_reads]
+                db: [read_meta + db_meta, db]
+            }
+
+        // the bam is not sorted, as cayman and gqlib expect the alignments grouped by read
+        BWA_ALIGN(ch_input_for_align.reads, ch_input_for_align.db, [[], []], false)
+
+        // spread out each alignment to the profilers using its gene catalogue, each with its annotation file
+        ch_bams_for_profiling = BWA_ALIGN.out.bam
+            .flatMap { meta, bam ->
+                meta.profilers.collect { db_meta -> [meta.subMap(meta.keySet() - 'profilers') + db_meta, bam, file(db_meta.annot_db_path)] }
+            }
+            .branch { meta, _bam, _annot ->
+                cayman: meta.tool == 'cayman'
+                gqlib: meta.tool == 'gqlib'
+            }
     }
 
     if (params.run_cayman) {
-        ch_input_for_cayman = ch_input_for_profiling.cayman
-            .multiMap { read_meta, input_reads, db_meta, db ->
-                reads: [read_meta + db_meta, input_reads]
-                db: db
+        ch_input_for_cayman = ch_bams_for_profiling.cayman
+            .multiMap { meta, bam, annot ->
+                bam: [meta, bam]
+                annot: annot
             }
 
-        CAYMAN_PROFILE(ch_input_for_cayman.reads, ch_input_for_cayman.db)
+        CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.annot)
         ch_versions = ch_versions.mix(CAYMAN_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
-        ch_multiqc_files = ch_multiqc_files.mix(CAYMAN_PROFILE.out.log)
+        ch_logs = ch_logs.mix(CAYMAN_PROFILE.out.log)
+    }
+
+    if (params.run_gqlib) {
+        ch_input_for_gqlib = ch_bams_for_profiling.gqlib
+            .multiMap { meta, bam, annot ->
+                bam: [meta, bam]
+                annot: annot
+            }
+
+        GQLIB_PROFILE_GENES(ch_input_for_gqlib.bam, ch_input_for_gqlib.annot)
+        ch_versions = ch_versions.mix(GQLIB_PROFILE_GENES.out.versions.first())
+        ch_raw_profiles = ch_raw_profiles.mix(GQLIB_PROFILE_GENES.out.profiles)
+        ch_logs = ch_logs.mix(GQLIB_PROFILE_GENES.out.log)
     }
 
     emit:
     classifications = ch_raw_classifications
     profiles        = ch_raw_profiles // channel: [ val(meta), [ reads ] ] - should be text files or biom
+    logs            = ch_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman and gqlib, with meta.tool and meta.db_name
     versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }
@@ -167,21 +198,15 @@ workflow PROFILING {
 // Custom Functions
 
 /**
-* Combine profiles with their original database, then separate into two channels.
+* Pair reads with all databases of the matching read type (short/long).
 *
-* The channel elements are assumed to be tuples one of [ meta, profile ], and the
-* database to be of [db_key, meta, database_file].
-*
-* @param ch_profile A channel containing a meta and the profilign report of a given profiler
-* @param ch_database A channel containing a key, the database meta, and the database file/folders itself
-* @return A multiMap'ed output channel with two sub channels, one with the profile and the other with the db
+* @param ch_reads A channel of [ meta, reads ], where meta contains the key `type`
+* @param ch_databases A channel of [ [type: type], db_meta, db ]
+* @return A channel of [ meta, reads, db_meta, db ]
 */
-def combineProfilesWithDatabase(ch_profile, ch_database) {
-    return ch_profile
-        .map { meta, profile -> [meta.db_name, meta, profile] }
-        .combine(ch_database, by: 0)
-        .multiMap { _key, meta, profile, _db_meta, db ->
-            profile: [meta, profile]
-            db: db
-        }
+def combineReadsWithDatabases(ch_reads, ch_databases) {
+    return ch_reads
+        .map { meta, input_reads -> [[type: meta.type], meta, input_reads] }
+        .combine(ch_databases, by: 0)
+        .map { _db_type, meta, input_reads, db_meta, db -> [meta, input_reads, db_meta, db] }
 }

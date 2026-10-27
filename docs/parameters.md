@@ -111,7 +111,9 @@ Options for per-sample run-merging
 | `run_motus4` | Turn on profiling with mOTUs v4. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
 | `run_motus3` | Turn on profiling with mOTUs v3. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
 | `motus4_rename_reads` | Whether to fix individual PE read names so that they are identical and do not have /1 or /2 suffixes <details><summary>Help</summary><small>mOTUs 4 requires PE reads to have identical names. If the individual read names from the fastq @ lines have suffixes /1 and /2, mOTUs will fail. This step renames the reads throughout the file by removing the /1 or /2 suffix. Note that if PE reads are mismatched this step does not fix it, for that use `params.repair_pe_reads`</small></details>| `boolean` |  |  |  |
-| `run_cayman` | Turn on profiling with cayman. Requires database to be present CSV file passed to --databases | `boolean` |  |  |  |
+| `run_cayman` | Turn on profiling with cayman. Requires database CSV file passed to --databases <details><summary>Help</summary><small>Each cayman database is a row of the database CSV with db_path the gene catalogue fasta that the reads are aligned to with bwa mem, and annot_db_path the cayman annotation table (.csv), named by annot_db_name. The bwa index files, as created by `bwa index <fasta>` (<fasta>.amb, .ann, .bwt, .pac, .sa), must be in the same directory as the fasta. The pipeline does not build the bwa index: it must be created beforehand with `bwa index <fasta>` (see the database documentation). The fasta itself is not read by the pipeline, only used to locate the index files, but it must exist. Several annotations of the same gene catalogue can be profiled by adding a row for each with the same db_name and db_path and a different annot_db_name. The reads are aligned only once to each gene catalogue: all the cayman and gqlib rows with the same db_name and db_path share the alignment.</small></details>| `boolean` |  |  |  |
+| `run_gqlib` | Turn on gene-level profiling with gqlib. Requires database CSV file passed to --databases <details><summary>Help</summary><small>Each gqlib database is a row of the database CSV with db_path the gene catalogue fasta that the reads are aligned to with bwa mem, and annot_db_path the gqlib annotation database (.sqlite3), named by annot_db_name. The bwa index files, as created by `bwa index <fasta>` (<fasta>.amb, .ann, .bwt, .pac, .sa), must be in the same directory as the fasta. The pipeline does not build the bwa index: it must be created beforehand with `bwa index <fasta>` (see the database documentation). The fasta itself is not read by the pipeline, only used to locate the index files, but it must exist. Reads are counted on all genes of the catalogue, and the gene counts are summarised for each functional category of the annotation database. Several annotations of the same gene catalogue can be profiled by adding a row for each with the same db_name and db_path and a different annot_db_name. The reads are aligned only once to each gene catalogue: all the cayman and gqlib rows with the same db_name and db_path share the alignment.</small></details>| `boolean` |  |  |  |
+| `save_bwa_alignments` | Save the bwa mem alignments of the reads to the cayman and gqlib gene catalogues <details><summary>Help</summary><small>The unsorted BAM files are saved to `--outdir` under `bwa/<db_name>/`. The alignments contain all hits of each read (`bwa mem -a`) and can be large.</small></details>| `boolean` |  |  |  |
 
 ## Postprocessing and visualisation options
 
@@ -156,3 +158,11 @@ Less common options for the pipeline, typically set in a config file.
 | `help` | Display the help message. | `['boolean', 'string']` |  |  |  |
 | `help_full` | Display the full detailed help message. | `boolean` |  |  |  |
 | `show_hidden` | Display hidden parameters in the help message (only works when --help or --help_full are provided). | `boolean` |  |  |  |
+
+## Other parameters
+
+| Parameter | Description | Type | Default | Required | Hidden |
+|-----------|-----------|-----------|-----------|-----------|-----------|
+| `skip_multiqc` | Should the generation of the multiwc report be skipped? | `boolean` |  |  |  |
+| `skip_postprocessing_qc` | Specify to skip sequencing quality control of preprocessed sequencing reads | `boolean` |  |  |  |
+| `skip_hostremoval_qc` | Skip the generation of alignment statistics for hostremoval | `boolean` |  |  |  |

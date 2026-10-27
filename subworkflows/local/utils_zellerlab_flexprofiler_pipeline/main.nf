@@ -97,13 +97,24 @@ workflow PIPELINE_INITIALISATION {
     // Validate and create channel from input file provided through params.input
     //
 
-    Channel.fromList(samplesheetToList(input, "assets/schema_input.json"))
+    def samplesheet_rows = samplesheetToList(input, "assets/schema_input.json")
+    if (params.perform_runmerging) {
+        validateInputSamplesheet(samplesheet_rows)
+    }
+    // Samples with more than one run are published as analysis-ready reads only after run merging
+    def runs_per_sample = samplesheet_rows.countBy { row -> row[0].id }
+    Channel.fromList(samplesheet_rows)
+        .map { meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
+            [meta + [is_multirun: runs_per_sample[meta.id] > 1], run_accession, instrument_platform, fastq_1, fastq_2, fasta]
+        }
         .set { ch_samplesheet }
 
     //
     // Validate and create channel from databases file provided through params.databases
     //
-    Channel.fromList(samplesheetToList(databases, "assets/schema_database.json"))
+    def database_rows = samplesheetToList(databases, "assets/schema_database.json")
+    validateDatabaseSheet(database_rows)
+    Channel.fromList(database_rows)
         .set { ch_databases }
 
     //
@@ -128,14 +139,12 @@ workflow PIPELINE_INITIALISATION {
     if (params.shortread_complexityfilter_tool == 'fastp' && (params.perform_shortread_qc == false || params.shortread_qc_tool != 'fastp')) {
         error("ERROR: [zellerlab/flexprofiler] cannot use fastp complexity filtering if preprocessing not turned on and/or tool is not fastp. Please specify --perform_shortread_qc and/or --shortread_qc_tool 'fastp'")
     }
+    // The reference is needed also when an index is supplied, e.g. for host removal statistics
     if (params.perform_shortread_hostremoval && !params.hostremoval_reference) {
-        error("ERROR: [zellerlab/flexprofiler] --shortread_hostremoval requested but no --hostremoval_reference FASTA supplied. Check input.")
+        error("ERROR: [zellerlab/flexprofiler] --perform_shortread_hostremoval requested but no --hostremoval_reference FASTA supplied (required also when providing --shortread_hostremoval_index). Check input.")
     }
-    if (params.perform_shortread_hostremoval && !params.hostremoval_reference && params.shortread_hostremoval_index) {
-        error("ERROR: [zellerlab/flexprofiler] --shortread_hostremoval_index provided but no --hostremoval_reference FASTA supplied. Check input.")
-    }
-    if (params.perform_longread_hostremoval && !params.hostremoval_reference && params.longread_hostremoval_index) {
-        error("ERROR: [zellerlab/flexprofiler] --longread_hostremoval_index provided but no --hostremoval_reference FASTA supplied. Check input.")
+    if (params.perform_longread_hostremoval && !params.hostremoval_reference) {
+        error("ERROR: [zellerlab/flexprofiler] --perform_longread_hostremoval requested but no --hostremoval_reference FASTA supplied (required also when providing --longread_hostremoval_index). Check input.")
     }
     //if (!params.shortread_qc_mergepairs && params.run_malt) {
     //    log.warn("[zellerlab/flexprofiler] MALT does not accept uncollapsed paired-reads. Pairs will be profiled as separate files.")
@@ -213,18 +222,54 @@ workflow PIPELINE_COMPLETION {
     FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-// Validate channels from input samplesheet
+// Validate that all runs of each sample can be merged together
 //
-def validateInputSamplesheet(input) {
-    def (metas, fastqs, fasta) = input[1..3]
-
-    // Check that multiple runs of the same sample are of the same datatype i.e. single-end / paired-end
-    def endedness_ok = metas.collect { meta -> meta.single_end }.unique().size == 1
-    if (!endedness_ok) {
-        error("Please check input samplesheet -> Multiple runs of a sample must be of the same datatype i.e. single-end or paired-end: ${metas[0].id}")
+def validateInputSamplesheet(rows) {
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
+    // With pair merging, paired-end reads become single-end before run merging, so endedness can differ
+    def check_endedness = !(params.perform_shortread_qc && params.shortread_qc_mergepairs)
+    rows.groupBy { row -> row[0].id }.each { sample, sample_rows ->
+        def datatypes = sample_rows.collect { row ->
+            def datatype = [row[2], row[5] ? 'FASTA' : 'FASTQ']
+            if (check_endedness) {
+                datatype << (row[4] ? 'paired-end' : 'single-end')
+            }
+            datatype
+        }.unique()
+        if (datatypes.size() > 1) {
+            error(
+                "Please check input samplesheet -> with --perform_runmerging, all runs of a sample must have the same " +
+                "instrument platform, file type (FASTQ/FASTA) and, unless pairs are merged with --shortread_qc_mergepairs, " +
+                "endedness (single/paired-end).\n" +
+                "Sample '${sample}' has: ${datatypes.collect { datatype -> datatype.join(' ') }.join('; ')}"
+            )
+        }
     }
+}
 
-    return [metas[0], fastqs, fasta]
+//
+// Validate the annotation columns, used only by cayman and gqlib, and that the alignment can be shared
+//
+def validateDatabaseSheet(rows) {
+    // rows: [ meta, db_path ]
+    def gene_tools = ['cayman', 'gqlib']
+    rows.each { meta, _db_path ->
+        if (meta.tool in gene_tools && !(meta.annot_db_name && meta.annot_db_path)) {
+            error("Please check database sheet -> ${meta.tool} database '${meta.db_name}' needs both annot_db_name and annot_db_path.")
+        }
+        if (!(meta.tool in gene_tools) && (meta.annot_db_name || meta.annot_db_path)) {
+            error("Please check database sheet -> ${meta.tool} database '${meta.db_name}' has annot_db_name or annot_db_path, which are only used by ${gene_tools.join(' and ')}.")
+        }
+    }
+    // the reads are aligned once per db_name, shared by all the annotations and by cayman and gqlib
+    rows.findAll { meta, _db_path -> meta.tool in gene_tools }
+        .groupBy { meta, _db_path -> meta.db_name }
+        .each { db_name, db_rows ->
+            def db_paths = db_rows.collect { _meta, db_path -> db_path.toString() }.unique()
+            if (db_paths.size() > 1) {
+                error("Please check database sheet -> the ${gene_tools.join(' and ')} rows with db_name '${db_name}' must all have the same db_path. Found: ${db_paths.join(', ')}")
+            }
+        }
 }
 
 //
@@ -275,6 +320,7 @@ def toolCitationText() {
         "Taxonomic classification or profiling was carried out with:",
         params.run_motus4 ? "mOTUs 4 (Ruscheweyh et al. 2022)," : "",
         params.run_cayman ? "Cayman (Ducarmon et al. 2026)," : "",
+        params.run_gqlib ? "gqlib (https://github.com/cschu/gqlib)," : "",
         ".",
     ].join(' ').trim()
 
@@ -297,7 +343,8 @@ def toolCitationText() {
         params.perform_longread_hostremoval ? text_longreadhostremoval : "",
         [
             params.run_motus4,
-            params.run_cayman
+            params.run_cayman,
+            params.run_gqlib
         ].any()
             ? text_classification
             : "",
@@ -348,6 +395,7 @@ def toolBibliographyText() {
     def text_classification = [
         params.run_motus4 ? "<li>Ruscheweyh, H.-J., Milanese, A., Paoli, L., Karcher, N., Clayssen, Q., Keller, M. I., Wirbel, J., Bork, P., Mende, D. R., Zeller, G., & Sunagawa, S. (2022). Cultivation-independent genomes greatly expand taxonomic-profiling capabilities of mOTUs across various environments. Microbiome, 10(1), 212. <a href=\"https://doi.org/10.1186/s40168-022-01410-z\">10.1186/s40168-022-01410-z</a></li>" : "",
         params.run_cayman ? "<li>Ducarmon, Q.R., Karcher, N., Giri, S. et al. Cayman enables large-scale analysis of gut microbiome carbohydrate-active enzyme repertoires. Nat Microbiol (2026). <a href=\"https://doi.org/10.1038/s41564-026-02318-2\">https://doi.org/10.1038/s41564-026-02318-2</a></li>" : "",
+        params.run_gqlib ? "<li>Schudoma, C. gqlib: gene quantification library (gffquant). <a href=\"https://github.com/cschu/gqlib\">https://github.com/cschu/gqlib</a></li>" : "",
     ].join(' ').trim()
 
     def text_visualisation = [

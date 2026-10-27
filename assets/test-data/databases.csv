@@ -1,0 +1,5 @@
+tool,db_name,db_params,db_path,annot_db_name,annot_db_path
+motus4,db_mOTU,,../../../assets/test-data/data/motus4/db_mOTU,,
+motus3,db_mOTU,,../../../assets/test-data/data/motus3/db_mOTU,,
+cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,../../../assets/test-data/data/gmgc10/GMGC10.human-gut.95nr.0.5.percent.prevalence.test_subset.fna.gz,cayman_v3,../../../assets/test-data/data/cayman/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.test_subset.csv
+gqlib,GMGC10.human-gut.95nr.0.5.percent.prevalence,,../../../assets/test-data/data/gmgc10/GMGC10.human-gut.95nr.0.5.percent.prevalence.test_subset.fna.gz,emapper_v2.1.7,../../../assets/test-data/data/gqlib/GMGC10.human-gut.95nr.0.5pv.20230422.2101.test_subset.sqlite3

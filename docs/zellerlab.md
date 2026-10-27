@@ -9,18 +9,20 @@ To run the pipeline you need to set up a `params.yaml` file with the required pa
 An example file that you can copy and edit to suit your needs is [here](../utils/params.yaml).
 
 ## Profiles
-A set of Nextflow profiles has been developped to standardise microbiome profiling in the Zellerlab.
+A set of Nextflow profiles has been developed to standardise microbiome profiling in the Zellerlab.
 These profiles are defined [here](../conf/zellerlab.config).
 
-You can load them by appending `-p <profile name>` to your nextflow command.
-Multiple profiles can be specified with a comma (`-p <profle1>,<profile2>`).
+You can load them by appending `-profile <profile name>` to your nextflow command.
+Multiple profiles can be specified with a comma (`-profile <profile1>,<profile2>`).
 
-For reproducibility, always use singularity to run the pipeline (by specifying the nextflow profile `-p singularity`).
+For reproducibility, always use singularity to run the pipeline (by specifying the nextflow profile `-profile singularity`).
 Note that you need to have singularity installed for this to work.
 
 The following profiles are available:
 - `zellerlab_shark`: for use on the LUMC shark cluster, sets paths to databases etc.
 - `zellerlab_metagenomics`: for short read metagenomics profiling, sets defaults for preprocessing and collation
+- `zellerlab_minimal`: skip all non-essential QC steps, useful for large meta-analysis runs
+- `zellerlab_alice`: for testing only, on the ALICE cluster, sets paths to databases etc.
 
 ## Containers and environments
 All the pipeline steps are set up to use appropriate Singularity containers, so you need to have the singularity profile enabled (see above) and the singularity program should be available in your environment (for the SHARK cluster if you use [this script](../utils/run_shark.sh) the singularity module is automatically loaded so you don't need to do anything).

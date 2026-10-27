@@ -1,5 +1,3 @@
-import TestUtils
-
 nextflow_pipeline {
     name "Test motus4"
     script "../main.nf"
@@ -8,62 +6,32 @@ nextflow_pipeline {
     profile "test_motus4"
 
     test("test_motus4") {
-        setup {
-            // download mOTU database
-            def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus4/db_mOTU"
-            def db_mOTU_url    = "https://zenodo.org/records/17668622/files/db_mOTU.tar.gz"
-            def db_mOTU_marker = "${db_mOTU}/db_mOTU/db_mOTU.downloaded"
-            def required_files_md5 = [
-                "${db_mOTU}/db_mOTU/db_mOTU.downloaded"                    : "d41d8cd98f00b204e9800998ecf8427e",
-                "${db_mOTU}/db_mOTU/mOTUs3.1_2_mOTUs4.0.map.tsv.gz"        : "712e563391ddd56d4418974d45bf5b17",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db"                          : "269b81f94bdd8eca9e9ec2b137fe907c",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.blocklist.gz"             : "be5d306ffced844d6bd36d668ab90238",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz"                   : "97feea5f2670c2afa4b0f2ae6cd935cb",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.amb"               : "b5773280bde9c07eca6e2e54b1a726ce",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.ann"               : "fcbedd5d5a87768a3334f8bc0f771d02",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.bwt"               : "ac6b286d1a2bc5748245f1d7a6e3846f",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.pac"               : "e9d3c2d29409773958be27372e3d4249",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.db.fna.gz.sa"                : "0ea923181850c8d38491f0b0bde705a1",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.genomes.tsv.gz"              : "7b61075131725f1a891370c2ad9d5f97",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.gtdb.taxonomy.80mv.tsv.gz"   : "2a4a2894714705f152a80c1cccee376d",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.gtdb.taxonomy.rep.tsv.gz"    : "738d5939b0ba86e890d13293de7194c7",
-                "${db_mOTU}/db_mOTU/mOTUsv4.0.map.tsv.gz"                  : "4093387daffedbd7aa3dce69a9edddaf",
-            ]
-            TestUtils.fetchArchive( [ db_mOTU_url ], db_mOTU, db_mOTU_marker, required_files_md5 )
-            
-            // create database sheet
-            TestUtils.makeDatabaseSheet( launchDir, "motus4,db_mOTU,,${db_mOTU}/db_mOTU\n" )
-
-            // download hostremoval reference genome and index
-            TestUtils.fetchHostremovalT2TGenome( baseDir )
-
-            // copy test data over
-            TestUtils.stageTestData( baseDir )
-        }
-
         when {
             params {
-                outdir                        = "${outputDir}"
-                databases                     = "${launchDir}/database.csv"
-                hostremoval_reference         = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
-                shortread_hostremoval_index   = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/bowtie2_index/chm13v2.0"
+                outdir = "${outputDir}"
             }
         }
 
         then {
-            def stable_name         = getAllFilesFromDir( params.outdir, includeDir: true , ignore: TestUtils.getUnstableName(), relative: true )
-            def software_versions   = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
-            def motus4_merge_report = file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" )
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
+            def motus4_merge      = file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" )
+            // the rows of the merged motus report for some mOTUs, with the counts of each sample (without the taxonomy)
+            def rows_of           = { lines, motus -> lines.collect { line -> line.split( "\t" ) as List }.findAll { cols -> cols[0] in motus }.collect { cols -> ( [ cols[0] ] + cols[2..-1] ).join( "\t" ) } }
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+                // Collinsella sp900768795, Methanobrevibacter_A smithii and the unassigned
+                { assert snapshot ( rows_of( motus4_merge.readLines(), [ 'mOTU', 'mOTUv4.0_014686', 'mOTUv4.0_000924', 'mOTUv4.0_unassigned' ] ) ).match( "counts" ) },
                 { assert snapshot (
-                    getAllFilesFromDir ( "${params.outdir}/motus4", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 's__Collinsella sp900768795' " + file.text.contains( "s__Collinsella sp900768795" ) },
-                    getAllFilesFromDir ( "${params.outdir}/motus4", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished mOTUs': " + file.text.contains ( "Finished mOTUs" ) },
-                    "${ motus4_merge_report.getName() } contains 'unassigned': " + motus4_merge_report.text.contains( 'mOTUv4.0_unassigned	d__;p___A;c__;o__;f__;g__;s__' ),
-                    "${ motus4_merge_report.getName() } contains 'Methanobrevibacter_A smithii': " + motus4_merge_report.text.contains( 's__Methanobrevibacter_A smithii' ),
+                    getAllFilesFromDir( "${params.outdir}/motus4", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 's__Collinsella sp900768795' " + file.text.contains( "s__Collinsella sp900768795" ) },
+                    getAllFilesFromDir( "${params.outdir}/motus4", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished mOTUs': " + file.text.contains( "Finished mOTUs" ) },
+                    "${motus4_merge.getName()} contains 'unassigned': " + motus4_merge.text.contains( "mOTUv4.0_unassigned\td__;p___A;c__;o__;f__;g__;s__" ),
+                    "${motus4_merge.getName()} contains 'Methanobrevibacter_A smithii': " + motus4_merge.text.contains( "s__Methanobrevibacter_A smithii" ),
                 ).match("motus4") },
             )
         }

@@ -1,0 +1,45 @@
+nextflow_pipeline {
+    name "Test read names with /1 and /2 suffixes"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_read_suffixes"
+    profile "test_all"
+
+    test("test_read_suffixes") {
+        when {
+            params {
+                // the reads of sample 2613, with the /1 and /2 suffixes in the read names instead of in the comments
+                input                   = "${baseDir}/assets/test-data/samplesheet_read_suffixes.csv"
+                outdir                  = "${outputDir}"
+                // mOTUs v4 fails on PE reads with different names
+                motus4_rename_reads     = true
+            }
+        }
+
+        then {
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
+            def gene_catalogue    = "GMGC10.human-gut.95nr.0.5.percent.prevalence"
+            // the rows of a table for some features (first column), and the same without the second column (the taxonomy of motus)
+            def rows_of           = { lines, features -> lines.findAll { line -> line.split( "\t" )[0] in features } }
+            def motus_rows_of     = { lines, motus -> rows_of( lines, motus ).collect { line -> line.split( "\t" ) as List }.collect { cols -> ( [ cols[0] ] + cols[2..-1] ).join( "\t" ) } }
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                // the two mates are renamed for motus4
+                { assert workflow.trace.succeeded().count { task -> task.name.contains( "MOTUS4_RENAME_READS" ) } == 2 },
+                // the counts should be the same as for sample 2613 in the other tests, whose read names have no suffix
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+                { assert snapshot (
+                    motus_rows_of( file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" ).readLines(), [ 'mOTU', 'mOTUv4.0_014686', 'mOTUv4.0_000924', 'mOTUv4.0_unassigned' ] ),
+                    motus_rows_of( file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" ).readLines(), [ '#mOTU', 'ref_mOTU_v31_03626', 'ref_mOTU_v31_03695', 'unassigned' ] ),
+                    rows_of( path( "${params.outdir}/cayman/merge/${gene_catalogue}/cayman_v3/${gene_catalogue}_cayman_v3.cazy.uniq_raw.txt.gz" ).linesGzip, [ 'feature', 'total_reads', 'filtered_reads', 'GH13', 'CBM48' ] ),
+                    rows_of( path( "${params.outdir}/gqlib/merge/${gene_catalogue}/emapper_v2.1.7/${gene_catalogue}_emapper_v2.1.7.gene_counts.uniq_raw.txt.gz" ).linesGzip, [ 'gene', 'GMGC10.266_871_379.GLGB', 'GMGC10.266_660_280.AMY' ] ),
+                ).match( "counts" ) },
+            )
+        }
+    }
+}

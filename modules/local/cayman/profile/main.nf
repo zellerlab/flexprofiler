@@ -1,16 +1,15 @@
-// NOTE: cayman returns error 1 for out of memory
 process CAYMAN_PROFILE {
     tag "$meta.id"
     label 'process_medium'
 
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/cayman:0.10.2--pyh7e72e81_0'
-        : 'biocontainers/cayman:0.10.2--pyh7e72e81_0'}"
+        ? 'https://depot.galaxyproject.org/singularity/gqlib:2.14.4--pyhdfd78af_0'
+        : 'biocontainers/gqlib:2.14.4--pyhdfd78af_0'}"
 
     input:
-    tuple val(meta), path(reads)
-    path db
+    tuple val(meta), path(bam)
+    path annot
 
     output:
     tuple val(meta), path("*.cazy.txt.gz"       ), emit: out
@@ -25,23 +24,30 @@ process CAYMAN_PROFILE {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def inputs = meta.single_end ? "--singles $reads" : "-1 ${reads[0]} -2 ${reads[1]}"
-    def bwa_index = task.ext.bwa_index ?: "${db}/*.fna.gz"
-    def annot_file = task.ext.annot_file ?: "${db}/*.csv"
     """
-    cayman profile \\
-        $inputs \\
+    # `cayman profile` runs bwa mem itself, then the gqlib domain profiler: the alignment is done
+    # separately by BWA_ALIGN, and the gqlib domain profiler is run directly on it, as cayman 0.13.0
+    # does. The cayman annotation csv is in the hmmer format.
+    python -m gqlib \\
+        --mode domain \\
+        --db_format hmmer \\
+        --bam $bam \\
+        --db $annot \\
         --out_prefix $prefix \\
-        $annot_file \\
-        $bwa_index \\
         $args \\
         &> ${prefix}.cayman.log
-        
-    VERSION=\$(cayman --version|sed 's/cayman //')
+
+    # gqlib names the category of the annotation `feature`, cayman names it `cazy`, and cayman does
+    # not report the `category` row (the counts of the reads assigned to any CAZy domain)
+    gzip -cd ${prefix}.feature.txt.gz \\
+        | awk -F '\\t' '\$1 != "category"' \\
+        | gzip -n > ${prefix}.cazy.txt.gz
+
+    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        cayman: \$VERSION
+        gqlib: \$VERSION
     END_VERSIONS
     """
 
@@ -53,11 +59,11 @@ process CAYMAN_PROFILE {
     touch "${prefix}.gene_counts.txt.gz"
     touch "${prefix}.cayman.log"
 
-    VERSION=\$(cayman --version|sed 's/cayman //')
+    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        cayman: \$VERSION
+        gqlib: \$VERSION
     END_VERSIONS
     """
 

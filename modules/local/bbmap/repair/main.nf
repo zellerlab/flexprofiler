@@ -26,18 +26,17 @@ process BBMAP_REPAIR {
     out_reads = ( interleave )  ? "out=${prefix}_repaired.fastq.gz outs=${prefix}_singleton.fastq.gz"
                                 : "out=${prefix}_1_repaired.fastq.gz out2=${prefix}_2_repaired.fastq.gz outs=${prefix}_singleton.fastq.gz"
     """
-    maxmem=\$(echo \"$task.memory\"| sed 's/ GB/g/g')
     repair.sh \\
-        -Xmx\$maxmem \\
+        -Xmx${(task.memory.toMega()*0.85) as int}m \\
         $in_reads \\
         $out_reads \\
-        threads=${task.cpus}
+        threads=${task.cpus} \\
         ${args} \\
         &> ${prefix}.repair.sh.log
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        bbmap: \$(bbversion.sh | grep -v "Duplicate cpuset | grep -v [warning]")
+        bbmap: \$(bbversion.sh 2>&1 | grep -F -v -e "Duplicate cpuset" -e "[warning]")
     END_VERSIONS
     """
 
@@ -51,7 +50,7 @@ process BBMAP_REPAIR {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        bbmap: \$(bbversion.sh | grep -v "Duplicate cpuset")
+        bbmap: \$(bbversion.sh 2>&1 | grep -F -v -e "Duplicate cpuset" -e "[warning]")
     END_VERSIONS
     """
 }

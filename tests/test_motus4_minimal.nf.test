@@ -1,0 +1,39 @@
+nextflow_pipeline {
+    name "Test motus4 minimal"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_motus4_minimal"
+    profile "test_motus4,zellerlab_minimal"
+
+    test("test_motus4_minimal") {
+        when {
+            params {
+                outdir = "${outputDir}"
+            }
+        }
+
+        then {
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
+            def motus4_merge      = file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" )
+            // the rows of the merged motus report for some mOTUs, with the counts of each sample (without the taxonomy)
+            def rows_of           = { lines, motus -> lines.collect { line -> line.split( "\t" ) as List }.findAll { cols -> cols[0] in motus }.collect { cols -> ( [ cols[0] ] + cols[2..-1] ).join( "\t" ) } }
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+                // Collinsella sp900768795, Methanobrevibacter_A smithii and the unassigned
+                { assert snapshot ( rows_of( motus4_merge.readLines(), [ 'mOTU', 'mOTUv4.0_014686', 'mOTUv4.0_000924', 'mOTUv4.0_unassigned' ] ) ).match( "counts" ) },
+                { assert snapshot (
+                    getAllFilesFromDir( "${params.outdir}/motus4", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 's__Collinsella sp900768795' " + file.text.contains( "s__Collinsella sp900768795" ) },
+                    getAllFilesFromDir( "${params.outdir}/motus4", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished mOTUs': " + file.text.contains( "Finished mOTUs" ) },
+                    "${motus4_merge.getName()} contains 'unassigned': " + motus4_merge.text.contains( "mOTUv4.0_unassigned\td__;p___A;c__;o__;f__;g__;s__" ),
+                    "${motus4_merge.getName()} contains 'Methanobrevibacter_A smithii': " + motus4_merge.text.contains( "s__Methanobrevibacter_A smithii" ),
+                ).match("motus4") },
+            )
+        }
+    }
+}

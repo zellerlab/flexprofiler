@@ -2,7 +2,7 @@
 
 ## Introduction
 
-zellerlab/flexprofiler is a pipeline for highly-parallelised taxonomic anf functional classification and profiling of shotgun metagenomic and 16S data across multiple tools simultaneously.
+zellerlab/flexprofiler is a pipeline for highly-parallelised taxonomic and functional classification and profiling of shotgun metagenomic and 16S data across multiple tools simultaneously.
 In addition to multiple classification and profiling tools, at the same time it allows you to performing taxonomic classification and profiling across multiple databases and settings per tool, as well as produces standardised output tables to allow immediate cross comparison of results between tools.
 
 > [!NOTE]
@@ -26,7 +26,7 @@ zellerlab/flexprofiler also includes optional pre-processing (adapter clipping, 
 These are also opt in with a `--perform_<step>` flag.
 In some cases, the pre- and post-processing steps may also require additional files. Please check the parameters tab of this documentation for more information.
 Please see the rest of this page for information about how to prepare input samplesheets and databases and how to run Nextflow pipelines.
-See the [parameters](docs/parameters.md) documentation for more information about specific options the pipeline also offers.
+See the [parameters](parameters.md) documentation for more information about specific options the pipeline also offers.
 
 ## Samplesheet inputs
 
@@ -35,7 +35,7 @@ For PACBIO_SMRT data, please convert BAM files to FASTQ format before input.
 You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline.
 Use this parameter to specify its location.
 It has to be a comma-separated file with 6 columns, and a header row as shown in the examples below.
-Furthermore, zellerlab/flexprofiler also requires a second comma-separated file of 3 columns with a header row as in the examples below.
+Furthermore, zellerlab/flexprofiler also requires a second comma-separated file, the database sheet, with a header row as in the examples below (see [Full database sheet](#full-database-sheet)).
 This samplesheet is then specified on the command line as follows:
 
 ```console
@@ -46,13 +46,14 @@ This samplesheet is then specified on the command line as follows:
 
 The `sample` identifiers have to be the same when you have re-sequenced the same sample more than once e.g. to increase sequencing depth.
 The pipeline will concatenate different runs FASTQ files of the same sample before performing profiling, when `--perform_runmerging` is supplied.
+All runs of a sample must then have the same instrument platform and file type (FASTQ or FASTA), otherwise the pipeline stops with an error.
 Below is an example for the same sample sequenced across 3 lanes:
 
 ```csv title="samplesheet.csv"
 sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
 2612,lane1,ILLUMINA,2612_lane1_R1.fq.gz,2612_lane1_R2.fq.gz,
 2612,lane2,ILLUMINA,2612_lane2_R1.fq.gz,2612_lane2_R2.fq.gz,
-2612,lane3,ILLUMINA,2612_lane3_R1.fq.gz,,
+2612,lane3,ILLUMINA,2612_lane3_R1.fq.gz,2612_lane3_R2.fq.gz,
 ```
 
 ::: info
@@ -64,7 +65,7 @@ Therefore ensure that each `run_accession` ID is unique, even if from the same s
 :::
 
 :::warning
-Runs of the same sample sequenced on Illumina platforms with a combination of single and paired-end data will **not** be run-wise concatenated, unless pair-merging is specified. In the example above, `run3` will be profiled independently of `run1` and `run2` if pairs are not merged.
+Runs of the same sample sequenced on Illumina platforms with a combination of single and paired-end data can only be concatenated if read pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`), otherwise the pipeline stops with an error.
 :::
 
 ### Full samplesheet
@@ -72,13 +73,13 @@ Runs of the same sample sequenced on Illumina platforms with a combination of si
 The pipeline will auto-detect whether a sample is single- or paired-end using the information provided in the samplesheet.
 The samplesheet can have as many columns as you desire, however, there is a strict requirement for the first 6 columns to match those defined in the table below.
 A final samplesheet file consisting of both single- and paired-end data, as well as long-read FASTA files may look something like the one below.
-This is for 6 samples, where `2612` has been sequenced twice.
+This is for 5 samples.
 
 ```csv title="samplesheet.csv"
 sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
 2611,ERR5766174,ILLUMINA,,,/<path>/<to>/fasta/ERX5474930_ERR5766174_1.fa.gz
 2612,ERR5766176,ILLUMINA,/<path>/<to>/fastq/ERX5474932_ERR5766176_1.fastq.gz,/<path>/<to>/fastq/ERX5474932_ERR5766176_2.fastq.gz,
-2612,ERR5766180,ILLUMINA,/<path>/<to>/fastq/ERX5474936_ERR5766180_1.fastq.gz,,
+2612_se,ERR5766180,ILLUMINA,/<path>/<to>/fastq/ERX5474936_ERR5766180_1.fastq.gz,,
 2613,ERR5766181,ILLUMINA,/<path>/<to>/fastq/ERX5474937_ERR5766181_1.fastq.gz,/<path>/<to>/fastq/ERX5474937_ERR5766181_2.fastq.gz,
 ERR3201952,ERR3201952,OXFORD_NANOPORE,/<path>/<to>/fastq/ERR3201952.fastq.gz,,
 ```
@@ -92,14 +93,14 @@ While one can include both short-read and long-read data in one run, we recommen
 This will allow classification optimisation for each data type, and make MultiQC run-reports more readable (due to run statistics having vary large number differences).
 :::
 
-| Column                | Description                                                                                                                                                                                               |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sample`              | Unique sample name [required].                                                                                                                                                                            |
-| `run_accession`       | Run ID or name unique for each (pairs of) file(s) .Can also supply sample name again here, if only a single run was generated [required].                                                                 |
-| `instrument_platform` | Sequencing platform reads generated on, selected from the EBI ENA [controlled vocabulary](https://www.ebi.ac.uk/ena/portal/api/controlledVocab?field=instrument_platform) [required].                     |
-| `fastq_1`             | Path or URL to sequencing reads or for Illumina R1 sequencing reads in FASTQ format. GZipped compressed files accepted. Can be left empty if data in FASTA is specified. Cannot be combined with `fasta`. |
-| `fastq_2`             | Path or URL to Illumina R2 sequencing reads in FASTQ format. GZipped compressed files accepted. Can be left empty if single end data. Cannot be combined with `fasta`.                                    |
-| `fasta`               | Path or URL to long-reads or contigs in FASTA format. GZipped compressed files accepted. Can be left empty if data in FASTA is specified. Cannot be combined with `fastq_1` or `fastq_2`.                 |
+| Column                | Description                                                                                                                                                                             |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sample`              | Unique sample name [required].                                                                                                                                                          |
+| `run_accession`       | Run ID or name unique for each (pairs of) file(s) .Can also supply sample name again here, if only a single run was generated [required].                                               |
+| `instrument_platform` | Sequencing platform reads generated on, selected from the EBI ENA [controlled vocabulary](https://www.ebi.ac.uk/ena/portal/api/controlledVocab?field=instrument_platform) [required].   |
+| `fastq_1`             | Path or URL to sequencing reads or for Illumina R1 sequencing reads in FASTQ format. Must be gzipped. Can be left empty if data in FASTA is specified. Cannot be combined with `fasta`. |
+| `fastq_2`             | Path or URL to Illumina R2 sequencing reads in FASTQ format. Must be gzipped. Can be left empty if single end data. Cannot be combined with `fasta`.                                    |
+| `fasta`               | Path or URL to long-reads or contigs in FASTA format. Must be gzipped. Can be left empty if data in FASTQ is specified. Cannot be combined with `fastq_1` or `fastq_2`.                 |
 
 An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
 
@@ -110,7 +111,7 @@ FASTA input will not go through any preprocessing steps, and will go directly to
 ### Full database sheet
 
 zellerlab/flexprofiler supports multiple databases being classified/profiled against in parallel for each tool.
-Databases can be supplied either in the form of a compressed `.tar.gz` archive of a directory containing all relevant database files or the path to a directory on the filesystem.
+Databases can be supplied either in the form of a compressed `.tar.gz` archive of a directory containing all relevant database files or the path to a directory on the filesystem, except for cayman and gqlib, whose database is a gene catalogue fasta with its bwa index and an annotation file.
 
 :::warning
 zellerlab/flexprofiler does not provide any databases by default, nor does it currently generate them for you.
@@ -118,7 +119,7 @@ This must be performed manually by the user.
 See the [databases documentation](databases.md) for details.
 :::
 
-The pipeline takes the paths and specific classification/profiling parameters of the tool of these databases as input via a four (or five) column comma-separated sheet.
+The pipeline takes the paths and specific classification/profiling parameters of the tool of these databases as input via a comma-separated sheet.
 The optional `db_type` column allows to use specific database/parameters against specific data types.
 By specifying if a database is for short-or long-reads (or even both), the samples sequenced with Illumina are combined with the short-read databases and the samples sequenced with Nanopore are combined with long-read databases.
 If `db_type` is not provided, it is assumed the database and parameters are applicable for both short- and long-read data.
@@ -133,26 +134,29 @@ In the second example database sheet, the `db_type` column has been provided.
 The valid options are `short`, `long` and `short;long`.
 
 ```csv
-tool,db_name,db_params,db_path
-motus4,db_mOTU,,/path/to/db_mOTU
-cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,/path/to/GMGC10.human-gut.95nr.0.5.percent.prevalence
+tool,db_name,db_params,db_path,annot_db_name,annot_db_path
+motus4,db_mOTU,,/path/to/db_mOTU,,
+cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,/path/to/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz,cayman_v3,/path/to/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv
+gqlib,GMGC10.human-gut.95nr.0.5.percent.prevalence,,/path/to/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz,emapper_v2.1.7,/path/to/GMGC10.human-gut.95nr.0.5pv.20230422.2101.sqlite3
 ```
 
 ```csv
-tool,db_name,db_params,db_type,db_path
-motus4,db_mOTU,,short,/path/to/db_mOTU
-cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,long,/path/to/GMGC10.human-gut.95nr.0.5.percent.prevalence
+tool,db_name,db_params,db_type,db_path,annot_db_name,annot_db_path
+motus4,db_mOTU,,short,/path/to/db_mOTU,,
+cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,long,/path/to/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz,cayman_v3,/path/to/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv
 ```
 
 Column specifications are as follows:
 
-| Column      | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tool`      | Profiling tool (supported by zellerlab/flexprofiler) that the database has been indexed for [required].                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `db_name`   | A unique name per tool for the particular database [required].                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Column      | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tool`      | Profiling tool (supported by zellerlab/flexprofiler) that the database has been indexed for [required].                                                                                                                                                                                                                                                                                                                                                                    |
+| `db_name`   | A unique name per tool for the particular database [required].                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `db_params` | Any parameters of the given classifier/profiler that you wish to specify that the classifier/profiling tool should use when profiling against this specific database. Can be empty to use classifier/profiler defaults. Must not be surrounded by quotes [required]. We generally do not recommend specifying parameters here that turn on/off saving of output files or specifying particular file extensions - this should be already addressed via pipeline parameters. |
-| `db_type`   | An optional column to distinguish between short- and long-read databases. If the column is empty, the pipeline will assume all databases (and their settings specified in `db_params`!) will be applicable for both short and long read data. Possible values: `long`, `short`, or `short;long`. If the `db_type` column is missing from the database.csv, it will take the default value short;long                                                                                                                                                                                                        |
-| `db_path`   | Path to the database. Can either be a path to a directory containing the database index files or a `.tar.gz` file which contains the compressed database directory with the same name as the tar archive, minus `.tar.gz` [required].                                                                                                                                                                                                                                                                                                                                                                       |
+| `db_type`   | An optional column to distinguish between short- and long-read databases. If the column is empty, the pipeline will assume all databases (and their settings specified in `db_params`!) will be applicable for both short and long read data. Possible values: `long`, `short`, or `short;long`. If the `db_type` column is missing from the database.csv, it will take the default value short;long                                                                       |
+| `db_path`   | Path to the database. Can either be a path to a directory containing the database index files or a `.tar.gz` file which contains the compressed database directory with the same name as the tar archive, minus `.tar.gz`. For cayman and gqlib, the gene catalogue fasta, with its bwa index alongside [required].                                                                                                                                                                                                                                      |
+| `annot_db_name` | Only for `cayman` and `gqlib` [required for them]: a name for the annotation in `annot_db_path`, unique per `tool` and `db_name`. To profile several annotations of the same gene catalogue, add one row for each with the same `db_name` and `db_path` and a different `annot_db_name`: the reads are aligned only once. Leave empty for the other tools. |
+| `annot_db_path` | Only for `cayman` and `gqlib` [required for them]: the annotation file of the gene catalogue in `db_path` (`.csv` for cayman, `.bed` annotations are not supported, see [Cayman](databases.md#cayman); `.sqlite3` for gqlib). Leave empty for the other tools. |
 
 :::tip
 You can also specify the same database directory/file twice (ensuring unique `db_name`s) and specify different parameters for each database to compare the effect of different parameters during classification/profiling.
@@ -170,6 +174,8 @@ The database paths (`db_path`) for each tool are expected to contain:
 
 - [**mOTUs v4**:](databases.md#motus4) the directory `db_mOTU/` that is downloaded via `motus4 downloadMGDB`.
   - Note that you must use `motus downloadMGDB` and if installed via `conda`, will be placed in a specific `site-package` directory in the conda environment. For more details see the [mOTUs database documentation](databases.md#motus4).
+- [**Cayman**:](databases.md#cayman) the gene catalogue fasta, e.g. `GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz`, with the index files created by `bwa index` (`.amb`, `.ann`, `.bwt`, `.pac`, `.sa`) in the same directory; `annot_db_path` is the annotation `.csv`.
+- **gqlib**: the same gene catalogue fasta as cayman; `annot_db_path` is the gqlib `.sqlite3` database. The reads are aligned only once to each gene catalogue: all the cayman and gqlib rows with the same `db_name` and `db_path` share the alignment.
 
 ## Running the pipeline
 
@@ -225,9 +231,9 @@ zellerlab/flexprofiler offers [`falco`](https://github.com/smithlabcode/falco) a
 
 ### Preprocessing Steps
 
-zellerlab/flexprofiler offers four main preprocessing steps for preprocessing raw sequencing reads:
+zellerlab/flexprofiler offers the following preprocessing steps for raw sequencing reads:
 
-- [**Paired-end read repair**](#paired-end-repair): correctly pair read order in PE files that have become unpaired.
+- [**Paired-end read repair**](#paired-end-read-repair): correctly pair read order in PE files that have become unpaired.
 - [**Read processing**](#read-processing): adapter clipping and pair-merging.
 - [**Redundancy estimation**](#redundancy-estimation): short-read metagenome coverage estimation.
 - [**Complexity filtering**](#complexity-filtering): removal of low-sequence complexity reads.
@@ -238,9 +244,10 @@ zellerlab/flexprofiler offers four main preprocessing steps for preprocessing ra
 You can save the 'final' reads used for classification/profiling from any combination of these steps with `--save_analysis_ready_fastqs`.
 :::
 
-#### Pared-read repair
+#### Paired-end read repair
+
 If sequencing files are processed with tools that are not PE-aware, reads may become unpaired (that is, not in the same order) across PE files.
-This breaks almost every PE tool, so PE repair is done using [BBDUK's repair.sh](https://github.com/BioInfoTools/BBMap/blob/master/sh/repair.sh) BEFORE any other step when `--perform_repair_pe_order` is set.
+This breaks almost every PE tool, so PE repair is done using [BBMap's repair.sh](https://github.com/BioInfoTools/BBMap/blob/master/sh/repair.sh) BEFORE any other step when `--perform_repair_pe_order` is set.
 This is also before FASTQC raw is run, because with incorrectly paired reads the FASTQC output is nonsensical.
 
 :::info
@@ -314,7 +321,7 @@ There are currently three options for short-read complexity filtering: [`bbduk`]
 There are two options for long-read quality filtering: [`Filtlong`](https://github.com/rrwick/Filtlong) and [`nanoq`](https://github.com/esteinig/nanoq), with `nanoq` being the default option.
 
 The tools offer different algorithms and parameters for removing low complexity reads and quality filtering.
-We therefore recommend reviewing the pipeline's [parameter documentation](docs/parameters.md) and the documentation of the tools (see links above) to decide on optimal methods and parameters for your dataset.
+We therefore recommend reviewing the pipeline's [parameter documentation](parameters.md) and the documentation of the tools (see links above) to decide on optimal methods and parameters for your dataset.
 
 You can optionally save the FASTQ output of the run merging with the `--save_complexityfiltered_reads`.
 If running with `fastp`, complexity filtering happens inclusively within the earlier shortread preprocessing step.
@@ -347,7 +354,7 @@ If you have multiple taxa or sequences you wish to remove (e.g., the host genome
 For samples that may have been sequenced over multiple runs, or for FASTQ files split into multiple chunks, you can activate the ability to merge across all runs or chunks with `--perform_runmerging`.
 For more information how to set up your input samplesheet, see [Multiple runs of the same sample](#multiple-runs-of-the-same-sample).
 Activating this functionality will concatenate the FASTQ files with the same sample name _after_ the optional preprocessing steps and _before_ classification/profiling.
-Note that libraries with runs of different pairing types will **not** be merged.
+All runs of a sample must have the same pairing type (single- or paired-end), unless pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`), otherwise the pipeline stops with an error.
 
 You can optionally save the FASTQ output of the run merging with the `--save_runmerged_reads`.
 
@@ -368,7 +375,8 @@ For advice as to which tool to run in your context, please see the documentation
 ##### mOTUs v4
 
 mOTUs v4 has a number of breaking changes compared to v3, in particular:
-- The taxonomy is based on GDBM and not NCBI
+
+- The taxonomy is based on GTDB and not NCBI
 - Many command line options have been removed
 
 To run mOTUs v4, you need to specify the parameter `--run_motus4`.
@@ -383,8 +391,18 @@ You also need to provide appropriate databases (see the [database documentation]
 
 ##### Cayman
 
-To run mOTUs v4, you need to specify the parameter `--run_cayman`.
+To run cayman, you need to specify the parameter `--run_cayman`.
 You also need to provide appropriate databases (see the [database documentation](databases.md) for details).
+The reads are aligned to the gene catalogue with `bwa mem`, and the profiling library used by cayman, gqlib, is run directly on the alignment, as `cayman profile` does: only the cayman `.csv` annotations are supported.
+
+##### gqlib
+
+To run gqlib, you need to specify the parameter `--run_gqlib`.
+You also need to provide appropriate databases (see the [database documentation](databases.md) for details).
+gqlib counts the reads aligned to each gene of a gene catalogue and summarises the counts for each functional category of its annotation database (e.g. KEGG orthologs, CAZy, COG categories, GO terms).
+The reads are aligned to each gene catalogue only once, and the alignment is shared by cayman and gqlib and by all the annotations of the catalogue.
+The alignments can be saved with `--save_bwa_alignments`.
+The reads are counted as by [gffquant](https://github.com/cschu/gff_quantifier) in [nevermore](https://github.com/cschu/nevermore) (`--mode genes --ambig_mode 1overN`, alignment identity >= 97% and length >= 45 bp): see [how gqlib and cayman count the reads](output.md#how-gqlib-and-cayman-count-the-reads) for the counting model and the metrics in the count tables.
 
 ### Updating the pipeline
 
@@ -437,9 +455,9 @@ They are loaded in sequence, so later profiles can overwrite earlier profiles.
 If `-profile` is not specified, the pipeline will run locally and expect all software to be installed and available on the `PATH`.
 This is _not_ recommended, since it can lead to different results on different machines dependent on the computer environment.
 
-- `test_<tool_name>`
-  - A profile with a complete configuration for automated testing
-  - Includes links to test data so needs no other parameters
+- `test_<tool_name>` and `test_all`
+  - Profiles with a complete configuration for the automated tests of one tool or of all the tools, run with [nf-test](https://www.nf-test.com/) (`nf-test test --tag pipeline --profile +docker`)
+  - The paths to the test data are relative to the directory where nf-test runs the pipeline, so these profiles work only in nf-test
 - `docker`
   - A generic configuration profile to be used with [Docker](https://docker.com/)
 - `singularity`

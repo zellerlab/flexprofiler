@@ -44,6 +44,7 @@ workflow SHORTREAD_FASTP {
 
     emit:
     reads    = ch_processed_reads // channel: [ val(meta), [ reads ] ]
+    json     = FASTP_SINGLE.out.json.mix(FASTP_PAIRED.out.json) // channel: [ val(meta), json ]
     versions = ch_versions // channel: [ versions.yml ]
     mqc      = ch_multiqc_files
 }
