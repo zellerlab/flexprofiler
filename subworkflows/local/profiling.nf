@@ -188,6 +188,7 @@ workflow PROFILING {
 
         GQLIB_PROFILE_GENES(ch_input_for_gqlib.bam, ch_input_for_gqlib.annot)
         ch_versions = ch_versions.mix(GQLIB_PROFILE_GENES.out.versions.first())
+        ch_raw_profiles = ch_raw_profiles.mix(GQLIB_PROFILE_GENES.out.profiles)
     }
 
     emit:

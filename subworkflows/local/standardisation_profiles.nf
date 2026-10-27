@@ -5,6 +5,7 @@
 include { MOTUS4_MERGE                 } from '../../modules/local/motus4/merge/main'
 include { MOTUS_MERGE  as MOTUS3_MERGE } from '../../modules/nf-core/motus/merge/main'
 include { CAYMAN_MERGE                 } from '../../modules/local/cayman/merge/main'
+include { GQLIB_MERGE                } from '../../modules/local/gqlib/merge/main'
 
 workflow STANDARDISATION_PROFILES {
     take:
@@ -23,6 +24,7 @@ workflow STANDARDISATION_PROFILES {
         motus4: it[0]['tool'] == 'motus4'
         motus3: it[0]['tool'] == 'motus3'
         cayman: it[0]['tool'] == 'cayman'
+        gqlib: it[0]['tool'] == 'gqlib'
         unknown: true
     }
 
@@ -61,6 +63,14 @@ workflow STANDARDISATION_PROFILES {
     CAYMAN_MERGE(ch_input_for_caymanmerge.profile, ch_input_for_caymanmerge.db)
     ch_versions = ch_versions.mix(CAYMAN_MERGE.out.versions)
 
+    // gqlib, merged separately for each category (gene_counts, KEGG_ko, ...) of each database
+    ch_profiles_for_gqlib = ch_input_profiles.gqlib
+        .transpose()
+        .map { meta, profile -> [[id: meta.db_name, category: gqlibCategory(profile)], profile] }
+        .groupTuple()
+    GQLIB_MERGE(ch_profiles_for_gqlib)
+    ch_versions = ch_versions.mix(GQLIB_MERGE.out.versions.first())
+
     emit:
     versions = ch_versions
     mqc      = ch_multiqc_files
@@ -95,6 +105,15 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
             }
             [[id: db_name], profiles] 
         }
+}
+
+/**
+* Get the category of a gqlib profile from its file name, <prefix>.<category>.txt.gz.
+*
+* The prefix can contain dots (the database name usually does), the category cannot.
+*/
+def gqlibCategory(profile) {
+    return (profile.getName() - ~/\.txt\.gz$/).tokenize('.')[-1]
 }
 
 /**

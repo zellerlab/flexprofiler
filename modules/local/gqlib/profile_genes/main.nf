@@ -12,10 +12,11 @@ process GQLIB_PROFILE_GENES {
     path annot
 
     output:
-    tuple val(meta), path("*.txt.gz"            ), emit: out
-    tuple val(meta), path("*.gene_counts.txt.gz"), emit: gene_counts, optional: true
-    tuple val(meta), path("*.aln_stats.txt.gz"  ), emit: aln_stats
-    tuple val(meta), path("*.gqlib.log"         ), emit: log
+    tuple val(meta), path("*.gene_counts.txt.gz"   ), emit: gene_counts
+    tuple val(meta), path("aln_stats/*.aln_stats.txt.gz"), emit: aln_stats
+    // all the profiles: one per functional category of the annotation database, plus the gene counts
+    tuple val(meta), path("*.txt.gz"               ), emit: profiles
+    tuple val(meta), path("*.gqlib.log"            ), emit: log
     path "versions.yml" , emit: versions
 
     when:
@@ -34,6 +35,10 @@ process GQLIB_PROFILE_GENES {
         $args \\
         &> ${prefix}.gqlib.log
 
+    # moved to a subdirectory so that it is not captured with the profiles
+    mkdir aln_stats
+    mv ${prefix}.aln_stats.txt.gz aln_stats/
+
     VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
 
     cat <<-END_VERSIONS > versions.yml
@@ -46,7 +51,8 @@ process GQLIB_PROFILE_GENES {
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch "${prefix}.gene_counts.txt.gz"
-    touch "${prefix}.aln_stats.txt.gz"
+    mkdir aln_stats
+    touch "aln_stats/${prefix}.aln_stats.txt.gz"
     touch "${prefix}.gqlib.log"
 
     VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
