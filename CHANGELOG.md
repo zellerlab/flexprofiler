@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The motus4 profiles change slightly between runs, because mOTUs 4 assigns at random, without a seed, the reads aligned equally well to several genes of a marker gene cluster: it is now seeded
 - The runs of a sample are concatenated in the order of their run accession, instead of the order in which their processing finishes, so that the results of mOTUs do not depend on it
 - bowtie2 host removal keeps the reads in the input order (`--reorder`), instead of the order in which its threads process them, for the same reason
+- The samples are in the same order (by name) in the merged profiles, instead of the order in which their profiling finishes
 - `utils/fetch_databases.sh` writes the database sheet in the current format, saves the mOTUs v3 database to its own directory instead of over the mOTUs v4 one, and stops at the first error
 - Outdated and wrong paths, profiles and descriptions in the documentation
 - Minor bug fixes

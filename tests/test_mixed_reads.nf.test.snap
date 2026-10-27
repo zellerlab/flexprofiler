@@ -79,7 +79,7 @@
                     "samtools": 1.2
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.3"
+                    "zellerlab/flexprofiler": "v0.0.4"
                 }
             }
         ],
@@ -95,12 +95,12 @@
                 "mOTU\t2612_se_db_mOTU\t2613_db_mOTU\t2613_mixed_db_mOTU\t2613_suffixed_db_mOTU\t2613_unordered_db_mOTU",
                 "mOTUv4.0_000924\t3\t6\t6\t6\t6",
                 "mOTUv4.0_014686\t3\t7\t7\t7\t7",
-                "mOTUv4.0_unassigned\t33\t75\t75\t75\t75"
+                "mOTUv4.0_unassigned\t32\t75\t75\t75\t75"
             ],
             [
-                "#mOTU\t2613_db_mOTU\t2612_se_db_mOTU\t2613_unordered_db_mOTU\t2613_suffixed_db_mOTU\t2613_mixed_db_mOTU",
-                "ref_mOTU_v31_03626\t4\t2\t4\t4\t4",
-                "ref_mOTU_v31_03695\t7\t3\t7\t7\t7",
+                "#mOTU\t2612_se_db_mOTU\t2613_db_mOTU\t2613_mixed_db_mOTU\t2613_suffixed_db_mOTU\t2613_unordered_db_mOTU",
+                "ref_mOTU_v31_03626\t2\t4\t4\t4\t4",
+                "ref_mOTU_v31_03695\t3\t7\t7\t7\t7",
                 "unassigned\t0\t0\t0\t0\t0"
             ],
             [
@@ -116,7 +116,7 @@
                 "GMGC10.266_871_379.GLGB\t11.0\t8.0\t16.0\t8.0\t8.0"
             ]
         ],
-        "timestamp": "2026-10-27T19:45:47.452714",
+        "timestamp": "2026-10-27T21:17:20.037917",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

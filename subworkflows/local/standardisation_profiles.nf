@@ -98,7 +98,9 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
                     "Please rename your sample column in the samplesheet accordingly."
                 )
             }
-            [[id: db_name], profiles] 
+            // groupTuple collects the profiles in the order in which they finish, so they are
+            // sorted by name to always have the samples in the same order in the merged profile
+            [[id: db_name], profiles.sort { it.getName() }]
         }
 }
 
@@ -119,6 +121,8 @@ def groupProfilesByCategory(ch_profiles) {
             [key, profile]
         }
         .groupTuple()
+        // sorted by name, as in groupProfiles
+        .map { key, profiles -> [key, profiles.sort { it.getName() }] }
 }
 
 /**

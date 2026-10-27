@@ -77,7 +77,7 @@
                     "samtools": 1.2
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.3"
+                    "zellerlab/flexprofiler": "v0.0.4"
                 }
             }
         ],
@@ -90,13 +90,13 @@
     "counts": {
         "content": [
             [
-                "#mOTU\t2613_db_mOTU\t2612_se_db_mOTU\t2612_db_mOTU",
-                "ref_mOTU_v31_03626\t4\t2\t7",
-                "ref_mOTU_v31_03695\t7\t3\t20",
-                "unassigned\t0\t0\t1"
+                "#mOTU\t2612_db_mOTU\t2612_se_db_mOTU\t2613_db_mOTU",
+                "ref_mOTU_v31_03626\t7\t2\t4",
+                "ref_mOTU_v31_03695\t20\t3\t7",
+                "unassigned\t1\t0\t0"
             ]
         ],
-        "timestamp": "2026-10-27T18:12:51.414373",
+        "timestamp": "2026-10-27T21:21:40.077591",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

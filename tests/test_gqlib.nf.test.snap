@@ -55,7 +55,7 @@
                     "samtools": 1.2
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.3"
+                    "zellerlab/flexprofiler": "v0.0.4"
                 }
             }
         ],

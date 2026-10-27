@@ -51,7 +51,7 @@
                     "samtools": 1.2
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.3"
+                    "zellerlab/flexprofiler": "v0.0.4"
                 }
             }
         ],
@@ -88,10 +88,10 @@
                 "mOTU\t2612_db_mOTU\t2612_se_db_mOTU\t2613_db_mOTU",
                 "mOTUv4.0_000924\t18\t3\t6",
                 "mOTUv4.0_014686\t16\t3\t7",
-                "mOTUv4.0_unassigned\t115\t33\t75"
+                "mOTUv4.0_unassigned\t116\t32\t75"
             ]
         ],
-        "timestamp": "2026-10-27T18:56:23.927785",
+        "timestamp": "2026-10-27T21:26:17.405845",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
