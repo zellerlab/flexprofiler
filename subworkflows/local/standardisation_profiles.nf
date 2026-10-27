@@ -33,7 +33,8 @@ workflow STANDARDISATION_PROFILES {
     ch_input_databases = databases.branch {
         motus4: it[0]['tool'] == 'motus4'
         motus3: it[0]['tool'] == 'motus3'
-        cayman: it[0]['tool'] == 'cayman'
+        // each cayman database has an 'align' and an 'annot' row, only one is needed for merging
+        cayman: it[0]['tool'] == 'cayman' && it[0]['db_component'] == 'annot'
         unknown: true
     }
 

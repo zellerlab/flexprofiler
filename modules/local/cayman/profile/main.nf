@@ -9,7 +9,7 @@ process CAYMAN_PROFILE {
 
     input:
     tuple val(meta), path(bam)
-    path db
+    path annot
 
     output:
     tuple val(meta), path("*.cazy.txt.gz"       ), emit: out
@@ -24,14 +24,13 @@ process CAYMAN_PROFILE {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def annot_file = task.ext.annot_file ?: "${db}/*.csv"
     """
     # alignment is done separately by BWA_MEM, cayman_patch.py runs the cayman
     # profiler on the alignment file instead of running bwa mem
     cayman_patch.py \\
         --out_prefix $prefix \\
         $args \\
-        $annot_file \\
+        $annot \\
         $bam \\
         &> ${prefix}.cayman.log
 

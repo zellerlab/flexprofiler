@@ -31,7 +31,12 @@ nextflow_pipeline {
             TestUtils.copyFiles( required_files_md5 + required_index_files_md5, human_gut_folder )
 
             // create database sheet
-            TestUtils.makeDatabaseSheet( launchDir, "cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,${human_gut_folder}\n" )
+            TestUtils.makeDatabaseSheet(
+                launchDir,
+                "cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,align,${human_gut_folder}/GMGC10.human-gut.95nr.0.5.percent.prevalence.fna.gz\n" +
+                "cayman,GMGC10.human-gut.95nr.0.5.percent.prevalence,,annot,${human_gut_folder}/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv\n",
+                "tool,db_name,db_params,db_component,db_path"
+            )
 
             // download hostremoval reference genome and index
             TestUtils.fetchHostremovalT2TGenome( baseDir )

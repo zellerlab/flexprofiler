@@ -8,7 +8,8 @@ process GQLIB_PROFILE_GENES {
         : 'biocontainers/gqlib:2.14.4--pyhdfd78af_0'}"
 
     input:
-    tuple val(meta), path(bam), path(annotation_db)
+    tuple val(meta), path(bam)
+    path annot
 
     output:
     tuple val(meta), path("*.txt.gz"            ), emit: out
@@ -28,7 +29,7 @@ process GQLIB_PROFILE_GENES {
     python -m gqlib \\
         --mode genes \\
         --bam $bam \\
-        --db $annotation_db \\
+        --db $annot \\
         --out_prefix $prefix \\
         $args \\
         &> ${prefix}.gqlib.log

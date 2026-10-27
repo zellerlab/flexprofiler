@@ -25,11 +25,11 @@ input:
           grouped by read name and unmapped reads included
         pattern: "*.bam"
         ontologies: []
-  - db:
-      type: directory
+  - annot:
+      type: file
       description: |
-        cayman database directory: only the annotation file (.csv) is used
-        pattern: "*/"
+        cayman annotation file of the gene catalogue
+        pattern: "*.csv"
 output:
   out:
     - - meta:

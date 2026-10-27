@@ -30,6 +30,12 @@
                 "errorMessage": "Invalid database db_params entry. No quotes allowed.",
                 "meta": ["db_params"]
             },
+            "db_component": {
+                "type": "string",
+                "enum": ["align", "annot"],
+                "errorMessage": "Invalid db_component. Must be 'align' (gene catalogue fasta, with its bwa index alongside) or 'annot' (annotation file). Only used by cayman and gqlib.",
+                "meta": ["db_component"]
+            },
             "db_type": {
                 "type": "string",
                 "enum": ["short", "long", "short;long"],
@@ -45,5 +51,5 @@
         },
         "required": ["tool", "db_name", "db_path"]
     },
-    "uniqueEntries": ["tool", "db_name"]
+    "uniqueEntries": ["tool", "db_name", "db_component"]
 }

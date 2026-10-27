@@ -439,7 +439,7 @@
                 "run_gqlib": {
                     "type": "boolean",
                     "description": "Turn on gene-level profiling with gqlib. Requires database CSV file passed to --databases",
-                    "help_text": "The gqlib database directory must contain a gene catalogue with its bwa index. Reads are counted on all genes of the catalogue (GQLIB_COUNT). If the directory also contains an annotation table (*.annotation.tsv or *.annotation.tsv.gz: tab-separated with header, gene ids in the first column, one column per functional category, multiple features in a cell separated by commas), the gene counts are summarised for each category (GQLIB_ROLLUP)",
+                    "help_text": "The gqlib database directory must contain a gene catalogue with its bwa index and the gqlib annotation database (*.sqlite3). Reads are counted on all genes of the catalogue, and the gene counts are summarised for each functional category of the annotation database",
                     "fa_icon": "fas fa-toggle-on"
                 }
             },

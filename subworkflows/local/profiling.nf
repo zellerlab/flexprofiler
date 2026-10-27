@@ -7,8 +7,7 @@ include { MOTUS4_PROFILE                } from '../../modules/local/motus4/profi
 include { MOTUS_PROFILE  as MOTUS3_PROFILE  } from '../../modules/nf-core/motus/profile'
 include { CAYMAN_PROFILE                } from '../../modules/local/cayman/profile/main'
 include { BWA_MEM as BWA_ALIGN         } from '../../modules/nf-core/bwa/mem/main'
-include { GQLIB_COUNT                   } from '../../modules/local/gqlib/count/main'
-include { GQLIB_ROLLUP                  } from '../../modules/local/gqlib/rollup/main'
+include { GQLIB_PROFILE_GENES           } from '../../modules/local/gqlib/profile_genes/main'
 
 workflow PROFILING {
     take:
@@ -78,14 +77,31 @@ workflow PROFILING {
         ch_reads_for_motus4 = reads
     }
 
-    // cayman and gqlib both profile a bwa alignment to the database: the databases with the same
-    // path and name are grouped, so that the reads are aligned only once to each of them
-    ch_dbs_bwa = ch_dbs
+    // cayman and gqlib databases are made of two rows of the database sheet with the same tool and
+    // db_name: the gene catalogue fasta, with its bwa index alongside (db_component 'align'), and
+    // the annotation file (db_component 'annot')
+    ch_dbs_genes = ch_dbs
         .filter { _type, db_meta, _db -> db_meta.tool in ['cayman', 'gqlib'] && params["run_${db_meta.tool}"] }
-        .map { type, db_meta, db -> [type, db_meta.db_name, db_meta, db] }
-        .groupTuple(by: [0, 1, 3])
-        .map { type, db_name, db_metas, db ->
-            [type, [tool: 'bwa', db_name: db_name, type: type.type, profilers: db_metas], db]
+        .map { type, db_meta, db -> [type, db_meta.tool, db_meta.db_name, db_meta, db] }
+        .groupTuple(by: [0, 1, 2])
+        .map { type, tool, db_name, db_metas, dbs ->
+            def components = [db_metas*.db_component, dbs].transpose().collectEntries()
+            if (db_metas.size() != 2 || components.keySet() != ['align', 'annot'] as Set) {
+                error("Database '${db_name}' for ${tool} needs exactly one row with db_component 'align' and one with db_component 'annot' in the database sheet, found: ${db_metas*.db_component}")
+            }
+            def db_meta = db_metas.find { m -> m.db_component == 'annot' }
+            // the index files are named as created by `bwa index <fasta>`
+            def index = ['amb', 'ann', 'bwt', 'pac', 'sa'].collect { ext -> file("${components.align}.${ext}", checkIfExists: true) }
+            [type, db_meta.subMap(db_meta.keySet() - 'db_component'), index, components.annot]
+        }
+
+    // the databases with the same name and bwa index are grouped, so that the reads are aligned
+    // only once to each of them
+    ch_dbs_bwa = ch_dbs_genes
+        .map { type, db_meta, index, _annot -> [type, db_meta.db_name, index, db_meta] }
+        .groupTuple(by: [0, 1, 2])
+        .map { type, db_name, index, db_metas ->
+            [type, [tool: 'bwa', db_name: db_name, type: type.type, profilers: db_metas], index]
         }
 
     ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> !(db_meta.tool in ['motus4', 'cayman', 'gqlib']) }.mix(ch_dbs_bwa))
@@ -143,13 +159,15 @@ workflow PROFILING {
         // the bam is not sorted, as cayman and gqlib expect the alignments grouped by read
         BWA_ALIGN(ch_input_for_align.reads, ch_input_for_align.db, [[], []], false)
 
-        // spread out each alignment to the profilers using its database
+        // spread out each alignment to the profilers using its index, each with its annotation file
         ch_bams_for_profiling = BWA_ALIGN.out.bam
-            .join(ch_input_for_align.db)
-            .flatMap { meta, bam, db ->
-                meta.profilers.collect { db_meta -> [meta.subMap(meta.keySet() - 'profilers') + db_meta, bam, db] }
+            .flatMap { meta, bam ->
+                meta.profilers.collect { db_meta -> [meta.subMap(meta.keySet() - 'profilers') + db_meta, bam] }
             }
-            .branch { meta, _bam, _db ->
+            .map { meta, bam -> [[meta.type, meta.tool, meta.db_name], meta, bam] }
+            .combine(ch_dbs_genes.map { type, db_meta, _index, annot -> [[type.type, db_meta.tool, db_meta.db_name], annot] }, by: 0)
+            .map { _key, meta, bam, annot -> [meta, bam, annot] }
+            .branch { meta, _bam, _annot ->
                 cayman: meta.tool == 'cayman'
                 gqlib: meta.tool == 'gqlib'
             }
@@ -157,35 +175,26 @@ workflow PROFILING {
 
     if (params.run_cayman) {
         ch_input_for_cayman = ch_bams_for_profiling.cayman
-            .multiMap { meta, bam, db ->
+            .multiMap { meta, bam, annot ->
                 bam: [meta, bam]
-                db: db
+                annot: annot
             }
 
-        CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.db)
+        CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.annot)
         ch_versions = ch_versions.mix(CAYMAN_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(CAYMAN_PROFILE.out.log)
     }
 
     if (params.run_gqlib) {
-        GQLIB_COUNT(ch_bams_for_profiling.gqlib.map { meta, bam, _db -> [meta, bam] })
-        ch_versions = ch_versions.mix(GQLIB_COUNT.out.versions.first())
-
-        // functional roll-up of the gene counts, only for databases with an annotation table
-        ch_input_for_gqlib_rollup = GQLIB_COUNT.out.gene_counts
-            .join(GQLIB_COUNT.out.read_counts)
-            .join(ch_bams_for_profiling.gqlib.map { meta, _bam, db -> [meta, db] })
-            .filter { _meta, _gene_counts, _read_counts, db ->
-                db.listFiles().any { f -> f.name ==~ /.*\.annotation\.tsv(\.gz)?/ }
-            }
-            .multiMap { meta, gene_counts, read_counts, db ->
-                counts: [meta, gene_counts, read_counts]
-                db: db
+        ch_input_for_gqlib = ch_bams_for_profiling.gqlib
+            .multiMap { meta, bam, annot ->
+                bam: [meta, bam]
+                annot: annot
             }
 
-        GQLIB_ROLLUP(ch_input_for_gqlib_rollup.counts, ch_input_for_gqlib_rollup.db)
-        ch_versions = ch_versions.mix(GQLIB_ROLLUP.out.versions.first())
+        GQLIB_PROFILE_GENES(ch_input_for_gqlib.bam, ch_input_for_gqlib.annot)
+        ch_versions = ch_versions.mix(GQLIB_PROFILE_GENES.out.versions.first())
     }
 
     emit:

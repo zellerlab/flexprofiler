@@ -77,9 +77,9 @@ class TestUtils {
         print "\n  INFO: Cached archive at ${destination} passed integrity check."
     }
 
-    static void makeDatabaseSheet(Object launchDir, String content) {
+    static void makeDatabaseSheet(Object launchDir, String content, String header = "tool,db_name,db_params,db_path") {
         def database_csv = new File( "${launchDir}/database.csv" )
-        database_csv.text = "tool,db_name,db_params,db_path\n" + content
+        database_csv.text = "${header}\n" + content
     }
 
     static void fetchHostremovalT2TGenome(Object baseDir) {
