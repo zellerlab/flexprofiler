@@ -33,7 +33,7 @@
             },
             "db_component": {
                 "type": "string",
-                "description": "Role of the db_path for tools that need several database files. Only used by cayman and gqlib, which need exactly one 'align' and one 'annot' row per database, linked only by tool and db_name (which must be identical in both rows, as must db_type): 'align', with db_path the gene catalogue fasta that the reads are aligned to with bwa mem (the bwa index files, as created by `bwa index <fasta>`, must be in the same directory: <fasta>.amb, .ann, .bwt, .pac, .sa); 'annot', with db_path the annotation file passed to the profiler (the .csv annotation table for cayman, the .sqlite3 database for gqlib). Only the alignment is shared between cayman and gqlib: reads are aligned only once when they have the same db_name and 'align' fasta. Leave empty for the other tools, whose db_path is the whole database.",
+                "description": "Role of the db_path for tools that need several database files. Only used by cayman and gqlib, which need exactly one 'align' and one 'annot' row per database, linked only by tool and db_name (which must be identical in both rows, as must db_type): 'align', with db_path the gene catalogue fasta that the reads are aligned to with bwa mem (the bwa index files <fasta>.amb, .ann, .bwt, .pac, .sa must be in the same directory; the pipeline does not build them, they must be created beforehand with `bwa index <fasta>`; the fasta itself is not read, only used to locate the index files, but it must exist); 'annot', with db_path the annotation file passed to the profiler (the .csv annotation table for cayman, the .sqlite3 database for gqlib). Only the alignment is shared between cayman and gqlib: reads are aligned only once when they have the same db_name and 'align' fasta. Leave empty for the other tools, whose db_path is the whole database.",
                 "enum": ["align", "annot"],
                 "errorMessage": "Invalid db_component. Must be 'align' (gene catalogue fasta, with its bwa index alongside) or 'annot' (annotation file). Only used by cayman and gqlib.",
                 "meta": ["db_component"]
@@ -46,7 +46,7 @@
             },
             "db_path": {
                 "type": "string",
-                "description": "Path to the database. For motus4 and motus3, the db_mOTU directory (or a .tar.gz of it). For cayman and gqlib, the file given by db_component: the gene catalogue fasta for 'align', the annotation file for 'annot'.",
+                "description": "Path to the database. For motus4 and motus3, the db_mOTU directory (or a .tar.gz of it). For cayman and gqlib, the file given by db_component: the gene catalogue fasta for 'align' (with its pre-built bwa index alongside), the annotation file for 'annot'.",
                 "exists": true,
                 "format": "path",
                 "errorMessage": "db_path should be either a file path or a directory."
