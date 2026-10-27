@@ -1,5 +1,3 @@
-import TestUtils
-
 nextflow_pipeline {
     name "Test motus3"
     script "../main.nf"
@@ -9,74 +7,39 @@ nextflow_pipeline {
 
     test("test_motus3") {
         setup {
-            // download mOTU database
-            def db_mOTU        = "${TestUtils.getCacheDir(baseDir)}/test_motus3/db_mOTU"
-            def db_mOTU_url    = "https://zenodo.org/record/7778108/files/db_mOTU_v3.1.0.tar.gz"
-            def required_files_md5 = [
-                "${db_mOTU}/db_mOTU/db_mOTU_bam_header_CEN"                           : "02471a3fd8ccf7c2b3469bdfc4ecd711",
-                "${db_mOTU}/db_mOTU/db_mOTU_bam_header_NR"                            : "921da3c35afc43c9c842ab507b5edf37",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta"                             : "e76ebcf4a7a921d4099e3a593510544c",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.amb"                         : "0e60f642bf1c74322f3c49b26d2ddc71",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.ann"                         : "09dfecc285a788064bf9b02b1d4dcbf1",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.annotations"                 : "575dbb6899e8c77dc12c28ae1ae2cae2",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.bwt"                         : "597cb3361dd28c6ca963d15b1067fc2c",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.pac"                         : "7141a17bf20c14957bfb28ff8c76c27e",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_CEN.fasta.sa"                          : "2b649045f14e2614d604047f5f533ac5",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta"                              : "1d15342436c42bce9f7be73841ac3cd7",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta.amb"                          : "a1e15475282c32a25258621f8a9290c3",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta.ann"                          : "40dcc67b80a887a47302e76cc4085932",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta.bwt"                          : "db819a132b66c2fbf8162c2a205c8073",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta.pac"                          : "d58829f369a25e0b1c71b0eaa12af14a",
-                "${db_mOTU}/db_mOTU/db_mOTU_DB_NR.fasta.sa"                           : "ea92f78a490b4418ec0034c80ff19e27",
-                "${db_mOTU}/db_mOTU/db_mOTU_genes_length_NR"                          : "e1407ea976008c169924bba2574790e5",
-                "${db_mOTU}/db_mOTU/db_mOTU_MAP_genes_to_MGCs.tsv"                    : "96555050c2bf9ee905e29fbd33526f5d",
-                "${db_mOTU}/db_mOTU/db_mOTU_MAP_MGCs_to_mOTUs_in-line.tsv"            : "1b3fbb3554ef66ca493c7b9a71d2311f",
-                "${db_mOTU}/db_mOTU/db_mOTU_MAP_MGCs_to_mOTUs.tsv"                    : "4c638f0dd950aafb815586e1e3e33de1",
-                "${db_mOTU}/db_mOTU/db_mOTU_padding_coordinates_CEN.tsv"              : "b3f43a046507893df5259c6382fc5e87",
-                "${db_mOTU}/db_mOTU/db_mOTU_padding_coordinates_NR.tsv"               : "e1e777b33c04bbd41cf36f0bf2657f5e",
-                "${db_mOTU}/db_mOTU/db_mOTU_taxonomy_CAMI.tsv"                        : "774bec49c9887574a9905919d34b2183",
-                "${db_mOTU}/db_mOTU/db_mOTU_taxonomy_meta-mOTUs.tsv"                  : "7c494b6c0b89cecf7a5adc6b371cddef",
-                "${db_mOTU}/db_mOTU/db_mOTU_taxonomy_ref-mOTUs_short_names.tsv"       : "9c111be13fce1712fb6afe118153ef00",
-                "${db_mOTU}/db_mOTU/db_mOTU_taxonomy_ref-mOTUs.tsv"                   : "00617fabd6359cadaaddf2b01511b72e",
-            ]
-
-            TestUtils.fetchArchive( [ db_mOTU_url ], db_mOTU, null, required_files_md5 )
-            
-            // create database sheet
-            TestUtils.makeDatabaseSheet( launchDir, "motus3,db_mOTU,,${db_mOTU}/db_mOTU\n" )
-
-            // download hostremoval reference genome and index
-            TestUtils.fetchHostremovalT2TGenome( baseDir )
-
-            // copy test data over
-            TestUtils.stageTestData( baseDir )
+            // test databases restricted to what the test reads hit (see assets/test-data/README.md)
+            def test_data = "${baseDir}/assets/test-data/data"
+            new File( "${launchDir}/database.csv" ).text = """\
+                tool,db_name,db_params,db_path
+                motus3,db_mOTU,,${test_data}/motus3/db_mOTU
+                """.stripIndent()
         }
 
         when {
             params {
-                outdir                        = "${outputDir}"
-                databases                     = "${launchDir}/database.csv"
-                hostremoval_reference         = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz"
-                shortread_hostremoval_index   = "${TestUtils.getCacheDir(baseDir)}/hostremoval/t2t_chm13v2/bowtie2_index/chm13v2.0"
+                outdir                = "${outputDir}"
+                databases             = "${launchDir}/database.csv"
+                // the human mitochondrial genome, so that host removal is fast; its bowtie2 index is built by the pipeline
+                hostremoval_reference = "${baseDir}/assets/test-data/data/hostremoval/NC_012920.1.fna.gz"
             }
         }
 
         then {
-            def stable_name         = getAllFilesFromDir( params.outdir, includeDir: true , ignore: TestUtils.getUnstableName(), relative: true )
-            def software_versions   = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
-            def motus3_merge_report = file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" )
-            def collinsella_aerofaciens_mOTU = "ref_mOTU_v31_03626	k__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]"
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def motus3_merge      = file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" )
+            def collinsella_aerofaciens_mOTU = "ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]"
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
                 { assert snapshot (
-                    getAllFilesFromDir ( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains '${collinsella_aerofaciens_mOTU}' " + file.text.contains( collinsella_aerofaciens_mOTU ) },
-                    getAllFilesFromDir ( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 'unassigned' " + file.text.contains( "unassigned" ) },
-                    getAllFilesFromDir ( "${params.outdir}/motus3", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished computation': " + file.text.contains ( "Finished computation" ) },
-                    "${ motus3_merge_report.getName() } contains 'unassigned': " + motus3_merge_report.text.contains( "unassigned" ),
-                    "${ motus3_merge_report.getName() } contains '${collinsella_aerofaciens_mOTU}': " + motus3_merge_report.text.contains( collinsella_aerofaciens_mOTU ),
+                    getAllFilesFromDir( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains '${collinsella_aerofaciens_mOTU}' " + file.text.contains( collinsella_aerofaciens_mOTU ) },
+                    getAllFilesFromDir( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 'unassigned' " + file.text.contains( "unassigned" ) },
+                    getAllFilesFromDir( "${params.outdir}/motus3", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished computation': " + file.text.contains( "Finished computation" ) },
+                    "${motus3_merge.getName()} contains 'unassigned': " + motus3_merge.text.contains( "unassigned" ),
+                    "${motus3_merge.getName()} contains '${collinsella_aerofaciens_mOTU}': " + motus3_merge.text.contains( collinsella_aerofaciens_mOTU ),
                 ).match("motus3") },
             )
         }

@@ -2,26 +2,26 @@
     "cayman": {
         "content": [
             [
-                "2612_GMGC10.human-gut.95nr.0.5.percent.prevalence.cazy.txt.gz contains 'total_reads': true",
-                "2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence.cazy.txt.gz contains 'total_reads': true",
-                "2613_GMGC10.human-gut.95nr.0.5.percent.prevalence.cazy.txt.gz contains 'total_reads': true"
+                "2612_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.txt.gz contains 'total_reads': true",
+                "2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.txt.gz contains 'total_reads': true",
+                "2613_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.txt.gz contains 'total_reads': true"
             ],
             [
-                "2612_GMGC10.human-gut.95nr.0.5.percent.prevalence.cazy.txt.gz contains 'GH2': true",
-                "2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence.cazy.txt.gz contains 'GH2': true",
-                "2613_GMGC10.human-gut.95nr.0.5.percent.prevalence.cazy.txt.gz contains 'GH2': true"
+                "2612_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.txt.gz contains 'GH13': true",
+                "2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.txt.gz contains 'GH13': true",
+                "2613_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.txt.gz contains 'GH13': true"
             ],
             [
-                "2612_GMGC10.human-gut.95nr.0.5.percent.prevalence.cayman.log contains 'Finished.': true",
-                "2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence.cayman.log contains 'Finished.': true",
-                "2613_GMGC10.human-gut.95nr.0.5.percent.prevalence.cayman.log contains 'Finished.': true"
+                "2612_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log contains 'Finished.': true",
+                "2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log contains 'Finished.': true",
+                "2613_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log contains 'Finished.': true"
             ],
-            "cayman_GMGC10.human-gut.95nr.0.5.percent.prevalence_combined_reports_cayman_merged.txt.gz contains 'total_reads': true",
-            "cayman_GMGC10.human-gut.95nr.0.5.percent.prevalence_combined_reports_cayman_merged.txt.gz contains 'GH2': true",
-            "cayman_GMGC10.human-gut.95nr.0.5.percent.prevalence_combined_reports_cayman_merged.txt.gz contains '2612': true",
-            "cayman_GMGC10.human-gut.95nr.0.5.percent.prevalence_combined_reports_cayman_merged.txt.gz contains '2613': true"
+            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains 'total_reads': true",
+            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains 'GH13': true",
+            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains '2612': true",
+            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains '2613': true"
         ],
-        "timestamp": "2026-05-27T17:31:01.689662303",
+        "timestamp": "2026-10-27T16:18:47.615295",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -29,9 +29,9 @@
     },
     "number_of_tasks": {
         "content": [
-            31
+            34
         ],
-        "timestamp": "2026-05-27T17:31:01.480058417",
+        "timestamp": "2026-10-27T16:18:47.565315",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -45,9 +45,15 @@
                     "pigz": 2.8,
                     "samtools": 1.21
                 },
+                "BOWTIE2_BUILD": {
+                    "bowtie2": "2.5.4"
+                },
+                "BWA_ALIGN": {
+                    "bwa": "0.7.19-r1273",
+                    "samtools": "1.22.1"
+                },
                 "CAYMAN_MERGE": {
-                    "data.table": "1.17.8",
-                    "r-base": "4.5.2"
+                    "gqlib": "2.14.4"
                 },
                 "CAYMAN_PROFILE": {
                     "cayman": "0.10.2"
@@ -78,7 +84,7 @@
                 }
             }
         ],
-        "timestamp": "2026-05-27T17:31:01.391246896",
+        "timestamp": "2026-10-27T16:18:47.54503",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -95,21 +101,25 @@
                 "bowtie2/align/2613_ERR5766181.bowtie2.log",
                 "cayman",
                 "cayman/merge",
-                "cayman/merge/cayman_GMGC10.human-gut.95nr.0.5.percent.prevalence_combined_reports_cayman_merged.txt.gz",
+                "cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence",
+                "cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3",
+                "cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz",
+                "cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_rpkm.txt.gz",
                 "cayman/profile",
                 "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2612_GMGC10.human-gut.95nr.0.5.percent.prevalence.aln_stats.txt.gz",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2612_GMGC10.human-gut.95nr.0.5.percent.prevalence.cayman.log",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2612_GMGC10.human-gut.95nr.0.5.percent.prevalence.cazy.txt.gz",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2612_GMGC10.human-gut.95nr.0.5.percent.prevalence.gene_counts.txt.gz",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence.aln_stats.txt.gz",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence.cayman.log",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence.cazy.txt.gz",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence.gene_counts.txt.gz",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2613_GMGC10.human-gut.95nr.0.5.percent.prevalence.aln_stats.txt.gz",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2613_GMGC10.human-gut.95nr.0.5.percent.prevalence.cayman.log",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2613_GMGC10.human-gut.95nr.0.5.percent.prevalence.cazy.txt.gz",
-                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/2613_GMGC10.human-gut.95nr.0.5.percent.prevalence.gene_counts.txt.gz",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2612_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.aln_stats.txt.gz",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2612_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2612_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.txt.gz",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2612_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.gene_counts.txt.gz",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.aln_stats.txt.gz",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.txt.gz",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.gene_counts.txt.gz",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2613_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.aln_stats.txt.gz",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2613_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2613_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.txt.gz",
+                "cayman/profile/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/2613_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.gene_counts.txt.gz",
                 "fastp",
                 "fastp/2612_ERR5766176.fastp.html",
                 "fastp/2612_ERR5766176.fastp.json",
@@ -154,8 +164,6 @@
                 "fastqc/raw/2613_ERR5766181_raw_1_fastqc.zip",
                 "fastqc/raw/2613_ERR5766181_raw_2_fastqc.html",
                 "fastqc/raw/2613_ERR5766181_raw_2_fastqc.zip",
-                "fastqc/raw/ERR3201952_ERR3201952_raw_fastqc.html",
-                "fastqc/raw/ERR3201952_ERR3201952_raw_fastqc.zip",
                 "multiqc",
                 "multiqc/multiqc_data",
                 "multiqc/multiqc_data/bowtie2_pe_plot.txt",
@@ -362,7 +370,7 @@
                 "samtools/stats/2613_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-05-27T17:31:01.508991776",
+        "timestamp": "2026-10-27T16:18:47.581432",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

@@ -1,12 +1,12 @@
 {
     "number_of_tasks": {
         "content": [
-            13
+            14
         ],
-        "timestamp": "2026-06-17T09:59:53.247141",
+        "timestamp": "2026-10-27T16:30:11.274261",
         "meta": {
-            "nf-test": "0.9.4",
-            "nextflow": "25.10.4"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
         }
     },
     "software_versions": {
@@ -16,6 +16,9 @@
                     "bowtie2": "2.5.4",
                     "pigz": 2.8,
                     "samtools": 1.21
+                },
+                "BOWTIE2_BUILD": {
+                    "bowtie2": "2.5.4"
                 },
                 "FASTP_PAIRED": {
                     "fastp": "0.24.0"
@@ -37,10 +40,10 @@
                 }
             }
         ],
-        "timestamp": "2026-06-17T09:59:53.234063",
+        "timestamp": "2026-10-27T16:30:11.262643",
         "meta": {
-            "nf-test": "0.9.4",
-            "nextflow": "25.10.4"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
         }
     },
     "motus4": {
@@ -89,6 +92,7 @@
                 "motus4",
                 "motus4/merge",
                 "motus4/merge/motus4_db_mOTU_combined_reports.txt",
+                "motus4/merge/profile_list.txt",
                 "motus4/profile",
                 "motus4/profile/db_mOTU",
                 "motus4/profile/db_mOTU/2612_db_mOTU.log",
@@ -104,10 +108,10 @@
                 "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml"
             ]
         ],
-        "timestamp": "2026-06-17T09:59:53.24918",
+        "timestamp": "2026-10-27T16:30:11.281961",
         "meta": {
-            "nf-test": "0.9.4",
-            "nextflow": "25.10.4"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
         }
     }
 }

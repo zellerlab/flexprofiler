@@ -43,6 +43,9 @@
                     "pigz": 2.8,
                     "samtools": 1.21
                 },
+                "BOWTIE2_BUILD": {
+                    "bowtie2": "2.5.4"
+                },
                 "FASTP_PAIRED": {
                     "fastp": "0.24.0"
                 },
@@ -75,7 +78,7 @@
                 }
             }
         ],
-        "timestamp": "2026-05-28T14:45:42.914841",
+        "timestamp": "2026-10-27T16:43:10.92781",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -134,8 +137,6 @@
                 "fastqc/raw/2613_ERR5766181_raw_1_fastqc.zip",
                 "fastqc/raw/2613_ERR5766181_raw_2_fastqc.html",
                 "fastqc/raw/2613_ERR5766181_raw_2_fastqc.zip",
-                "fastqc/raw/ERR3201952_ERR3201952_raw_fastqc.html",
-                "fastqc/raw/ERR3201952_ERR3201952_raw_fastqc.zip",
                 "motus3",
                 "motus3/merge",
                 "motus3/merge/motus3_db_mOTU_combined_reports.txt",
@@ -375,7 +376,7 @@
                 "samtools/stats/2613_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-05-28T14:45:42.936008",
+        "timestamp": "2026-10-27T16:43:10.957637",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

@@ -17,6 +17,9 @@
                     "pigz": 2.8,
                     "samtools": 1.21
                 },
+                "BOWTIE2_BUILD": {
+                    "bowtie2": "2.5.4"
+                },
                 "FASTP_PAIRED": {
                     "fastp": "0.24.0"
                 },
@@ -49,7 +52,7 @@
                 }
             }
         ],
-        "timestamp": "2026-05-28T10:41:01.164598106",
+        "timestamp": "2026-10-27T16:36:03.464212",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -129,11 +132,10 @@
                 "fastqc/raw/2613_ERR5766181_raw_1_fastqc.zip",
                 "fastqc/raw/2613_ERR5766181_raw_2_fastqc.html",
                 "fastqc/raw/2613_ERR5766181_raw_2_fastqc.zip",
-                "fastqc/raw/ERR3201952_ERR3201952_raw_fastqc.html",
-                "fastqc/raw/ERR3201952_ERR3201952_raw_fastqc.zip",
                 "motus4",
                 "motus4/merge",
                 "motus4/merge/motus4_db_mOTU_combined_reports.txt",
+                "motus4/merge/profile_list.txt",
                 "motus4/profile",
                 "motus4/profile/db_mOTU",
                 "motus4/profile/db_mOTU/2612_db_mOTU.log",
@@ -351,7 +353,7 @@
                 "samtools/stats/2613_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-05-28T10:41:01.253203058",
+        "timestamp": "2026-10-27T16:36:03.492368",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
