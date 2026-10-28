@@ -276,6 +276,8 @@ You will only find the `.fastq` files in the results directory if you provide ` 
 
 It is used with zellerlab/flexprofiler to allow removal of 'host' (e.g. human) and/or other possible contaminant reads (e.g. Phi X) from short-read `.fastq` files prior to profiling.
 
+The two mates of paired-end reads are aligned separately, as single-end reads, and a pair is kept only if neither mate aligns to the host, as recommended by [Forbes et al. 2025](https://doi.org/10.1016/j.crmeth.2025.101218). The unaligned reads of the two mates are then paired again with [BBTools repair.sh](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/repair-guide/), which drops the reads whose mate aligned to the host and keeps the order of the reads.
+
 <details markdown="1">
 <summary>Output files</summary>
 
@@ -283,9 +285,11 @@ It is used with zellerlab/flexprofiler to allow removal of 'host' (e.g. human) a
   - `build/`
     - `*.bt2`: Bowtie2 indicies of reference genome, only if `--save_hostremoval_index` supplied.
   - `align/`
-    - `<sample_id>.bam`: BAM file containing reads that aligned against the user-supplied reference genome as well as unmapped reads
-    - `<sample_id>.bowtie2.log`: log file about the mapped reads
-    - `<sample_id>.unmapped.fastq.gz`: the off-target reads from the mapping that is used in downstream steps.
+    - `<sample_id>.bam`: BAM file containing reads that aligned against the user-supplied reference genome as well as unmapped reads. For paired-end reads, one per mate (`<sample_id>_1.bam`, `<sample_id>_2.bam`).
+    - `<sample_id>.bowtie2.log`: log file about the mapped reads. For paired-end reads, one per mate (`<sample_id>_1.bowtie2.log`, `<sample_id>_2.bowtie2.log`).
+    - `<sample_id>.unmapped.fastq.gz`: single-end reads, the off-target reads from the mapping that are used in downstream steps.
+    - `<sample_id>.unmapped_{1,2}_repaired.fastq.gz`: paired-end reads, the pairs with neither mate aligned to the host, that are used in downstream steps.
+    - `<sample_id>.unmapped.repair.sh.log`: paired-end reads, log of repair.sh, with the number of pairs kept and of reads dropped because their mate aligned to the host (`Singletons`).
 
 </details>
 
@@ -798,7 +802,7 @@ The counts are parsed from the logs of the tools, and the counts of the runs of 
 | --------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `raw_reads`                 | reads, each mate counted                 | fastp, reads before filtering                                                                              |
 | `qc_reads`                  | reads, each mate counted                 | fastp, reads after filtering                                                                               |
-| `host_removed_pairs`        | read pairs (single-end: reads)           | bowtie2, pairs not aligned concordantly to the host genome (single-end: reads not aligned), i.e. the reads given to the profilers |
+| `host_removed_pairs`        | read pairs (single-end: reads)           | repair.sh, pairs with neither mate aligned to the host genome (single-end: bowtie2, reads not aligned), i.e. the reads given to the profilers |
 | `motus4_<db_name>_pairs`    | read pairs                               | mOTUs v4, inserts aligned to the database and passing the mOTUs filters (`Read N aligned inserts`)         |
 | `motus3_<db_name>_pairs`    | read pairs                               | mOTUs v3, inserts aligned to the database and passing the mOTUs filters (`Total number of inserts`)        |
 | `cayman_<db_name>_pairs`    | read pairs                               | cayman, reads aligned to the gene catalogue and passing the filters (`Reads passing filters`)              |

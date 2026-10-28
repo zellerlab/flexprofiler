@@ -1,9 +1,9 @@
 {
     "number_of_tasks": {
         "content": [
-            95
+            115
         ],
-        "timestamp": "2026-10-27T19:45:47.414566",
+        "timestamp": "2026-10-28T10:19:34.43369",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -13,6 +13,9 @@
         "content": [
             {
                 "BBMAP_REPAIR": {
+                    "bbmap": 39.18
+                },
+                "BBMAP_REPAIR_HOSTREMOVAL": {
                     "bbmap": 39.18
                 },
                 "BOWTIE2_ALIGN": {
@@ -83,7 +86,7 @@
                 }
             }
         ],
-        "timestamp": "2026-10-27T19:45:47.412153",
+        "timestamp": "2026-10-28T10:19:34.420757",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -145,11 +148,21 @@
                 "bowtie2",
                 "bowtie2/align",
                 "bowtie2/align/2612_se_ERR5766180.bowtie2.log",
-                "bowtie2/align/2613_ERR5766181.bowtie2.log",
-                "bowtie2/align/2613_mixed_ERR5766181_suffixed.bowtie2.log",
-                "bowtie2/align/2613_mixed_ERR5766181_unordered.bowtie2.log",
-                "bowtie2/align/2613_suffixed_ERR5766181.bowtie2.log",
-                "bowtie2/align/2613_unordered_ERR5766181.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181_2.bowtie2.log",
+                "bowtie2/align/2613_mixed_ERR5766181_suffixed.unmapped.repair.sh.log",
+                "bowtie2/align/2613_mixed_ERR5766181_suffixed_1.bowtie2.log",
+                "bowtie2/align/2613_mixed_ERR5766181_suffixed_2.bowtie2.log",
+                "bowtie2/align/2613_mixed_ERR5766181_unordered.unmapped.repair.sh.log",
+                "bowtie2/align/2613_mixed_ERR5766181_unordered_1.bowtie2.log",
+                "bowtie2/align/2613_mixed_ERR5766181_unordered_2.bowtie2.log",
+                "bowtie2/align/2613_suffixed_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_suffixed_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_suffixed_ERR5766181_2.bowtie2.log",
+                "bowtie2/align/2613_unordered_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_unordered_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_unordered_ERR5766181_2.bowtie2.log",
                 "cayman",
                 "cayman/merge",
                 "cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence",
@@ -426,7 +439,6 @@
                 "motus4/profile/db_mOTU/2613_unordered_db_mOTU.out.mgc",
                 "multiqc",
                 "multiqc/multiqc_data",
-                "multiqc/multiqc_data/bowtie2_pe_plot.txt",
                 "multiqc/multiqc_data/bowtie2_se_plot.txt",
                 "multiqc/multiqc_data/fastp-insert-size-plot.txt",
                 "multiqc/multiqc_data/fastp-seq-content-gc-plot_Read_1_After_filtering.txt",
@@ -487,8 +499,6 @@
                 "multiqc/multiqc_data/samtools_alignment_plot.txt",
                 "multiqc/multiqc_plots",
                 "multiqc/multiqc_plots/pdf",
-                "multiqc/multiqc_plots/pdf/bowtie2_pe_plot-cnt.pdf",
-                "multiqc/multiqc_plots/pdf/bowtie2_pe_plot-pct.pdf",
                 "multiqc/multiqc_plots/pdf/bowtie2_se_plot-cnt.pdf",
                 "multiqc/multiqc_plots/pdf/bowtie2_se_plot-pct.pdf",
                 "multiqc/multiqc_plots/pdf/fastp-insert-size-plot.pdf",
@@ -540,8 +550,6 @@
                 "multiqc/multiqc_plots/pdf/samtools_alignment_plot-cnt.pdf",
                 "multiqc/multiqc_plots/pdf/samtools_alignment_plot-pct.pdf",
                 "multiqc/multiqc_plots/png",
-                "multiqc/multiqc_plots/png/bowtie2_pe_plot-cnt.png",
-                "multiqc/multiqc_plots/png/bowtie2_pe_plot-pct.png",
                 "multiqc/multiqc_plots/png/bowtie2_se_plot-cnt.png",
                 "multiqc/multiqc_plots/png/bowtie2_se_plot-pct.png",
                 "multiqc/multiqc_plots/png/fastp-insert-size-plot.png",
@@ -593,8 +601,6 @@
                 "multiqc/multiqc_plots/png/samtools_alignment_plot-cnt.png",
                 "multiqc/multiqc_plots/png/samtools_alignment_plot-pct.png",
                 "multiqc/multiqc_plots/svg",
-                "multiqc/multiqc_plots/svg/bowtie2_pe_plot-cnt.svg",
-                "multiqc/multiqc_plots/svg/bowtie2_pe_plot-pct.svg",
                 "multiqc/multiqc_plots/svg/bowtie2_se_plot-cnt.svg",
                 "multiqc/multiqc_plots/svg/bowtie2_se_plot-pct.svg",
                 "multiqc/multiqc_plots/svg/fastp-insert-size-plot.svg",
@@ -660,7 +666,7 @@
                 "samtools/stats/2613_unordered_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-10-27T19:45:47.41699",
+        "timestamp": "2026-10-28T10:19:34.464075",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -693,7 +699,7 @@
                     "2613",
                     "1075088",
                     "1067004",
-                    "533422",
+                    "533421",
                     "310",
                     "390",
                     "20",
@@ -703,7 +709,7 @@
                     "2613_mixed",
                     "2150176",
                     "2134008",
-                    "1066844",
+                    "1066842",
                     "310",
                     "390",
                     "40",
@@ -713,7 +719,7 @@
                     "2613_suffixed",
                     "1075088",
                     "1067004",
-                    "533422",
+                    "533421",
                     "310",
                     "390",
                     "20",
@@ -723,7 +729,7 @@
                     "2613_unordered",
                     "1075088",
                     "1067004",
-                    "533422",
+                    "533421",
                     "310",
                     "390",
                     "20",
@@ -731,7 +737,7 @@
                 ]
             ]
         ],
-        "timestamp": "2026-10-27T19:45:47.432582",
+        "timestamp": "2026-10-28T10:19:34.482243",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

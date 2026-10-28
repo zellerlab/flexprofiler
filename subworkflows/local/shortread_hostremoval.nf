@@ -2,10 +2,11 @@
 // Remove host reads via alignment and export off-target reads
 //
 
-include { BOWTIE2_BUILD  } from '../../modules/nf-core/bowtie2/build/main'
-include { BOWTIE2_ALIGN  } from '../../modules/nf-core/bowtie2/align/main'
-include { SAMTOOLS_INDEX } from '../../modules/nf-core/samtools/index/main'
-include { SAMTOOLS_STATS } from '../../modules/nf-core/samtools/stats/main'
+include { BOWTIE2_BUILD                            } from '../../modules/nf-core/bowtie2/build/main'
+include { BOWTIE2_ALIGN                            } from '../../modules/nf-core/bowtie2/align/main'
+include { BBMAP_REPAIR as BBMAP_REPAIR_HOSTREMOVAL } from '../../modules/local/bbmap/repair/main'
+include { SAMTOOLS_INDEX                           } from '../../modules/nf-core/samtools/index/main'
+include { SAMTOOLS_STATS                           } from '../../modules/nf-core/samtools/stats/main'
 
 workflow SHORTREAD_HOSTREMOVAL {
     take:
@@ -25,10 +26,35 @@ workflow SHORTREAD_HOSTREMOVAL {
         ch_bowtie2_index = index.first()
     }
 
+    // The mates of the paired-end reads are aligned separately, as single-end reads, and a pair is kept only if
+    // neither mate aligns to the host, following https://doi.org/10.1016/j.crmeth.2025.101218. Aligning the pairs as
+    // pairs would keep the pairs with one mate aligned to the host, as bowtie2 --un-conc writes all the pairs not
+    // aligned concordantly. meta.mate (1 or 2) tells the mates apart, and the single-end reads have none.
+    ch_reads_for_bowtie2 = reads.flatMap { meta, fastqs ->
+        meta.single_end
+            ? [[meta, fastqs]]
+            : [[meta + [single_end: true, mate: 1], fastqs[0]], [meta + [single_end: true, mate: 2], fastqs[1]]]
+    }
+
     // Map, generate BAM with all reads and unmapped reads in FASTQ for downstream
-    BOWTIE2_ALIGN(reads, ch_bowtie2_index, [[], reference], true, true)
+    BOWTIE2_ALIGN(ch_reads_for_bowtie2, ch_bowtie2_index, [[], reference], true, true)
     ch_versions = ch_versions.mix(BOWTIE2_ALIGN.out.versions.first())
     ch_multiqc_files = ch_multiqc_files.mix(BOWTIE2_ALIGN.out.log)
+
+    ch_unmapped = BOWTIE2_ALIGN.out.fastq.branch { meta, _fastq ->
+        mate: meta.mate
+        single_end: true
+    }
+
+    // Pair the unmapped reads of the two mates again: the reads whose mate aligned to the host are the singletons,
+    // which are dropped. The bowtie2 output is in the input order (--reorder), and so is that of repair.sh.
+    ch_unmapped_mates = ch_unmapped.mate
+        .map { meta, fastq -> [meta.findAll { key, _value -> key != 'mate' } + [single_end: false], meta.mate, fastq] }
+        .groupTuple(size: 2)
+        .map { meta, mates, fastqs -> [meta, [fastqs[mates.indexOf(1)], fastqs[mates.indexOf(2)]]] }
+
+    BBMAP_REPAIR_HOSTREMOVAL(ch_unmapped_mates, false)
+    ch_versions = ch_versions.mix(BBMAP_REPAIR_HOSTREMOVAL.out.versions.first())
 
     // Indexing whole BAM for host removal statistics
     if (!params.skip_hostremoval_qc) {
@@ -42,9 +68,16 @@ workflow SHORTREAD_HOSTREMOVAL {
         ch_multiqc_files = ch_multiqc_files.mix(SAMTOOLS_STATS.out.stats)
     }
 
+    // the reads left after host removal are counted from the repair.sh log for the paired-end reads, as the
+    // bowtie2 logs count each mate separately, and from the bowtie2 log for the single-end reads
+    ch_read_count_logs = BOWTIE2_ALIGN.out.log
+        .filter { meta, _log_file -> !meta.mate }
+        .map { meta, log_file -> [meta, 'bowtie2', log_file] }
+        .mix(BBMAP_REPAIR_HOSTREMOVAL.out.log.map { meta, log_file -> [meta, 'bbmap_repair', log_file] })
+
     emit:
-    reads    = BOWTIE2_ALIGN.out.fastq // channel: [ val(meta), [ reads ] ]
-    bowtie2_log = BOWTIE2_ALIGN.out.log // channel: [ val(meta), log ]
-    versions = ch_versions // channel: [ versions.yml ]
-    mqc      = ch_multiqc_files
+    reads           = BBMAP_REPAIR_HOSTREMOVAL.out.repaired.mix(ch_unmapped.single_end) // channel: [ val(meta), [ reads ] ]
+    read_count_logs = ch_read_count_logs // channel: [ val(meta), kind, log ]
+    versions        = ch_versions // channel: [ versions.yml ]
+    mqc             = ch_multiqc_files
 }

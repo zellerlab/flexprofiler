@@ -322,7 +322,7 @@ workflow FLEXPROFILER {
     }
     if (params.perform_shortread_hostremoval) {
         ch_read_count_files = ch_read_count_files.mix(
-            SHORTREAD_HOSTREMOVAL.out.bowtie2_log.map { meta, log_file -> [meta.id, 'bowtie2', '', '', log_file] }
+            SHORTREAD_HOSTREMOVAL.out.read_count_logs.map { meta, kind, log_file -> [meta.id, kind, '', '', log_file] }
         )
     }
     // the files are staged in numbered folders, in the order of the manifest

@@ -31,7 +31,7 @@ nextflow_pipeline {
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
                 // the 5 paired-end runs are repaired, and the mates of the 4 paired-end samples renamed for motus4
-                { assert workflow.trace.succeeded().count { task -> task.name.contains( "BBMAP_REPAIR" ) } == 5 },
+                { assert workflow.trace.succeeded().count { task -> task.name.contains( ":BBMAP_REPAIR (" ) } == 5 },
                 { assert workflow.trace.succeeded().count { task -> task.name.contains( "MOTUS4_RENAME_READS" ) } == 8 },
                 // the suffixes in the read names change no count
                 { assert read_counts.find { it[0] == "2613_suffixed" }.tail() == read_counts.find { it[0] == "2613" }.tail() },

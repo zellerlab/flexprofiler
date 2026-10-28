@@ -1,0 +1,62 @@
+nextflow_pipeline {
+    name "Test host removal of host-contaminated reads"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_hostremoval"
+    profile "test_gqlib"
+
+    test("test_hostremoval") {
+        when {
+            params {
+                // reads of sample 2613 with reads simulated from the host reference: host pairs, chimeric pairs (one
+                // mate from the host) and, single-end, host reads (see assets/test-data/README.md)
+                input                      = "${baseDir}/assets/test-data/samplesheet_hostremoval.csv"
+                outdir                     = "${outputDir}"
+                // the reads go to host removal as they are, and its output is published
+                perform_shortread_qc       = false
+                perform_runmerging         = false
+                save_analysis_ready_fastqs = true
+                // no profiling: the test checks host removal, and the few reads of the fixture have no hits in the
+                // test gene catalogue, for which gqlib writes no profile
+                run_gqlib                  = false
+            }
+        }
+
+        then {
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
+            // the read names of a fastq, in order, without the comment and the /1 and /2 suffix
+            def read_names        = { file -> path( file.toString() ).linesGzip.withIndex().findAll { _line, i -> i % 4 == 0 }.collect { line, _i -> line.substring( 1 ).split( /\s/ )[0].replaceAll( /\/[12]$/, '' ) } }
+            def is_host           = { name -> name.startsWith( "host_" ) || name.startsWith( "chimera_" ) }
+            def input_dir         = "${baseDir}/assets/test-data/data/fastq/hostremoval"
+            def output_dir        = "${params.outdir}/analysis_ready_fastqs"
+            def input_pe          = read_names( "${input_dir}/host_contaminated_1.fastq.gz" )
+            def input_se          = read_names( "${input_dir}/host_contaminated_se.fastq.gz" )
+            def output_pe_1       = read_names( "${output_dir}/host_contaminated_ERR5766181.unmapped_1_repaired.fastq.gz" )
+            def output_pe_2       = read_names( "${output_dir}/host_contaminated_ERR5766181.unmapped_2_repaired.fastq.gz" )
+            def output_se         = read_names( "${output_dir}/host_contaminated_se_ERR5766181.unmapped.fastq.gz" )
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                // the fixture: 2000 non-host pairs, 200 host pairs and 200 chimeric pairs, and 2000 non-host and 200
+                // host single-end reads
+                { assert input_pe.count { name -> !is_host( name ) } == 2000 },
+                { assert input_pe.count { name -> is_host( name ) } == 400 },
+                { assert input_se.count { name -> is_host( name ) } == 200 },
+                // no host-derived read is left, including the non-host mates of the chimeric pairs
+                { assert output_pe_1.count { name -> is_host( name ) } == 0 },
+                { assert output_pe_2.count { name -> is_host( name ) } == 0 },
+                { assert output_se.count { name -> is_host( name ) } == 0 },
+                // the non-host reads are all kept, in the input order, with the mates in sync
+                { assert output_pe_1 == input_pe.findAll { name -> !is_host( name ) } },
+                { assert output_pe_2 == output_pe_1 },
+                { assert output_se == input_se.findAll { name -> !is_host( name ) } },
+                // the host-removed pairs counted from the repair.sh log, and the reads from the bowtie2 log
+                { assert read_counts.find { row -> row[0] == "host_contaminated" }[read_counts[0].indexOf( "host_removed_pairs" )] == "2000" },
+                { assert read_counts.find { row -> row[0] == "host_contaminated_se" }[read_counts[0].indexOf( "host_removed_pairs" )] == "2000" },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+            )
+        }
+    }
+}

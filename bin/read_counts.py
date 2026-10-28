@@ -4,8 +4,9 @@
 usage: read_counts.py <manifest.tsv> <inputs_dir> <out.tsv> <out_mqc.tsv>
 
 The manifest has one row per input file, without header: <index> <sample> <kind> <db_name> <annot_db_name>, the file
-being the only one in <inputs_dir>/<index>/. The kinds are fastp, bowtie2, motus4, motus3, cayman and gqlib. The counts
-of the files of a sample (e.g. of its runs) are summed. A column is written only if some file has its count.
+being the only one in <inputs_dir>/<index>/. The kinds are fastp, bowtie2, bbmap_repair, motus4, motus3, cayman and
+gqlib. The counts of the files of a sample (e.g. of its runs) are summed. A column is written only if some file has its
+count.
 """
 import collections
 import json
@@ -32,13 +33,15 @@ def parse_fastp(text):
 
 
 def parse_bowtie2(text):
-    # the reads written as unaligned: for paired-end, the pairs not aligned concordantly (--un-conc), else the reads
-    # not aligned (--un)
-    if search_int(r"^\s*(\d+) \([\d.]+%\) were paired", text):
-        count = search_int(r"^\s*(\d+) \([\d.]+%\) aligned concordantly 0 times", text)
-    else:
-        count = search_int(r"^\s*(\d+) \([\d.]+%\) aligned 0 times", text)
-    return {"host_removed_pairs": count}
+    # single-end reads, the reads not aligned (--un)
+    return {"host_removed_pairs": search_int(r"^\s*(\d+) \([\d.]+%\) aligned 0 times", text)}
+
+
+def parse_bbmap_repair(text):
+    # paired-end reads, the pairs with neither mate aligned to the host, re-paired by repair.sh after aligning the
+    # mates separately: repair.sh counts the reads of the pairs, i.e. both mates
+    count = search_int(r"^Pairs:\s+(\d+) reads", text)
+    return {"host_removed_pairs": None if count is None else count // 2}
 
 
 def parse_motus4(text):
@@ -71,7 +74,8 @@ DESCRIPTIONS = {
     "qc_reads": ("QC reads", "Reads after QC (fastp), each mate counted"),
     "host_removed_pairs": (
         "Host-removed pairs",
-        "Read pairs (single-end: reads) not aligned to the host genome, given to the profilers",
+        "Read pairs with neither mate aligned to the host genome (single-end: reads not aligned), given to the"
+        " profilers",
     ),
     "motus4": ("mOTUs v4 {db} pairs", "Read pairs aligned to the mOTUs v4 database {db} and passing the mOTUs filters"),
     "motus3": ("mOTUs v3 {db} pairs", "Read pairs aligned to the mOTUs v3 database {db} and passing the mOTUs filters"),
@@ -104,6 +108,8 @@ def main(manifest, inputs_dir, out_tsv, out_mqc):
             values = parse_fastp(text)
         elif kind == "bowtie2":
             values = parse_bowtie2(text)
+        elif kind == "bbmap_repair":
+            values = parse_bbmap_repair(text)
         elif kind in PARSERS:
             if annot_db_name != first_annot[(sample, kind, db_name)]:
                 continue

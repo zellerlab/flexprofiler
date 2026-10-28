@@ -340,6 +340,7 @@ It is not always necessary to report classification of reads from a host when yo
 Furthermore, particularly with human samples, you can reduce the number of false positives during classification/profiling that occur due to host-sequence contamination in reference genomes on public databases.
 
 zellerlab/flexprofiler currently offers host-removal via alignment against a reference genome with Bowtie2 for short reads and minimap2 for long reads, and the use of the unaligned reads for downstream classification/profiling.
+For paired-end short reads, the two mates are aligned separately and a pair is removed if either mate aligns to the host, as recommended by [Forbes et al. 2025](https://doi.org/10.1016/j.crmeth.2025.101218).
 
 You can supply your reference genome in FASTA format with `--hostremoval_reference`.
 You can also optionally supply a directory containing pre-indexed Bowtie2 index files with `--shortread_hostremoval_index` or a minimap2 `.mmi` file for `--longread_hostremoval_index`, however zellerlab/flexprofiler will generate these for you if necessary.

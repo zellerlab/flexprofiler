@@ -29,7 +29,7 @@ nextflow_pipeline {
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
-                { assert workflow.trace.succeeded().count { task -> task.name.contains( "BBMAP_REPAIR" ) } == 1 },
+                { assert workflow.trace.succeeded().count { task -> task.name.contains( ":BBMAP_REPAIR (" ) } == 1 },
                 // the counts should be close to those of sample 2613 in the other tests, whose pairs are in order
                 // (bwa estimates the insert size from batches of reads, so the order of the pairs can change a few alignments)
                 { assert snapshot ( read_counts ).match( "read_counts" ) },

@@ -14,7 +14,7 @@ process BBMAP_REPAIR {
     tuple val(meta), path("*_repaired.fastq.gz")         , emit: repaired
     tuple val(meta), path("${prefix}_singleton.fastq.gz"), emit: singleton
     path  "versions.yml"                                 , emit: versions
-    path  "*.log"                                        , emit: log
+    tuple val(meta), path("*.log")                       , emit: log
 
     when:
     task.ext.when == null || task.ext.when

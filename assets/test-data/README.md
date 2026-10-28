@@ -66,7 +66,17 @@ FASTA files are stored under `data/fasta/`
 
 ### Host removal reference
 
-The tests use the human mitochondrial genome (revised Cambridge Reference Sequence, [NC_012920.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_012920.1)) as host reference instead of a full human genome, so that building its bowtie2 index (done by the pipeline) and the host removal are fast. The test data are not expected to have many human reads, and the tests only check that host removal runs.
+The tests use the human mitochondrial genome (revised Cambridge Reference Sequence, [NC_012920.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_012920.1)) as host reference instead of a full human genome, so that building its bowtie2 index (done by the pipeline) and the host removal are fast. The test data are not expected to have many human reads, and most tests only check that host removal runs.
+
+#### Host-contaminated reads
+
+To test that host removal removes the host reads and keeps the others (`tests/test_hostremoval.nf.test`, `samplesheet_hostremoval.csv`), reads simulated from the host reference were added to the first 2000 pairs of ERX5474937 (sample 2613 in the other tests), in `data/fastq/hostremoval/`: 200 pairs with both mates from the host, and 200 chimeric pairs with one mate from the host and the other from ERX5474937 (100 with the host mate as R1, 100 as R2), and, for single-end reads, 200 host reads added to the R1 of the 2000 pairs. The host-derived reads have names starting with `host_` or `chimera_`, and the reads are shuffled. They were made with:
+
+```bash
+python3 scripts/make_host_contaminated_reads.py \
+    data/fastq/ERX5474937_ERR5766181_1.fastq.gz data/fastq/ERX5474937_ERR5766181_2.fastq.gz \
+    data/hostremoval/NC_012920.1.fna.gz data/fastq/hostremoval
+```
 
 The T2T-CHM13v2.0 RefSeq assembly recommended for real runs (GCF_009914755.1) does not include the mitochondrial genome, so it was downloaded from NCBI:
 
