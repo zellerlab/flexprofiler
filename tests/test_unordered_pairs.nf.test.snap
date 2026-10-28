@@ -471,6 +471,7 @@
             [
                 [
                     "sample",
+                    "run_accession",
                     "raw_reads",
                     "qc_reads",
                     "host_removed_pairs",
@@ -481,6 +482,7 @@
                 ],
                 [
                     "2613_unordered",
+                    "ERR5766181",
                     "1075088",
                     "1067004",
                     "533421",
@@ -491,7 +493,7 @@
                 ]
             ]
         ],
-        "timestamp": "2026-10-28T10:50:58.890398",
+        "timestamp": "2026-10-28T18:41:41.101331",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

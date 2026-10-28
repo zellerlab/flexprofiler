@@ -50,6 +50,36 @@
             "nextflow": "26.04.2"
         }
     },
+    "genus_table_merged_plus_unmerged": {
+        "content": [
+            [
+                "lineage\tamplicon_pe\tamplicon_se",
+                "d__Bacteria;p__Actinomycetota;c__Actinomycetes;o__Bifidobacteriales;f__Bifidobacteriaceae;g__Bifidobacterium\t135\t105",
+                "d__Bacteria;p__Bacillota;c__Bacilli;o__Lactobacillales;f__Streptococcaceae;g__Streptococcus\t135\t105",
+                "d__Bacteria;p__Bacillota;c__Clostridia;o__Eubacteriales;f__Clostridiaceae;g__Clostridium\t135\t105",
+                "d__Bacteria;p__Bacteroidota;c__Bacteroidia;o__Bacteroidales;f__Bacteroidaceae;g__Bacteroides\t135\t105",
+                "d__Bacteria;p__Pseudomonadota;c__Gammaproteobacteria;o__Enterobacterales;f__Enterobacteriaceae;g__Escherichia\t63\t49",
+                "d__Bacteria;p__Verrucomicrobiota;c__Verrucomicrobiia;o__Verrucomicrobiales;f__Akkermansiaceae;g__Akkermansia\t18\t14",
+                "unassigned\t0\t0",
+                "total_reads\t621\t483"
+            ]
+        ],
+        "timestamp": "2026-10-28T18:55:52.750243",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
+    "number_of_tasks_merged_plus_unmerged": {
+        "content": [
+            14
+        ],
+        "timestamp": "2026-10-28T18:55:52.73577",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
     "filenames": {
         "content": [
             [
@@ -333,6 +363,41 @@
             ]
         ],
         "timestamp": "2026-10-28T18:03:04.986176",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
+    "read_counts_merged_plus_unmerged": {
+        "content": [
+            [
+                [
+                    "sample",
+                    "run_accession",
+                    "raw_reads",
+                    "qc_reads",
+                    "merged_pairs",
+                    "idtaxa_test_16s_pairs"
+                ],
+                [
+                    "amplicon_pe",
+                    "clean_pe",
+                    "966",
+                    "966",
+                    "345",
+                    "621"
+                ],
+                [
+                    "amplicon_se",
+                    "clean_se",
+                    "483",
+                    "483",
+                    "NA",
+                    "483"
+                ]
+            ]
+        ],
+        "timestamp": "2026-10-28T18:55:52.746305",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

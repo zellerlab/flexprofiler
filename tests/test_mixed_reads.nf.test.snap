@@ -128,7 +128,6 @@
     "filenames": {
         "content": [
             [
-                "amplicon_primers",
                 "bbmap",
                 "bbmap/2613.repair.sh.log",
                 "bbmap/2613_1_repaired.fastq.gz",
@@ -667,7 +666,7 @@
                 "samtools/stats/2613_unordered_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-10-28T18:16:33.976385",
+        "timestamp": "2026-10-28T19:09:04.753064",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

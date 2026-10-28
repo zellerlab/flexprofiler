@@ -122,7 +122,6 @@
     "filenames": {
         "content": [
             [
-                "amplicon_primers",
                 "bowtie2",
                 "bowtie2/align",
                 "bowtie2/align/2612_ERR5766176.unmapped.repair.sh.log",
@@ -405,7 +404,7 @@
                 "samtools/stats/2613_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-10-28T17:56:09.191657",
+        "timestamp": "2026-10-28T18:48:28.102679",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

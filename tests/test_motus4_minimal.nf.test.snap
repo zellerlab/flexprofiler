@@ -91,7 +91,6 @@
     "filenames": {
         "content": [
             [
-                "amplicon_primers",
                 "bowtie2",
                 "bowtie2/align",
                 "bowtie2/align/2612_ERR5766176.unmapped.repair.sh.log",
@@ -138,7 +137,7 @@
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-10-28T18:35:23.810372",
+        "timestamp": "2026-10-28T19:32:49.028111",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

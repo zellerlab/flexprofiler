@@ -119,7 +119,6 @@
     "filenames": {
         "content": [
             [
-                "amplicon_primers",
                 "bowtie2",
                 "bowtie2/align",
                 "bowtie2/align/2612_mixed_ERR5766176.bowtie2.log",
@@ -477,7 +476,7 @@
                 "samtools/stats/2612_mixed_ERR5766180.stats"
             ]
         ],
-        "timestamp": "2026-10-28T18:06:16.238713",
+        "timestamp": "2026-10-28T18:58:59.370327",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

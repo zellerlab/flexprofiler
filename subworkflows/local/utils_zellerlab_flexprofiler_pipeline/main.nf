@@ -113,7 +113,7 @@ workflow PIPELINE_INITIALISATION {
     //
     // Validate and create channel from databases file provided through params.databases
     //
-    def database_rows = samplesheetToList(databases, "assets/schema_database.json")
+    def database_rows = selectIdtaxaDatabases(samplesheetToList(databases, "assets/schema_database.json"), params.idtaxa_db_names)
     validateDatabaseSheet(database_rows)
     Channel.fromList(database_rows)
         .set { ch_databases }
@@ -248,6 +248,23 @@ def validateInputSamplesheet(rows) {
             )
         }
     }
+}
+
+//
+// Keep only the idtaxa rows of the database sheet named in --idtaxa_db_names (comma-separated), all of them if not set
+//
+def selectIdtaxaDatabases(rows, db_names) {
+    // rows: [ meta, db_path ]
+    if (!db_names) {
+        return rows
+    }
+    def selected = db_names.tokenize(',')
+    def available = rows.findAll { meta, _db_path -> meta.tool == 'idtaxa' }.collect { meta, _db_path -> meta.db_name }
+    def missing = selected - available
+    if (missing) {
+        error("Please check --idtaxa_db_names -> ${missing.join(', ')} not among the idtaxa rows of the database sheet. Available: ${available.join(', ') ?: 'none'}")
+    }
+    return rows.findAll { meta, _db_path -> meta.tool != 'idtaxa' || meta.db_name in selected }
 }
 
 //
