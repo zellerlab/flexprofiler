@@ -91,6 +91,7 @@
     "filenames": {
         "content": [
             [
+                "amplicon_primers",
                 "bowtie2",
                 "bowtie2/align",
                 "bowtie2/align/2612_ERR5766176.unmapped.repair.sh.log",
@@ -137,7 +138,7 @@
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-10-28T10:45:22.441511",
+        "timestamp": "2026-10-28T18:35:23.810372",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -148,6 +149,7 @@
             [
                 [
                     "sample",
+                    "run_accession",
                     "raw_reads",
                     "qc_reads",
                     "host_removed_pairs",
@@ -155,6 +157,7 @@
                 ],
                 [
                     "2612",
+                    "merged_WGS",
                     "2528240",
                     "2513136",
                     "1256228",
@@ -162,6 +165,7 @@
                 ],
                 [
                     "2612_se",
+                    "ERR5766180",
                     "801532",
                     "800818",
                     "800776",
@@ -169,6 +173,7 @@
                 ],
                 [
                     "2613",
+                    "ERR5766181",
                     "1075088",
                     "1067004",
                     "533421",
@@ -176,7 +181,7 @@
                 ]
             ]
         ],
-        "timestamp": "2026-10-28T10:45:22.449779",
+        "timestamp": "2026-10-28T18:35:23.816897",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

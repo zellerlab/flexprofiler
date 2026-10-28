@@ -44,7 +44,7 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 - [ganon](#ganon) - Taxonomic classifier and profile that uses Interleaved Bloom Filters as indices based on k-mers/minimizers.
 - [TAXPASTA](#taxpasta) - Tool to standardise taxonomic profiles as well as merge profiles across samples from the same database and classifier/profiler.
 -->
-- [Read counts](#read-counts) - Per-sample read counts after QC, host removal and alignment to each profiling database
+- [Read counts](#read-counts) - Per-run read counts after QC, host removal and alignment to each profiling database
 - [MultiQC](#multiqc) - Aggregate report describing results and QC from the whole pipeline
 - [Pipeline information](#pipeline-information) - Report metrics generated during the workflow execution
 
@@ -396,7 +396,7 @@ This is the last possible preprocessing step, so if you have multiple runs or li
 <summary>Output files</summary>
 
 - `run_merging/`
-  - `*.fastq.gz`: Concatenated FASTQ files on a per-sample basis
+  - `*.fastq.gz`: Concatenated FASTQ files on a per-sample basis, named `<sample>_merged_<library_strategy>` (e.g. `2612_merged_WGS`)
 
 </details>
 
@@ -792,11 +792,11 @@ Please aware the outputs of each tool's standardised profile _may not_ be direct
 <summary>Output files</summary>
 
 - `read_counts/`
-  - `read_counts.tsv`: one row per sample, with the reads left after each step.
+  - `read_counts.tsv`: one row per run, with the reads left after each step.
 
 </details>
 
-The counts are parsed from the logs of the tools, and the counts of the runs of a sample are summed. The table is also in the MultiQC report, in the section Read counts. A column is present only if its step was run: the raw and QC reads only with `--shortread_qc_tool fastp`, the host-removed pairs only with `--perform_shortread_hostremoval`, and one column per profiler and database.
+The counts are parsed from the logs of the tools. There is one row per sample and run (columns `sample` and `run_accession`): with `--perform_runmerging`, the runs of a sample with more than one run are summed into its merged run (`merged_WGS` or `merged_AMPLICON`), and a sample with a single run keeps its `run_accession`. The table is also in the MultiQC report, in the section Read counts. A column is present only if its step was run: the raw and QC reads only with `--shortread_qc_tool fastp`, the host-removed pairs only with `--perform_shortread_hostremoval`, and one column per profiler and database.
 
 | Column                      | Unit                                     | Source                                                                                                     |
 | --------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |

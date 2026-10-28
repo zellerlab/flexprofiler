@@ -98,6 +98,7 @@ This will allow classification optimisation for each data type, and make MultiQC
 | `sample`              | Unique sample name [required].                                                                                                                                                          |
 | `run_accession`       | Run ID or name unique for each (pairs of) file(s) .Can also supply sample name again here, if only a single run was generated [required].                                               |
 | `instrument_platform` | Sequencing platform reads generated on, selected from the EBI ENA [controlled vocabulary](https://www.ebi.ac.uk/ena/portal/api/controlledVocab?field=instrument_platform) [required].   |
+| `library_strategy`    | `WGS` (shotgun metagenomics) or `AMPLICON` (e.g. 16S), from the EBI ENA [controlled vocabulary](https://www.ebi.ac.uk/ena/portal/api/controlledVocab?field=library_strategy). Defaults to `WGS` when empty or when the column is missing [optional]. |
 | `fastq_1`             | Path or URL to sequencing reads or for Illumina R1 sequencing reads in FASTQ format. Must be gzipped. Can be left empty if data in FASTA is specified. Cannot be combined with `fasta`. |
 | `fastq_2`             | Path or URL to Illumina R2 sequencing reads in FASTQ format. Must be gzipped. Can be left empty if single end data. Cannot be combined with `fasta`.                                    |
 | `fasta`               | Path or URL to long-reads or contigs in FASTA format. Must be gzipped. Can be left empty if data in FASTQ is specified. Cannot be combined with `fastq_1` or `fastq_2`.                 |
@@ -356,6 +357,7 @@ For samples that may have been sequenced over multiple runs, or for FASTQ files 
 For more information how to set up your input samplesheet, see [Multiple runs of the same sample](#multiple-runs-of-the-same-sample).
 Activating this functionality will concatenate the FASTQ files with the same sample name _after_ the optional preprocessing steps and _before_ classification/profiling.
 All runs of a sample must have the same pairing type (single- or paired-end), unless pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`), otherwise the pipeline stops with an error.
+The `WGS` and `AMPLICON` runs of a sample (`library_strategy` column) are never merged together: they are merged separately, into the runs `merged_WGS` and `merged_AMPLICON` of the sample, and a sample with a single run of a strategy keeps its `run_accession`.
 
 You can optionally save the FASTQ output of the run merging with the `--save_runmerged_reads`.
 
@@ -368,10 +370,35 @@ For advice as to which tool to run in your context, please see the documentation
 
 <!-- TODO: add section
 ##### MapSeq
+-->
 
 ##### IDTaxa
 
--->
+IDTAXA (DECIPHER) classifies 16S amplicon reads, the samples with `AMPLICON` in the `library_strategy` column of the samplesheet, against a training set. Turn it on with `--run_idtaxa` and an `idtaxa` row in the database CSV, with `db_path` a training set as distributed with DECIPHER (`.RData`) or saved with `saveRDS` (`.rds`).
+
+Before IDTAXA, the primers of each amplicon run are found with PIMENTO and trimmed with cutadapt (`--perform_amplicon_primertrimming`, on by default).
+
+IDTAXA classifies single sequences, so the pairs of paired-end reads are first merged if their mates overlap. The other pairs are handled as set by `--idtaxa_pair_handling`:
+
+- `merged_plus_joined` (default): vsearch merges the overlapping pairs and joins the others with a padding of Ns (R1, `NNNNNNNN`, reverse complement of R2). Each pair is classified once, as one sequence.
+- `merged_plus_unmerged`: fastp merges the overlapping pairs and keeps both mates of the others as separate sequences, so these pairs count twice in the profile.
+
+Single-end reads are classified as they are. Only the reads given to IDTAXA change, not the analysis-ready reads.
+
+The IdTaxa options are left at the DECIPHER defaults (`--threshold 60`, `--strand both`), and are changed with `ext.args` in a custom config, as are those of vsearch and fastp:
+
+```groovy
+process {
+    withName: IDTAXA_CLASSIFY {
+        ext.args = '--threshold 40'
+    }
+    withName: VSEARCH_MERGEJOIN {
+        ext.args = '--fastq_allowmergestagger --fastq_minovlen 20'
+    }
+}
+```
+
+Keep `--strand both` for libraries with reads in both orientations.
 
 ##### mOTUs v4
 

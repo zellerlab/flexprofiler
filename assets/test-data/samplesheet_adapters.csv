@@ -1,0 +1,5 @@
+sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
+truseq_pe,truseq,ILLUMINA,../../../assets/test-data/data/fastq/adapters/adapters_truseq_1.fastq.gz,../../../assets/test-data/data/fastq/adapters/adapters_truseq_2.fastq.gz,
+truseq_se,truseq,ILLUMINA,../../../assets/test-data/data/fastq/adapters/adapters_truseq_se.fastq.gz,,
+nextera_pe,nextera,ILLUMINA,../../../assets/test-data/data/fastq/adapters/adapters_nextera_1.fastq.gz,../../../assets/test-data/data/fastq/adapters/adapters_nextera_2.fastq.gz,
+nextera_se,nextera,ILLUMINA,../../../assets/test-data/data/fastq/adapters/adapters_nextera_se.fastq.gz,,

@@ -1,0 +1,89 @@
+nextflow_pipeline {
+    name "Test adapter removal of shotgun reads with fastp"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_adapter_removal"
+    profile "test_gqlib"
+
+    test("test_adapter_removal") {
+        when {
+            params {
+                // shotgun reads of the human mitochondrial genome with TruSeq or Nextera adapters read into, in the
+                // pairs with a fragment (adapter_<insert length>_<i>) shorter than the reads, as paired-end and
+                // single-end reads (see assets/test-data/README.md)
+                input                      = "${baseDir}/assets/test-data/samplesheet_adapters.csv"
+                outdir                     = "${outputDir}"
+                // the reads go to fastp, with its default adapter detection, and its output is published
+                perform_shortread_hostremoval = false
+                perform_runmerging         = false
+                save_analysis_ready_fastqs = true
+                run_gqlib                  = false
+            }
+        }
+
+        then {
+            def samples           = [ "truseq_pe_truseq_1", "truseq_pe_truseq_2", "truseq_se_truseq", "nextera_pe_nextera_1", "nextera_pe_nextera_2", "nextera_se_nextera" ]
+            // the reads with a TruSeq or Nextera adapter left (their first 13 bases), and the reads of the pairs with a
+            // short fragment (adapter_<insert length>_<i>) not trimmed to the fragment length
+            def adapterStats      = { lines ->
+                def records = lines.collate( 4 ).collect { record -> [ record[0].substring( 1 ).split( /\s/ )[0].replaceAll( /\/[12]$/, '' ), record[1] ] }
+                [
+                    reads: records.size(),
+                    with_adapter: records.count { _name, seq -> seq.contains( "AGATCGGAAGAGC" ) || seq.contains( "CTGTCTCTTATAC" ) },
+                    wrong_length: records.count { name, seq -> name.startsWith( "adapter_" ) && seq.length() != name.tokenize( '_' )[1].toInteger() },
+                ]
+            }
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def stats             = samples.collectEntries { name -> [ name, adapterStats( path( "${params.outdir}/analysis_ready_fastqs/${name}.fastp.fastq.gz" ).linesGzip ) ] }
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                // paired-end: the adapters are found from the overlap of the mates, and removed exactly
+                { assert samples.findAll { name -> name.contains( "_pe_" ) }.every { name -> stats[name].with_adapter == 0 && stats[name].wrong_length == 0 } },
+                // single-end: fastp detects no adapter in these small files, so they are left (see TODO.md); this
+                // documents the current behaviour, the test with an adapter list checks that they can be removed
+                { assert snapshot ( stats ).match( "adapter_stats" ) },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+            )
+        }
+    }
+
+    test("test_adapter_removal_adapterlist") {
+        when {
+            params {
+                input                      = "${baseDir}/assets/test-data/samplesheet_adapters.csv"
+                outdir                     = "${outputDir}"
+                shortread_qc_adapterlist   = "${baseDir}/assets/test-data/data/fastq/adapters/adapters.fasta"
+                perform_shortread_hostremoval = false
+                perform_runmerging         = false
+                save_analysis_ready_fastqs = true
+                run_gqlib                  = false
+            }
+        }
+
+        then {
+            def samples           = [ "truseq_pe_truseq_1", "truseq_pe_truseq_2", "truseq_se_truseq", "nextera_pe_nextera_1", "nextera_pe_nextera_2", "nextera_se_nextera" ]
+            // the reads with a TruSeq or Nextera adapter left (their first 13 bases), and the reads of the pairs with a
+            // short fragment (adapter_<insert length>_<i>) not trimmed to the fragment length
+            def adapterStats      = { lines ->
+                def records = lines.collate( 4 ).collect { record -> [ record[0].substring( 1 ).split( /\s/ )[0].replaceAll( /\/[12]$/, '' ), record[1] ] }
+                [
+                    reads: records.size(),
+                    with_adapter: records.count { _name, seq -> seq.contains( "AGATCGGAAGAGC" ) || seq.contains( "CTGTCTCTTATAC" ) },
+                    wrong_length: records.count { name, seq -> name.startsWith( "adapter_" ) && seq.length() != name.tokenize( '_' )[1].toInteger() },
+                ]
+            }
+            def stats             = samples.collectEntries { name -> [ name, adapterStats( path( "${params.outdir}/analysis_ready_fastqs/${name}.fastp.fastq.gz" ).linesGzip ) ] }
+            assertAll(
+                { assert workflow.success },
+                // with the adapters given, they are removed also from the single-end reads; the adapter search
+                // allows mismatches, so an insert ending like the start of an adapter can be cut a few bases short
+                // (adapter_99_16 of the Nextera pairs, to 91 bp), kept in the snapshot
+                { assert samples.every { name -> stats[name].with_adapter == 0 } },
+                { assert snapshot ( stats ).match( "adapter_stats_adapterlist" ) },
+            )
+        }
+    }
+}

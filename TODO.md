@@ -3,3 +3,9 @@
 - Add support for metagenomics profilers: kraken2, PathSeq/pythseq, sylph
 - gqlib 2.14.4 and gffquant 2.16.5 (used by nevermore) count differently the `uniq_*` columns: gqlib counts as ambiguous the reads not in a pair aligned to the same gene (single-end reads, orphans, lone mates, mates on different genes) that have MAPQ 0 but no secondary alignments left after the filters, gffquant counts them as unique (ambiguous only if secondary alignments are left). The `combined_*` columns are the same. Compared on one sample of a nevermore run from its alignments: `uniq_raw` ~3.6% lower with gqlib
 - gqlib writes no profiles for a sample with no reads aligned to the gene catalogue, and GQLIB_PROFILE_GENES fails on the missing outputs
+- fastp WGS preprocessing vs the vortex_knight bbduk one (`qtrim=rl trimq=3 maq=25 ktrim=r k=23 mink=11 hdist=1 ftm=5 tpe tbo`): adapter removal is fine for PE (overlap analysis + `--detect_adapter_for_pe`), but:
+    - SE adapter auto-detection works on the first reads only and can miss adapters in libraries with few of them: recommend/provide `--shortread_qc_adapterlist`
+    - polyG trimming is auto-enabled only if the read headers show a NovaSeq/NextSeq instrument, often not the case for SRA/ENA downloads: consider `--trim_poly_g` by default
+    - no quality trimming at the read ends by default (fastp only filters whole reads): consider `--cut_tail` and `--average_qual`
+    - `--length_required 15` (`shortread_qc_minlength`) is permissive compared to vortex_knight (75, 45 for functional profiling)
+    - `--detect_adapter_for_pe` is passed twice to FASTP_PAIRED (nf-core module and `conf/modules.config`), harmless

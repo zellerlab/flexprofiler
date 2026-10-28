@@ -1,0 +1,46 @@
+nextflow_pipeline {
+    name "Test shotgun (WGS) and 16S amplicon (AMPLICON) samples in the same run"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_mixed_strategy"
+    profile "test_motus4"
+
+    test("test_mixed_strategy") {
+        when {
+            params {
+                // sample 2612 with two WGS runs (ERX5474932) and two AMPLICON runs (16S reads without and with
+                // primers), 2613 with one WGS run (library_strategy left empty, WGS by default) and amplicon_only with
+                // one AMPLICON run (see assets/test-data/README.md)
+                input                      = "${baseDir}/assets/test-data/samplesheet_mixed_strategy.csv"
+                outdir                     = "${outputDir}"
+                run_idtaxa                 = true
+                save_runmerged_reads       = true
+            }
+        }
+
+        then {
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            // the samples (tags) a process ran on
+            def samples_of        = { process -> workflow.trace.tasks().findAll { task -> task.name.contains( ":${process} (" ) }.collect { task -> task.name.replaceAll( /.*\(|\)$/, '' ).tokenize( '|' )[-1] }.unique().sort() }
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                // each library strategy goes to its own steps and profilers
+                { assert samples_of( "BOWTIE2_ALIGN" ) == [ "2612", "2613" ] },
+                { assert samples_of( "MOTUS4_PROFILE" ) == [ "2612", "2613" ] },
+                { assert samples_of( "PIMENTO_STD" ) == [ "2612", "amplicon_only" ] },
+                { assert samples_of( "IDTAXA_CLASSIFY" ) == [ "2612", "amplicon_only" ] },
+                // the WGS and AMPLICON runs of 2612 are merged separately
+                { assert path( "${params.outdir}/run_merging/2612_merged_WGS_1.merged.fastq.gz" ).exists() },
+                { assert path( "${params.outdir}/run_merging/2612_merged_AMPLICON_1.merged.fastq.gz" ).exists() },
+                // one read count row per merged run, the single runs keeping their run accession
+                { assert read_counts.collect { row -> row[0..1] } == [ [ "sample", "run_accession" ], [ "2612", "merged_AMPLICON" ], [ "2612", "merged_WGS" ], [ "2613", "ERR5766181" ], [ "amplicon_only", "amplicon_mixed" ] ] },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+            )
+        }
+    }
+}

@@ -1,0 +1,55 @@
+nextflow_pipeline {
+    name "Test amplicon primer detection and removal"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_primer_removal"
+    profile "test_idtaxa"
+
+    test("test_primer_removal") {
+        when {
+            params {
+                // 16S reads (see assets/test-data/README.md) with the 341F/805R primers (some after a spacer, some
+                // reading through into the opposite primer and the adapter), as paired-end and single-end reads, with
+                // a quarter of the pairs in the other orientation (R1 starting with 805R), and without primers
+                input                      = "${baseDir}/assets/test-data/samplesheet_primers.csv"
+                outdir                     = "${outputDir}"
+                // no profiling: the test checks the analysis-ready reads
+                run_idtaxa                 = false
+                perform_runmerging         = false
+                save_analysis_ready_fastqs = true
+            }
+        }
+
+        then {
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def primers           = path( "${params.outdir}/amplicon_primers/primers.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            // the reads of a fastq: [ name without /1 or /2, sequence ]
+            def reads             = { file -> path( file.toString() ).linesGzip.collate( 4 ).collect { record -> [ record[0].substring( 1 ).split( /\s/ )[0].replaceAll( /\/[12]$/, '' ), record[1] ] } }
+            def ready             = { name -> reads( "${params.outdir}/analysis_ready_fastqs/${name}.fastp.fastq.gz" ) }
+            // the primers, with the IUPAC codes of their sequences, searched in the first 60 bases of the reads
+            def primer_regex      = ~/CCTACGGG[ACGT]GGC[AT]GCAG|GACTAC[ACT][ACG]GGGTATCTAATCC/
+            def with_primer       = { rows -> rows.count { _name, seq -> seq.take( 60 ) =~ primer_regex } }
+            def ready_files       = [ "primers_pe_primers_pe_1", "primers_pe_primers_pe_2", "mixed_orientation_mixed_pe_1", "mixed_orientation_mixed_pe_2", "primers_se_primers_se" ]
+            def input_clean       = reads( "${baseDir}/assets/test-data/data/fastq/amplicon/amplicon_clean_1.fastq.gz" )
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                // PIMENTO finds 341F at the start of R1 and 805R at the start of R2 (also with a quarter of the pairs
+                // flipped), 341F for the single-end reads, and no primer for the reads without primers
+                { assert snapshot ( primers ).match( "primers" ) },
+                // no primer left at the start of the reads, also in the flipped pairs and after a spacer
+                { assert ready_files.every { name -> with_primer( ready( name ) ) == 0 } },
+                // the read-through pairs (rt_) are cut at the end of the amplicon region (120 bp)
+                { assert ready_files.take( 4 ).every { name -> ready( name ).findAll { read_name, _seq -> read_name.startsWith( 'rt_' ) }.every { _read_name, seq -> seq.length() == 120 } } },
+                // the reads without primers are not trimmed
+                { assert workflow.trace.tasks().count { task -> task.name =~ /CUTADAPT.*no_primers/ } == 0 },
+                { assert ready( "no_primers_clean_pe_1" ) == input_clean },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+            )
+        }
+    }
+}

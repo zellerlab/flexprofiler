@@ -7,6 +7,7 @@ include { MOTUS_MERGE  as MOTUS3_MERGE } from '../../modules/nf-core/motus/merge
 include { GQLIB_MERGE                  } from '../../modules/local/gqlib/merge/main'
 // cayman profiles have the same format as the gqlib ones
 include { GQLIB_MERGE  as CAYMAN_MERGE } from '../../modules/local/gqlib/merge/main'
+include { IDTAXA_MERGE                 } from '../../modules/local/idtaxa/merge/main'
 
 workflow STANDARDISATION_PROFILES {
     take:
@@ -26,6 +27,7 @@ workflow STANDARDISATION_PROFILES {
         motus3: it[0]['tool'] == 'motus3'
         cayman: it[0]['tool'] == 'cayman'
         gqlib: it[0]['tool'] == 'gqlib'
+        idtaxa: it[0]['tool'] == 'idtaxa'
         unknown: true
     }
 
@@ -65,6 +67,11 @@ workflow STANDARDISATION_PROFILES {
     ch_profiles_for_gqlib = groupProfilesByCategory(ch_input_profiles.gqlib.transpose())
     GQLIB_MERGE(ch_profiles_for_gqlib)
     ch_versions = ch_versions.mix(GQLIB_MERGE.out.versions.first())
+
+    // IDTAXA, merged separately for each training set, one table per rank
+    ch_profiles_for_idtaxa = groupProfiles(ch_input_profiles.idtaxa)
+    IDTAXA_MERGE(ch_profiles_for_idtaxa)
+    ch_versions = ch_versions.mix(IDTAXA_MERGE.out.versions.first())
 
     emit:
     versions = ch_versions

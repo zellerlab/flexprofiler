@@ -12,6 +12,7 @@
     "filenames": {
         "content": [
             [
+                "amplicon_primers",
                 "analysis_ready_fastqs",
                 "analysis_ready_fastqs/host_contaminated_ERR5766181.unmapped_1_repaired.fastq.gz",
                 "analysis_ready_fastqs/host_contaminated_ERR5766181.unmapped_2_repaired.fastq.gz",
@@ -116,7 +117,7 @@
                 "samtools/stats/host_contaminated_se_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-10-28T09:31:54.734016",
+        "timestamp": "2026-10-28T18:02:16.890865",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -127,19 +128,22 @@
             [
                 [
                     "sample",
+                    "run_accession",
                     "host_removed_pairs"
                 ],
                 [
                     "host_contaminated",
+                    "ERR5766181",
                     "2000"
                 ],
                 [
                     "host_contaminated_se",
+                    "ERR5766181",
                     "2000"
                 ]
             ]
         ],
-        "timestamp": "2026-10-28T09:31:54.775334",
+        "timestamp": "2026-10-28T18:02:16.945129",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

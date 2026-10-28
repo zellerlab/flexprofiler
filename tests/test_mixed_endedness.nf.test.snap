@@ -119,6 +119,7 @@
     "filenames": {
         "content": [
             [
+                "amplicon_primers",
                 "bowtie2",
                 "bowtie2/align",
                 "bowtie2/align/2612_mixed_ERR5766176.bowtie2.log",
@@ -476,7 +477,7 @@
                 "samtools/stats/2612_mixed_ERR5766180.stats"
             ]
         ],
-        "timestamp": "2026-10-27T19:36:45.624104",
+        "timestamp": "2026-10-28T18:06:16.238713",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -487,6 +488,7 @@
             [
                 [
                     "sample",
+                    "run_accession",
                     "raw_reads",
                     "qc_reads",
                     "host_removed_pairs",
@@ -497,6 +499,7 @@
                 ],
                 [
                     "2612_mixed",
+                    "merged_WGS",
                     "2065652",
                     "1319375",
                     "1319182",
@@ -507,7 +510,7 @@
                 ]
             ]
         ],
-        "timestamp": "2026-10-27T19:36:45.640107",
+        "timestamp": "2026-10-28T18:06:16.254343",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

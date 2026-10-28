@@ -101,11 +101,12 @@ workflow PIPELINE_INITIALISATION {
     if (params.perform_runmerging) {
         validateInputSamplesheet(samplesheet_rows)
     }
-    // Samples with more than one run are published as analysis-ready reads only after run merging
-    def runs_per_sample = samplesheet_rows.countBy { row -> row[0].id }
+    // Samples with more than one run are published as analysis-ready reads only after run merging. The runs of a
+    // sample are merged separately for each library strategy, so they are counted per sample and strategy
+    def runs_per_sample = samplesheet_rows.countBy { row -> [row[0].id, row[0].library_strategy] }
     Channel.fromList(samplesheet_rows)
         .map { meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
-            [meta + [is_multirun: runs_per_sample[meta.id] > 1], run_accession, instrument_platform, fastq_1, fastq_2, fasta]
+            [meta + [is_multirun: runs_per_sample[[meta.id, meta.library_strategy]] > 1], run_accession, instrument_platform, fastq_1, fastq_2, fasta]
         }
         .set { ch_samplesheet }
 
@@ -228,7 +229,9 @@ def validateInputSamplesheet(rows) {
     // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
     // With pair merging, paired-end reads become single-end before run merging, so endedness can differ
     def check_endedness = !(params.perform_shortread_qc && params.shortread_qc_mergepairs)
-    rows.groupBy { row -> row[0].id }.each { sample, sample_rows ->
+    // the WGS and AMPLICON runs of a sample are merged separately
+    rows.groupBy { row -> [row[0].id, row[0].library_strategy] }.each { sample_strategy, sample_rows ->
+        def (sample, strategy) = sample_strategy
         def datatypes = sample_rows.collect { row ->
             def datatype = [row[2], row[5] ? 'FASTA' : 'FASTQ']
             if (check_endedness) {
@@ -241,7 +244,7 @@ def validateInputSamplesheet(rows) {
                 "Please check input samplesheet -> with --perform_runmerging, all runs of a sample must have the same " +
                 "instrument platform, file type (FASTQ/FASTA) and, unless pairs are merged with --shortread_qc_mergepairs, " +
                 "endedness (single/paired-end).\n" +
-                "Sample '${sample}' has: ${datatypes.collect { datatype -> datatype.join(' ') }.join('; ')}"
+                "Sample '${sample}' (${strategy}) has: ${datatypes.collect { datatype -> datatype.join(' ') }.join('; ')}"
             )
         }
     }

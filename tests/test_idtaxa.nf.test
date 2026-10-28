@@ -1,0 +1,82 @@
+nextflow_pipeline {
+    name "Test IDTAXA"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_idtaxa"
+    profile "test_idtaxa"
+
+    test("test_idtaxa") {
+        when {
+            params {
+                // 16S reads without primers, simulated from the reference sequences of the test training set: mostly
+                // overlapping pairs (ovl_) and some non-overlapping ones (noovl_), and their R1 as single-end reads
+                // (see assets/test-data/README.md)
+                outdir = "${outputDir}"
+            }
+        }
+
+        then {
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def count_of          = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
+            // the per-read classifications: [ read name without /1, genus assigned ]
+            def classifications   = { sample -> path( "${params.outdir}/idtaxa/test_16s/${sample}_test_16s.idtaxa.classifications.tsv.gz" ).linesGzip.drop( 1 ).collect { line -> line.split( "\t", -1 ) }.collect { fields -> [ fields[0].replaceAll( /\/1$/, '' ), fields[1].tokenize( ';' ).find { taxon -> taxon.startsWith( 'g__' ) } ] } }
+            // the simulated genus is the second field of the read names (<kind>_<genus>_<i>)
+            def correct           = { rows -> rows.count { name, genus -> genus == "g__${name.tokenize( '_' )[1]}" } }
+            def pe                = classifications( "amplicon_pe" )
+            def se                = classifications( "amplicon_se" )
+            def merged_reads      = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.genus.tsv" ).readLines()
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                // amplicon reads: no host removal and no shotgun profilers
+                { assert workflow.trace.tasks().count { task -> task.name =~ /HOSTREMOVAL|MOTUS|CAYMAN|GQLIB|BWA/ } == 0 },
+                // the 345 overlapping pairs are merged, the 138 non-overlapping ones joined with Ns
+                { assert count_of( "amplicon_pe", "merged_pairs" ) == "345" },
+                { assert count_of( "amplicon_pe", "joined_pairs" ) == "138" },
+                // one sequence per pair, all of them classified to the genus they were simulated from
+                { assert pe.size() == 483 && se.size() == 483 },
+                { assert correct( pe ) == 483 },
+                { assert correct( se ) == 483 },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+                { assert snapshot ( merged_reads ).match( "genus_table" ) },
+            )
+        }
+    }
+
+    test("test_idtaxa_merged_plus_unmerged") {
+        when {
+            params {
+                outdir               = "${outputDir}"
+                idtaxa_pair_handling = "merged_plus_unmerged"
+            }
+        }
+
+        then {
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def count_of          = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
+            // the per-read classifications: [ read name without /1 or /2, genus assigned ]
+            def classifications   = { sample -> path( "${params.outdir}/idtaxa/test_16s/${sample}_test_16s.idtaxa.classifications.tsv.gz" ).linesGzip.drop( 1 ).collect { line -> line.split( "\t", -1 ) }.collect { fields -> [ fields[0].replaceAll( /\/[12]$/, '' ), fields[1].tokenize( ';' ).find { taxon -> taxon.startsWith( 'g__' ) } ] } }
+            def correct           = { rows -> rows.count { name, genus -> genus == "g__${name.tokenize( '_' )[1]}" } }
+            def pe                = classifications( "amplicon_pe" )
+            def merged_reads      = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.genus.tsv" ).readLines()
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks_merged_plus_unmerged" ) },
+                // the pairs are merged by fastp instead of vsearch
+                { assert workflow.trace.tasks().count { task -> task.name.contains( "VSEARCH_MERGEJOIN" ) } == 0 },
+                // the 345 overlapping pairs are merged, the two mates of the 138 non-overlapping ones kept as separate
+                // sequences, all of them classified to the genus they were simulated from
+                { assert count_of( "amplicon_pe", "merged_pairs" ) == "345" },
+                { assert pe.size() == 345 + 2 * 138 },
+                { assert pe.count { name, _genus -> name.startsWith( "noovl_" ) } == 2 * 138 },
+                { assert correct( pe ) == pe.size() },
+                { assert snapshot ( read_counts ).match( "read_counts_merged_plus_unmerged" ) },
+                { assert snapshot ( merged_reads ).match( "genus_table_merged_plus_unmerged" ) },
+            )
+        }
+    }
+}
