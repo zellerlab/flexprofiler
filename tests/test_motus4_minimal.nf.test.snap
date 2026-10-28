@@ -1,9 +1,9 @@
 {
     "number_of_tasks": {
         "content": [
-            15
+            21
         ],
-        "timestamp": "2026-10-27T18:58:49.572798",
+        "timestamp": "2026-10-28T10:45:22.418863",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -12,6 +12,9 @@
     "software_versions": {
         "content": [
             {
+                "BBMAP_REPAIR_HOSTREMOVAL": {
+                    "bbmap": 39.18
+                },
                 "BOWTIE2_ALIGN": {
                     "bowtie2": "2.5.4",
                     "pigz": 2.8,
@@ -43,7 +46,7 @@
                 }
             }
         ],
-        "timestamp": "2026-10-27T18:58:49.565912",
+        "timestamp": "2026-10-28T10:45:22.408434",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -75,11 +78,11 @@
             [
                 "mOTU\t2612_db_mOTU\t2612_se_db_mOTU\t2613_db_mOTU",
                 "mOTUv4.0_000924\t18\t3\t6",
-                "mOTUv4.0_014686\t16\t3\t7",
+                "mOTUv4.0_014686\t15\t3\t7",
                 "mOTUv4.0_unassigned\t116\t32\t75"
             ]
         ],
-        "timestamp": "2026-10-27T18:58:49.582781",
+        "timestamp": "2026-10-28T10:45:22.458621",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -90,10 +93,16 @@
             [
                 "bowtie2",
                 "bowtie2/align",
-                "bowtie2/align/2612_ERR5766176.bowtie2.log",
-                "bowtie2/align/2612_ERR5766176_B.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176.unmapped.repair.sh.log",
+                "bowtie2/align/2612_ERR5766176_1.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_2.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_B.unmapped.repair.sh.log",
+                "bowtie2/align/2612_ERR5766176_B_1.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_B_2.bowtie2.log",
                 "bowtie2/align/2612_se_ERR5766180.bowtie2.log",
-                "bowtie2/align/2613_ERR5766181.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181_2.bowtie2.log",
                 "fastp",
                 "fastp/2612_ERR5766176.fastp.html",
                 "fastp/2612_ERR5766176.fastp.json",
@@ -128,7 +137,7 @@
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-10-27T18:58:49.578307",
+        "timestamp": "2026-10-28T10:45:22.441511",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -148,7 +157,7 @@
                     "2612",
                     "2528240",
                     "2513136",
-                    "1256238",
+                    "1256228",
                     "601"
                 ],
                 [
@@ -162,12 +171,12 @@
                     "2613",
                     "1075088",
                     "1067004",
-                    "533422",
+                    "533421",
                     "310"
                 ]
             ]
         ],
-        "timestamp": "2026-10-27T18:58:49.579664",
+        "timestamp": "2026-10-28T10:45:22.449779",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
