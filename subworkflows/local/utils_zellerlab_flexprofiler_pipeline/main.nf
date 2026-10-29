@@ -99,7 +99,7 @@ workflow PIPELINE_INITIALISATION {
 
     def samplesheet_rows = samplesheetToList(input, "assets/schema_input.json")
     if (params.perform_runmerging) {
-        validateInputSamplesheet(samplesheet_rows)
+        validateRunMerging(samplesheet_rows)
     }
     // Samples with more than one run are published as analysis-ready reads only after run merging. The runs of a
     // sample are merged separately for each library strategy, so they are counted per sample and strategy
@@ -225,7 +225,7 @@ workflow PIPELINE_COMPLETION {
 */
 // Validate that all runs of each sample can be merged together
 //
-def validateInputSamplesheet(rows) {
+def validateRunMerging(rows) {
     // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
     // With pair merging, paired-end reads become single-end before run merging, so endedness can differ
     def check_endedness = !(params.perform_shortread_qc && params.shortread_qc_mergepairs)
