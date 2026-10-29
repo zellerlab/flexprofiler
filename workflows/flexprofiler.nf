@@ -209,7 +209,12 @@ workflow FLEXPROFILER {
     if (params.perform_amplicon_primertrimming) {
         ch_fastq_by_strategy = ch_fastq_repaired.branch { meta, _reads ->
             amplicon: meta.library_strategy == 'AMPLICON'
-            wgs: true
+            wgs: meta.library_strategy == 'WGS'
+            other: true
+        }
+        // the samplesheet schema allows only WGS and AMPLICON, this guards against the two going out of sync
+        ch_fastq_by_strategy.other.subscribe { meta, _reads ->
+            error("[zellerlab/flexprofiler] ERROR: unexpected library_strategy '${meta.library_strategy}' for ${meta.id}, it must be WGS or AMPLICON")
         }
         AMPLICON_PRIMERTRIMMING(ch_fastq_by_strategy.amplicon)
         ch_fastq_primertrimmed = ch_fastq_by_strategy.wgs.mix(AMPLICON_PRIMERTRIMMING.out.reads)
@@ -272,7 +277,12 @@ workflow FLEXPROFILER {
     if (params.perform_shortread_hostremoval) {
         ch_shortreads_for_hostremoval = ch_shortreads_filtered.branch { meta, _reads ->
             amplicon: meta.library_strategy == 'AMPLICON'
-            wgs: true
+            wgs: meta.library_strategy == 'WGS'
+            other: true
+        }
+        // the samplesheet schema allows only WGS and AMPLICON, this guards against the two going out of sync
+        ch_shortreads_for_hostremoval.other.subscribe { meta, _reads ->
+            error("[zellerlab/flexprofiler] ERROR: unexpected library_strategy '${meta.library_strategy}' for ${meta.id}, it must be WGS or AMPLICON")
         }
         SHORTREAD_HOSTREMOVAL(ch_shortreads_for_hostremoval.wgs, ch_reference, ch_shortread_reference_index)
         ch_shortreads_hostremoved = SHORTREAD_HOSTREMOVAL.out.reads.mix(ch_shortreads_for_hostremoval.amplicon)
