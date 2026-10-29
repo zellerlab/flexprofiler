@@ -69,6 +69,18 @@
 
   > Danecek, P., Bonfield, J. K., Liddle, J., Marshall, J., Ohan, V., Pollard, M. O., Whitwham, A., Keane, T., McCarthy, S. A., Davies, R. M., & Li, H. (2021). Twelve years of SAMtools and BCFtools. GigaScience, 10(2). https://doi.org/10.1093/gigascience/giab008
 
+- [PIMENTO](https://doi.org/10.1093/gigascience/giag083)
+
+  > Atallah, C., Richardson, L., Beracochea, M., & Finn, R. D. (2026). PIMENTO: a primer inference toolkit to facilitate large-scale calling of amplicon sequence variants. GigaScience, 15. https://doi.org/10.1093/gigascience/giag083
+
+- [cutadapt](https://doi.org/10.14806/ej.17.1.200)
+
+  > Martin, M. (2011). Cutadapt removes adapter sequences from high-throughput sequencing reads. EMBnet.journal, 17(1), 10–12. https://doi.org/10.14806/ej.17.1.200
+
+- [VSEARCH](https://doi.org/10.7717/peerj.2584)
+
+  > Rognes, T., Flouri, T., Nichols, B., Quince, C., & Mahé, F. (2016). VSEARCH: a versatile open source tool for metagenomics. PeerJ, 4, e2584. https://doi.org/10.7717/peerj.2584
+
 - [Bracken](https://doi.org/10.7717/peerj-cs.104)
 
   > Lu, J., Breitwieser, F. P., Thielen, P., & Salzberg, S. L. (2017). Bracken: estimating species abundance in metagenomics data. PeerJ. Computer Science, 3(e104), e104. https://doi.org/10.7717/peerj-cs.104
@@ -112,6 +124,18 @@
 - [gqlib](https://github.com/cschu/gqlib)
 
   > Schudoma, C. gqlib: gene quantification library (also called gffquant). https://github.com/cschu/gqlib
+
+- [Cayman](https://doi.org/10.1038/s41564-026-02318-2)
+
+  > Ducarmon, Q. R., Karcher, N., Giri, S., Tytgat, H. L. P., Delannoy-Bruno, O., Pekel, S., Springer, F., Wörz, P., Schudoma, C., Typas, A., & Zeller, G. (2026). Cayman enables large-scale analysis of gut microbiome carbohydrate-active enzyme repertoires. Nature Microbiology, 11(6), 1739–1753. https://doi.org/10.1038/s41564-026-02318-2
+
+- [IDTAXA](https://doi.org/10.1186/s40168-018-0521-5)
+
+  > Murali, A., Bhargava, A., & Wright, E. S. (2018). IDTAXA: a novel approach for accurate taxonomic classification of microbiome sequences. Microbiome, 6(1), 140. https://doi.org/10.1186/s40168-018-0521-5
+
+- [DECIPHER](https://doi.org/10.32614/RJ-2016-025)
+
+  > Wright, E. S. (2016). Using DECIPHER v2.0 to Analyze Big Biological Sequence Data in R. The R Journal, 8(1), 352–359. https://doi.org/10.32614/RJ-2016-025
 
 - [KMCP](https://doi.org/10.1093/bioinformatics/btac845)
 
