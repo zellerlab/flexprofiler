@@ -367,7 +367,12 @@ workflow FLEXPROFILER {
         .collect(flat: false)
         // [ [meta, file], ... ] to [ [meta, ...], [file, ...] ]
         .map { entries -> entries.transpose() }
-    READ_COUNTS(ch_read_count_input)
+    // the manifest describes each file, in the order of the files (staged in inputs/<index>/ by READ_COUNTS): READ_COUNTS
+    // runs once, so the files and the manifest come from the same single item and cannot get out of step
+    ch_read_count_manifest = ch_read_count_input
+        .map { labels, _files -> labels.withIndex().collect { label, i -> ([i + 1] + label.values()).join('\t') }.join('\n') }
+        .collectFile(name: 'read_counts_manifest.tsv', newLine: true)
+    READ_COUNTS(ch_read_count_input.map { _labels, files -> files }, ch_read_count_manifest)
     ch_versions = ch_versions.mix(READ_COUNTS.out.versions)
 
     /*

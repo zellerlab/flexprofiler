@@ -33,6 +33,10 @@ def write_table(path, counts, samples):
 def main(prefix, suffix, paths):
     profiles = {}
     for path in map(pathlib.Path, paths):
+        # the suffix is set by the module from the meta, the file names by the ext.prefix of IDTAXA_CLASSIFY: an error
+        # here means that the two do not agree anymore
+        if not path.name.endswith(suffix) or path.name == suffix:
+            sys.exit(f"The profile {path.name} does not end with {suffix}, the sample name cannot be taken from it")
         sample = path.name.removesuffix(suffix)
         if sample in profiles:
             sys.exit(f"Duplicate sample {sample}")

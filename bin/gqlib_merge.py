@@ -22,7 +22,16 @@ HEADER_ROWS = ["total_reads", "filtered_reads", "category", "unannotated"]
 
 
 def main(prefix, suffix, paths):
-    profiles = sorted((path.split("/")[-1].removesuffix(suffix), path) for path in paths)
+    names = [path.split("/")[-1] for path in paths]
+    # the suffix is set by the module from the meta, the file names by the ext.prefix of the profilers: an error here
+    # means that the two do not agree anymore
+    wrong = [name for name in names if not name.endswith(suffix) or name == suffix]
+    if wrong:
+        sys.exit(f"The profiles {', '.join(wrong)} do not end with {suffix}, the sample names cannot be taken from them")
+    profiles = sorted((name.removesuffix(suffix), path) for name, path in zip(names, paths))
+    duplicated = sorted({sample for sample, _ in profiles if [s for s, _ in profiles].count(sample) > 1})
+    if duplicated:
+        sys.exit(f"Duplicated samples: {', '.join(duplicated)}")
     headers = {path: pd.read_csv(path, sep="\t", nrows=0).columns.tolist() for _, path in profiles}
     # the feature column, gene for gene_counts and feature for the other categories
     feature_label = next(iter(headers.values()))[0]
