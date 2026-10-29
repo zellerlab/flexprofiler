@@ -13,15 +13,25 @@ workflow AMPLICON_PRIMERTRIMMING {
     main:
     ch_versions = channel.empty()
 
-    // PIMENTO searches each mate of paired-end reads separately: the primers found for the two mates (normally the
-    // forward primer for R1 and the reverse one for R2) are the primers of the run
-    PIMENTO_STD(reads)
+    // PIMENTO searches each mate of paired-end reads separately (meta.mate, single-end reads: 1): the primers found for
+    // the two mates (normally the forward primer for R1 and the reverse one for R2) are the primers of the run
+    ch_mates = reads.flatMap { meta, input_reads ->
+        [input_reads].flatten().indexed(1).collect { mate, fastq -> [meta + [mate: mate], fastq] }
+    }
+    PIMENTO_STD(ch_mates)
     ch_versions = ch_versions.mix(PIMENTO_STD.out.versions.first())
 
+    // the primer files of the mates of a run, grouped again, in the order of the mates (<prefix>_<mate>_std_primers.fasta),
+    // so that the primers, and the cutadapt arguments, are always in the same order
+    ch_pimento_primers = PIMENTO_STD.out.primers
+        .map { meta, fasta -> [groupKey(meta - meta.subMap('mate'), meta.single_end ? 1 : 2), fasta] }
+        .groupTuple(sort: { fasta -> fasta.name })
+        .map { meta, fastas -> [meta.getGroupTarget(), fastas] }
+
     ch_reads_for_trimming = reads
-        .join(PIMENTO_STD.out.primers)
+        .join(ch_pimento_primers)
         .map { meta, input_reads, primer_fastas ->
-            def primers = [primer_fastas].flatten().collectMany { fasta -> readPimentoPrimers(fasta, meta.single_end) }
+            def primers = primer_fastas.collectMany { fasta -> readPimentoPrimers(fasta, meta.single_end) }
                 .collect { _name, seq -> seq }
                 .unique()
             [meta + [primers: primers, primers_revcomp: primers.collect { seq -> reverseComplement(seq) }], input_reads]
@@ -51,17 +61,14 @@ workflow AMPLICON_PRIMERTRIMMING {
     // the primers found, one row per run and mate (single-end: mate 1), with the primer (if any), its proportion of
     // reads and the region of the library it belongs to
     ch_primers_tsv = PIMENTO_STD.out.out
-        .flatMap { meta, out_files ->
-            [out_files].flatten().collect { out_file ->
-                def mate = (out_file.name =~ /_(\d)_std_primer_out\.txt$/)[0][1]
-                def lines = out_file.text.readLines().findAll { line -> line.trim() }
-                def region = lines ? lines[0] : ''
-                def found = lines.drop(1).collect { line -> line.split(': ')*.trim() }
-                if (!found) {
-                    found = [['', '']]
-                }
-                found.collect { name_prop -> [meta.id, meta.run_accession, mate, region, name_prop[0], name_prop[1]].join('\t') }.join('\n')
+        .map { meta, out_file ->
+            def lines = out_file.text.readLines().findAll { line -> line.trim() }
+            def region = lines ? lines[0] : ''
+            def found = lines.drop(1).collect { line -> line.split(': ')*.trim() }
+            if (!found) {
+                found = [['', '']]
             }
+            found.collect { name_prop -> [meta.id, meta.run_accession, meta.mate, region, name_prop[0], name_prop[1]].join('\t') }.join('\n')
         }
         .collectFile(
             name: 'primers.tsv',
