@@ -1,81 +1,65 @@
 #!/usr/bin/env python3
 """Merge the IDTAXA profiles (of IDTAXA_CLASSIFY) of the samples into count tables.
 
-usage: idtaxa_merge.py <prefix> <suffix> <profile.tsv>...
+usage: idtaxa_merge.py <prefix> <suffix> <profiles.txt>
+
+<profiles.txt> lists the profiles to merge (<profile.tsv>), one path per line.
 
 The sample name of a profile is its file name without <suffix>. Writes, with the samples as columns (sorted by name):
 - <prefix>.lineage.tsv: the counts of each lineage, as assigned by IDTAXA (from domain to the deepest rank assigned)
-- <prefix>.<rank>.tsv, for each rank of the lineages: the counts of the lineages up to that rank, the sequences not
-  assigned down to it being in the row unassigned
-Both with the rows unassigned and total_reads last.
+- <prefix>.<rank>.tsv, for each rank of the lineages: the counts of the lineages up to that rank
+Both with the rows unassigned (the sequences not assigned down to the rank of the table) and total_reads last.
 """
 import collections
-import csv
 import pathlib
 import sys
 
-SPECIAL = ["unassigned", "total_reads"]
+import pandas as pd
 
 
-def read_profile(path):
-    with open(path) as handle:
-        return [(row["lineage"], row["ranks"], int(row["count"])) for row in csv.DictReader(handle, delimiter="\t")]
-
-
-def write_table(path, counts, samples):
-    rows = sorted(lineage for lineage in counts if lineage not in SPECIAL) + SPECIAL
-    with open(path, "w") as handle:
-        handle.write("\t".join(["lineage"] + samples) + "\n")
-        for lineage in rows:
-            handle.write("\t".join([lineage] + [str(counts[lineage].get(s, 0)) for s in samples]) + "\n")
+def cut(lineage, lineage_ranks, rank):
+    # the lineage up to rank, found by name, as a taxonomy can skip a rank in some lineages; None if it does not reach it
+    lineage_ranks = lineage_ranks.split(";")
+    return ";".join(lineage.split(";")[: lineage_ranks.index(rank) + 1]) if rank in lineage_ranks else None
 
 
 def main(prefix, suffix, paths):
-    profiles = {}
-    for path in map(pathlib.Path, paths):
-        # the suffix is set by the module from the meta, the file names by the ext.prefix of IDTAXA_CLASSIFY: an error
-        # here means that the two do not agree anymore
-        if not path.name.endswith(suffix) or path.name == suffix:
-            sys.exit(f"The profile {path.name} does not end with {suffix}, the sample name cannot be taken from it")
-        sample = path.name.removesuffix(suffix)
-        if sample in profiles:
-            sys.exit(f"Duplicate sample {sample}")
-        profiles[sample] = read_profile(path)
-    samples = sorted(profiles)
+    names = [pathlib.Path(path).name for path in paths]
+    # the suffix is set by the module from the meta, the file names by the ext.prefix of IDTAXA_CLASSIFY: an error here
+    # means that the two do not agree anymore
+    wrong = [name for name in names if not name.endswith(suffix) or name == suffix]
+    if wrong:
+        raise ValueError(f"The profiles {', '.join(wrong)} do not end with {suffix}, the sample names cannot be taken from them")
+    samples = [name.removesuffix(suffix) for name in names]
+    duplicated = sorted(sample for sample, n in collections.Counter(samples).items() if n > 1)
+    if duplicated:
+        raise ValueError(f"Duplicated samples: {', '.join(duplicated)}")
 
-    # the ranks in their order in the lineages
-    ranks = []
-    for profile in profiles.values():
-        for _, lineage_ranks, _ in profile:
-            for rank in filter(None, lineage_ranks.split(";")):
-                if rank not in ranks:
-                    ranks.append(rank)
+    rows = pd.concat(
+        pd.read_csv(path, sep="\t", keep_default_na=False).assign(sample=sample) for path, sample in zip(paths, samples)
+    )
 
-    lineage_counts = collections.defaultdict(dict)
-    rank_counts = {rank: collections.defaultdict(dict) for rank in ranks}
-    for sample, profile in profiles.items():
-        for lineage, lineage_ranks, count in profile:
-            lineage_counts[lineage][sample] = count
-            for rank in ranks:
-                counts = rank_counts[rank]
-                if lineage in SPECIAL:
-                    key = lineage
-                elif rank in lineage_ranks.split(";"):
-                    depth = lineage_ranks.split(";").index(rank) + 1
-                    key = ";".join(lineage.split(";")[:depth])
-                else:
-                    key = "unassigned"
-                counts[key][sample] = counts[key].get(sample, 0) + count
-    for counts in [lineage_counts] + list(rank_counts.values()):
-        for special in SPECIAL:
-            counts.setdefault(special, {})
+    totals = rows[rows["lineage"] == "total_reads"].set_index("sample")["count"]
+    assigned = rows[~rows["lineage"].isin(["unassigned", "total_reads"])]
+    # the ranks, in their order in the lineages
+    ranks = list(dict.fromkeys(rank for lineage_ranks in assigned["ranks"] for rank in lineage_ranks.split(";")))
 
-    write_table(f"{prefix}.lineage.tsv", lineage_counts, samples)
-    for rank, counts in rank_counts.items():
-        write_table(f"{prefix}.{rank}.tsv", counts, samples)
+    # the whole lineages, then the lineages cut at each rank (None for those without it, left out by pivot_table)
+    tables = {"lineage": assigned}
+    for rank in ranks:
+        tables[rank] = assigned.assign(lineage=[cut(lineage, lineage_ranks, rank) for lineage, lineage_ranks in zip(assigned["lineage"], assigned["ranks"])])
+
+    # one row per lineage, one column per sample
+    for name, table_rows in tables.items():
+        table = table_rows.pivot_table(index="lineage", columns="sample", values="count", aggfunc="sum", fill_value=0)
+        # the samples without any lineage in the table are added, with 0
+        table = table.reindex(columns=sorted(samples), fill_value=0).sort_index()
+        table.loc["unassigned"] = totals - table.sum()
+        table.loc["total_reads"] = totals
+        table.to_csv(f"{prefix}.{name}.tsv", sep="\t", index_label="lineage")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
+    if len(sys.argv) != 4:
         sys.exit(__doc__)
-    main(sys.argv[1], sys.argv[2], sys.argv[3:])
+    main(sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3]).read_text().splitlines())

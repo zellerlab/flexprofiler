@@ -4,8 +4,8 @@ process IDTAXA_MERGE {
 
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/python:3.9--1'
-        : 'biocontainers/python:3.9--1'}"
+        ? 'https://depot.galaxyproject.org/singularity/pandas:2.2.1'
+        : 'biocontainers/pandas:2.2.1'}"
 
     input:
     // the profiles of all the samples for one training set (meta.id), staged in a folder, so that the command lists
@@ -23,11 +23,15 @@ process IDTAXA_MERGE {
     def prefix = task.ext.prefix ?: "${meta.id}"
     // the profiles are named <sample>_<training set>.idtaxa.profile.tsv
     """
-    idtaxa_merge.py ${prefix} _${meta.id}.idtaxa.profile.tsv profiles/*
+    # the list of the profiles is written by printf, a shell builtin, so that it is not limited by the length of a
+    # command line
+    printf '%s\\n' profiles/* > profiles.txt
+    idtaxa_merge.py ${prefix} _${meta.id}.idtaxa.profile.tsv profiles.txt
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         python: \$(python --version 2>&1 | sed 's/Python //')
+        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
     END_VERSIONS
     """
 
@@ -39,6 +43,7 @@ process IDTAXA_MERGE {
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         python: \$(python --version 2>&1 | sed 's/Python //')
+        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
     END_VERSIONS
     """
 }

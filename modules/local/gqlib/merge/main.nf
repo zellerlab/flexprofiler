@@ -24,7 +24,10 @@ process GQLIB_MERGE {
     // the profiles are named <sample>_<database>_<annotation>.<category>.txt.gz, meta.id being <database>_<annotation>;
     // one table per count column (uniq_raw, combined_raw, ...)
     """
-    gqlib_merge.py ${prefix}.${meta.category} _${meta.id}.${meta.category}.txt.gz profiles/*
+    # the list of the profiles is written by printf, a shell builtin, so that it is not limited by the length of a
+    # command line
+    printf '%s\\n' profiles/* > profiles.txt
+    gqlib_merge.py ${prefix}.${meta.category} _${meta.id}.${meta.category}.txt.gz profiles.txt
 
     VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
 
