@@ -80,12 +80,12 @@ workflow SHORTREAD_HOSTREMOVAL {
     // bowtie2 logs count each mate separately, and from the bowtie2 log for the single-end reads
     ch_read_count_logs = BOWTIE2_ALIGN.out.log
         .filter { meta, _log_file -> !meta.mate }
-        .map { meta, log_file -> [meta, 'bowtie2', log_file] }
-        .mix(BBMAP_REPAIR_HOSTREMOVAL.out.log.map { meta, log_file -> [meta, 'bbmap_repair', log_file] })
+        .map { meta, log_file -> [meta + [tool: 'bowtie2'], log_file] }
+        .mix(BBMAP_REPAIR_HOSTREMOVAL.out.log.map { meta, log_file -> [meta + [tool: 'bbmap_repair'], log_file] })
 
     emit:
     reads           = BBMAP_REPAIR_HOSTREMOVAL.out.repaired.mix(ch_unmapped.single_end) // channel: [ val(meta), [ reads ] ]
-    read_count_logs = ch_read_count_logs // channel: [ val(meta), kind, log ]
+    read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], with the tool in meta.tool
     versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }

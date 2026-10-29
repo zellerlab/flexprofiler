@@ -20,15 +20,13 @@ workflow PROFILING {
     main:
     ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
+    // per-read taxonomic assignments
     ch_raw_classifications = Channel.empty()
-    // These per-read ID taxonomic assingment
+    // count tables
     ch_raw_profiles = Channel.empty()
-    ch_logs = Channel.empty()
-    // These are count tables
+    // logs of the profilers and of the steps preparing the reads for a profiler, for the read counts, with the tool in
+    // meta.tool: [ meta, log ]
     ch_read_count_logs = Channel.empty()
-    // These are logs of steps preparing the reads for a profiler, for the read counts: [ meta, kind, log ]
-    
-    // TODO: add a step to produce a total read count here
 
     /*
         COMBINE READS WITH POSSIBLE DATABASES
@@ -125,13 +123,13 @@ workflow PROFILING {
         if (params.idtaxa_pair_handling == 'merged_plus_joined') {
             VSEARCH_MERGEJOIN(ch_reads_for_pairhandling.pe)
             ch_versions = ch_versions.mix(VSEARCH_MERGEJOIN.out.versions.first())
-            ch_read_count_logs = ch_read_count_logs.mix(VSEARCH_MERGEJOIN.out.log.map { meta, log_file -> [meta, 'vsearch', log_file] })
+            ch_read_count_logs = ch_read_count_logs.mix(VSEARCH_MERGEJOIN.out.log.map { meta, log_file -> [meta + [tool: 'vsearch'], log_file] })
             ch_reads_pairhandled = VSEARCH_MERGEJOIN.out.reads
         }
         else if (params.idtaxa_pair_handling == 'merged_plus_unmerged') {
             FASTP_IDTAXA_MERGE(ch_reads_for_pairhandling.pe, [], false, false, true)
             ch_versions = ch_versions.mix(FASTP_IDTAXA_MERGE.out.versions.first())
-            ch_read_count_logs = ch_read_count_logs.mix(FASTP_IDTAXA_MERGE.out.log.map { meta, log_file -> [meta, 'fastp_merge', log_file] })
+            ch_read_count_logs = ch_read_count_logs.mix(FASTP_IDTAXA_MERGE.out.log.map { meta, log_file -> [meta + [tool: 'fastp_merge'], log_file] })
             ch_reads_pairhandled = FASTP_IDTAXA_MERGE.out.reads_merged
         }
         ch_reads_for_idtaxa = ch_reads_pairhandled
@@ -173,7 +171,7 @@ workflow PROFILING {
         ch_versions = ch_versions.mix(MOTUS4_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS4_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS4_PROFILE.out.log)
-        ch_logs = ch_logs.mix(MOTUS4_PROFILE.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(MOTUS4_PROFILE.out.log)
     }
 
     if (params.run_motus3) {
@@ -188,7 +186,7 @@ workflow PROFILING {
         ch_versions = ch_versions.mix(MOTUS3_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS3_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS3_PROFILE.out.log)
-        ch_logs = ch_logs.mix(MOTUS3_PROFILE.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(MOTUS3_PROFILE.out.log)
     }
 
     if (params.run_cayman || params.run_gqlib) {
@@ -222,7 +220,7 @@ workflow PROFILING {
         CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.annot)
         ch_versions = ch_versions.mix(CAYMAN_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
-        ch_logs = ch_logs.mix(CAYMAN_PROFILE.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(CAYMAN_PROFILE.out.log)
     }
 
     if (params.run_gqlib) {
@@ -235,7 +233,7 @@ workflow PROFILING {
         GQLIB_PROFILE_GENES(ch_input_for_gqlib.bam, ch_input_for_gqlib.annot)
         ch_versions = ch_versions.mix(GQLIB_PROFILE_GENES.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(GQLIB_PROFILE_GENES.out.profiles)
-        ch_logs = ch_logs.mix(GQLIB_PROFILE_GENES.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(GQLIB_PROFILE_GENES.out.log)
     }
 
     if (params.run_idtaxa) {
@@ -249,14 +247,13 @@ workflow PROFILING {
         ch_versions = ch_versions.mix(IDTAXA_CLASSIFY.out.versions.first())
         ch_raw_classifications = ch_raw_classifications.mix(IDTAXA_CLASSIFY.out.classifications)
         ch_raw_profiles = ch_raw_profiles.mix(IDTAXA_CLASSIFY.out.profile)
-        ch_logs = ch_logs.mix(IDTAXA_CLASSIFY.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(IDTAXA_CLASSIFY.out.log)
     }
 
     emit:
     classifications = ch_raw_classifications
     profiles        = ch_raw_profiles // channel: [ val(meta), [ reads ] ] - should be text files or biom
-    logs            = ch_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman, gqlib and idtaxa, with meta.tool and meta.db_name
-    read_count_logs = ch_read_count_logs // channel: [ val(meta), kind, log ], the logs of vsearch or fastp (merging the pairs for idtaxa)
+    read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman, gqlib and idtaxa (with meta.db_name), and of vsearch or fastp (merging the pairs for idtaxa), with the tool in meta.tool
     versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }

@@ -43,9 +43,9 @@ workflow AMPLICON_PRIMERTRIMMING {
         .map { meta, trimmed_reads -> [meta - meta.subMap(['primers', 'primers_revcomp']), trimmed_reads] }
 
     ch_read_count_logs = CUTADAPT_PRIMERS.out.log
-        .map { meta, log_file -> [meta - meta.subMap(['primers', 'primers_revcomp']), 'cutadapt_primers', log_file] }
+        .map { meta, log_file -> [meta - meta.subMap(['primers', 'primers_revcomp']) + [tool: 'cutadapt_primers'], log_file] }
         .mix(
-            CUTADAPT_READTHROUGH.out.log.map { meta, log_file -> [meta - meta.subMap(['primers', 'primers_revcomp']), 'cutadapt_readthrough', log_file] }
+            CUTADAPT_READTHROUGH.out.log.map { meta, log_file -> [meta - meta.subMap(['primers', 'primers_revcomp']) + [tool: 'cutadapt_readthrough'], log_file] }
         )
 
     // the primers found, one row per run and mate (single-end: mate 1), with the primer (if any), its proportion of
@@ -75,7 +75,7 @@ workflow AMPLICON_PRIMERTRIMMING {
 
     emit:
     reads           = ch_trimmed_reads   // channel: [ val(meta), [ reads ] ]
-    read_count_logs = ch_read_count_logs // channel: [ val(meta), kind, log ]
+    read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], with the tool in meta.tool
     primers         = ch_primers_tsv     // channel: path(primers.tsv)
     versions        = ch_versions        // channel: [ versions.yml ]
 }

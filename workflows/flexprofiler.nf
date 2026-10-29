@@ -349,28 +349,20 @@ workflow FLEXPROFILER {
         MODULE: READ COUNTS
     */
 
-    // read counts after each step, parsed from the logs, per run or, with run merging, per merged run:
+    // read counts after each step, parsed from the logs, per run or, with run merging, per merged run. The [ meta, log ]
+    // of each step, with the tool in meta.tool, are labelled for the read counts manifest, in the order of its columns
+    // (the database names are those of the profiler logs, empty for the other steps):
     // [ [sample, run, kind, db_name, annot_db_name], file ]
-    ch_read_count_files = PROFILING.out.logs
-        .map { meta, log_file -> [readCountMeta(meta, meta.tool, meta.db_name, meta.annot_db_name ?: ''), log_file] }
-    if (params.perform_shortread_qc) {
-        ch_read_count_files = ch_read_count_files.mix(
-            SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [readCountMeta(meta, 'fastp'), json] }
-        )
-    }
-    if (params.perform_shortread_hostremoval) {
-        ch_read_count_files = ch_read_count_files.mix(
-            SHORTREAD_HOSTREMOVAL.out.read_count_logs.map { meta, kind, log_file -> [readCountMeta(meta, kind), log_file] }
-        )
-    }
-    if (params.perform_amplicon_primertrimming) {
-        ch_read_count_files = ch_read_count_files.mix(
-            AMPLICON_PRIMERTRIMMING.out.read_count_logs.map { meta, kind, log_file -> [readCountMeta(meta, kind), log_file] }
-        )
-    }
-    ch_read_count_files = ch_read_count_files.mix(
-        PROFILING.out.read_count_logs.map { meta, kind, log_file -> [readCountMeta(meta, kind), log_file] }
-    )
+    ch_read_count_files = PROFILING.out.read_count_logs
+        .mix(params.perform_shortread_qc ? SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [meta + [tool: 'fastp'], json] } : channel.empty())
+        .mix(params.perform_shortread_hostremoval ? SHORTREAD_HOSTREMOVAL.out.read_count_logs : channel.empty())
+        .mix(params.perform_amplicon_primertrimming ? AMPLICON_PRIMERTRIMMING.out.read_count_logs : channel.empty())
+        .map { meta, log_file ->
+            // with run merging, the steps before it (QC, host removal, primer trimming) still have the run_accession of
+            // each run: the counts of the runs of a multi-run sample go to its merged run, named as by the run merging
+            def run = params.perform_runmerging && meta.is_multirun ? "merged_${meta.library_strategy}" : meta.run_accession
+            [[sample: meta.id, run: run, kind: meta.tool, db_name: meta.db_name ?: '', annot_db_name: meta.annot_db_name ?: ''], log_file]
+        }
     ch_read_count_input = ch_read_count_files
         .collect(flat: false)
         // [ [meta, file], ... ] to [ [meta, ...], [file, ...] ]
@@ -514,23 +506,3 @@ workflow FLEXPROFILER {
     versions       = ch_versions // channel: [ path(versions.yml) ]
 }
 
-/*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    FUNCTIONS
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*/
-
-//
-// The run a read count belongs to: with run merging, the steps before it (QC, host removal) still have the run_accession
-// of each run, and the counts of the runs of a multi-run sample go to its merged run, as named by the run merging
-//
-def readCountRun(meta) {
-    return params.perform_runmerging && meta.is_multirun ? "merged_${meta.library_strategy}" : meta.run_accession
-}
-
-//
-// The labels of a read count file, in the order of the columns of the read counts manifest
-//
-def readCountMeta(meta, kind, db_name = '', annot_db_name = '') {
-    return [sample: meta.id, run: readCountRun(meta), kind: kind, db_name: db_name, annot_db_name: annot_db_name]
-}
