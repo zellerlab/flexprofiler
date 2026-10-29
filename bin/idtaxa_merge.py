@@ -18,9 +18,10 @@ import pandas as pd
 
 
 def cut(lineage, lineage_ranks, rank):
-    # the lineage up to rank, found by name, as a taxonomy can skip a rank in some lineages; None if it does not reach it
+    # the lineage up to rank, found by name, as a taxonomy can skip a rank in some lineages; unassigned if it does not
+    # reach it (as the unassigned row of the profiles, which has no ranks)
     lineage_ranks = lineage_ranks.split(";")
-    return ";".join(lineage.split(";")[: lineage_ranks.index(rank) + 1]) if rank in lineage_ranks else None
+    return ";".join(lineage.split(";")[: lineage_ranks.index(rank) + 1]) if rank in lineage_ranks else "unassigned"
 
 
 def main(prefix, suffix, paths):
@@ -39,22 +40,24 @@ def main(prefix, suffix, paths):
         pd.read_csv(path, sep="\t", keep_default_na=False).assign(sample=sample) for path, sample in zip(paths, samples)
     )
 
+    # the total of each sample, the same in all the tables
     totals = rows[rows["lineage"] == "total_reads"].set_index("sample")["count"]
-    assigned = rows[~rows["lineage"].isin(["unassigned", "total_reads"])]
+    rows = rows[rows["lineage"] != "total_reads"]
     # the ranks, in their order in the lineages
-    ranks = list(dict.fromkeys(rank for lineage_ranks in assigned["ranks"] for rank in lineage_ranks.split(";")))
+    ranks = list(dict.fromkeys(rank for lineage_ranks in rows["ranks"] if lineage_ranks for rank in lineage_ranks.split(";")))
 
-    # the whole lineages, then the lineages cut at each rank (None for those without it, left out by pivot_table)
-    tables = {"lineage": assigned}
+    # the whole lineages, then the lineages cut at each rank
+    tables = {"lineage": rows}
     for rank in ranks:
-        tables[rank] = assigned.assign(lineage=[cut(lineage, lineage_ranks, rank) for lineage, lineage_ranks in zip(assigned["lineage"], assigned["ranks"])])
+        tables[rank] = rows.assign(lineage=[cut(lineage, lineage_ranks, rank) for lineage, lineage_ranks in zip(rows["lineage"], rows["ranks"])])
 
     # one row per lineage, one column per sample
     for name, table_rows in tables.items():
         table = table_rows.pivot_table(index="lineage", columns="sample", values="count", aggfunc="sum", fill_value=0)
         # the samples without any lineage in the table are added, with 0
-        table = table.reindex(columns=sorted(samples), fill_value=0).sort_index()
-        table.loc["unassigned"] = totals - table.sum()
+        table = table.reindex(columns=sorted(samples), fill_value=0)
+        # the lineages sorted, then unassigned and total_reads
+        table = table.loc[sorted(table.index.drop("unassigned")) + ["unassigned"]]
         table.loc["total_reads"] = totals
         table.to_csv(f"{prefix}.{name}.tsv", sep="\t", index_label="lineage")
 
