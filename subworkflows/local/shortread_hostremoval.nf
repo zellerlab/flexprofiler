@@ -50,8 +50,16 @@ workflow SHORTREAD_HOSTREMOVAL {
     // which are dropped. The bowtie2 output is in the input order (--reorder), and so is that of repair.sh.
     ch_unmapped_mates = ch_unmapped.mate
         .map { meta, fastq -> [meta.findAll { key, _value -> key != 'mate' } + [single_end: false], meta.mate, fastq] }
-        .groupTuple(size: 2)
-        .map { meta, mates, fastqs -> [meta, [fastqs[mates.indexOf(1)], fastqs[mates.indexOf(2)]]] }
+        // grouped by the whole meta, which is the same for the two mates once mate is removed. An incomplete group (a
+        // field of the meta differing between the mates) is an error, rather than dropped silently by groupTuple
+        .groupTuple(by: 0, size: 2, remainder: true)
+        .map { meta, mates, fastqs ->
+            // the mates are in the order in which they arrived
+            if (mates.toSet() != [1, 2].toSet()) {
+                error("[zellerlab/flexprofiler] ERROR: host removal: the two mates of ${meta.id} ${meta.run_accession} could not be paired again, found mates ${mates}")
+            }
+            [meta, [fastqs[mates.indexOf(1)], fastqs[mates.indexOf(2)]]]
+        }
 
     BBMAP_REPAIR_HOSTREMOVAL(ch_unmapped_mates, false)
     ch_versions = ch_versions.mix(BBMAP_REPAIR_HOSTREMOVAL.out.versions.first())
