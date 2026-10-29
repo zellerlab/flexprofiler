@@ -86,22 +86,20 @@ workflow AMPLICON_PRIMERTRIMMING {
 * Read the primers found by PIMENTO (pimento std), as they are in the primer library.
 *
 * PIMENTO writes the reverse primer of a pair complemented, and also a single reverse primer when searching single-end
-* reads (--merged): the complement is undone.
+* reads (--merged): the complement is undone. In --merged mode PIMENTO searches the reverse primers in the reversed end
+* of the reads, so it matches them against their complement (the reverse of their reverse complement), and it writes
+* the sequence it searched with (write_std_output in pimento/bin/standard_primer_matching.py, PIMENTO 1.3.3: to check
+* again when PIMENTO is updated).
 *
 * @param fasta The <prefix>_std_primers.fasta file of pimento std, empty if no primer was found.
 * @param merged Whether pimento std was run with --merged (single-end reads).
 * @return A list of [ name, sequence ].
 */
 def readPimentoPrimers(fasta, merged) {
-    def records = []
-    fasta.text.split('>').findAll { record -> record.trim() }.each { record ->
-        def lines = record.trim().readLines()
-        records << [lines[0].trim(), lines.drop(1).join('').trim()]
-    }
+    def records = fasta.splitFasta(record: [id: true, seqString: true])
     return records.withIndex().collect { record, i ->
-        def (name, seq) = record
-        def complemented = (records.size() == 2 && i == 1) || (records.size() == 1 && merged && name.contains('R'))
-        [name, complemented ? complement(seq) : seq]
+        def complemented = (records.size() == 2 && i == 1) || (records.size() == 1 && merged && record.id.contains('R'))
+        [record.id, complemented ? complement(record.seqString) : record.seqString]
     }
 }
 
