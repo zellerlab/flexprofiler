@@ -91,8 +91,10 @@ workflow STANDARDISATION_PROFILES {
 def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
     return ch_profiles
         .map { meta, profile -> [meta.db_name, profile] }
-        .groupTuple(groupTupleOptions)
-        .map { 
+        // groupTuple collects the profiles in the order in which they finish: they are sorted, so that the task inputs
+        // are the same in every run, for -resume (mOTUs and idtaxa_merge.py sort the samples themselves)
+        .groupTuple(groupTupleOptions + [sort: true])
+        .map {
             db_name, profiles -> 
             def names = profiles.collect { it.getName() }
             def duplicates = names.findAll { name -> names.count(name) > 1 }.unique()
@@ -105,9 +107,7 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
                     "Please rename your sample column in the samplesheet accordingly."
                 )
             }
-            // groupTuple collects the profiles in the order in which they finish, so they are
-            // sorted by name to always have the samples in the same order in the merged profile
-            [[id: db_name], profiles.sort { it.getName() }]
+            [[id: db_name], profiles]
         }
 }
 
@@ -127,9 +127,8 @@ def groupProfilesByCategory(ch_profiles) {
             def key = [id: "${meta.db_name}_${meta.annot_db_name}", db_name: meta.db_name, annot_db_name: meta.annot_db_name, category: gqlibCategory(profile)]
             [key, profile]
         }
-        .groupTuple()
-        // sorted by name, as in groupProfiles
-        .map { key, profiles -> [key, profiles.sort { it.getName() }] }
+        // sorted, so that the task inputs are the same in every run, for -resume (gqlib sorts the samples itself)
+        .groupTuple(sort: true)
 }
 
 /**
