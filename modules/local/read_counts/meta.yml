@@ -5,10 +5,10 @@ keywords:
   - qc
   - metagenomics
 tools:
-  - "python":
-      description: "Python, standard library only"
-      homepage: "https://www.python.org"
-      licence: ["PSF-2.0"]
+  - "pandas":
+      description: "Python data analysis library"
+      homepage: "https://pandas.pydata.org"
+      licence: ["BSD-3-Clause"]
       identifier: ""
 input:
   - files:

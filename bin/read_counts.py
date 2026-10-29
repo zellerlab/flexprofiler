@@ -10,11 +10,12 @@ gqlib, and for amplicons cutadapt_primers, cutadapt_readthrough, vsearch or fast
 files of a sample and run (e.g. of the runs merged into it) are summed. A column is written only if some file has its
 count.
 """
-import collections
 import json
 import pathlib
 import re
 import sys
+
+import pandas as pd
 
 PROFILERS = ["motus4", "motus3", "cayman", "gqlib", "idtaxa"]
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
@@ -94,7 +95,15 @@ def parse_gene_catalogue(text):
     return count
 
 
+# kind -> parser, giving the counts by column, or, for the profilers, the count of the column of the database
 PARSERS = {
+    "fastp": parse_fastp,
+    "bowtie2": parse_bowtie2,
+    "bbmap_repair": parse_bbmap_repair,
+    "cutadapt_primers": lambda text: {"primer_trimmed_reads": parse_cutadapt(text)},
+    "cutadapt_readthrough": lambda text: {"readthrough_trimmed_reads": parse_cutadapt(text)},
+    "vsearch": parse_vsearch,
+    "fastp_merge": parse_fastp_merge,
     "motus4": parse_motus4,
     "motus3": parse_motus3,
     "cayman": parse_gene_catalogue,
@@ -136,56 +145,49 @@ DESCRIPTIONS = {
 
 
 def main(manifest, inputs_dir, out_tsv, out_mqc):
-    entries = []
-    with open(manifest) as handle:
-        for line in handle:
-            if line.strip():
-                index, sample, run, kind, db_name, annot_db_name = line.rstrip("\n").split("\t")
-                (path,) = (pathlib.Path(inputs_dir) / index).iterdir()
-                entries.append(((sample, run), kind, db_name, annot_db_name, path))
+    entries = pd.read_csv(
+        manifest,
+        sep="\t",
+        header=None,
+        names=["index", "sample", "run_accession", "kind", "db_name", "annot_db_name"],
+        dtype=str,
+        keep_default_na=False,
+    )
 
     # cayman and gqlib write one log per annotation of a gene catalogue, with the same counts: only those of the first
     # annotation are used
-    first_annot = {}
-    for sample, kind, db_name, annot_db_name, _path in entries:
-        key = (sample, kind, db_name)
-        first_annot[key] = min(first_annot.get(key, annot_db_name), annot_db_name)
+    first_annot = entries.groupby(["sample", "run_accession", "kind", "db_name"])["annot_db_name"].transform("min")
+    entries = entries[entries["annot_db_name"] == first_annot]
 
-    counts = collections.defaultdict(dict)  # (sample, run) -> column -> count, None if not found in a log
-    columns = {}  # column -> (title, description)
-    for sample, kind, db_name, annot_db_name, path in entries:
-        text = ANSI_ESCAPE.sub("", path.read_text())
-        if kind == "fastp":
-            values = parse_fastp(text)
-        elif kind == "bowtie2":
-            values = parse_bowtie2(text)
-        elif kind == "bbmap_repair":
-            values = parse_bbmap_repair(text)
-        elif kind == "cutadapt_primers":
-            values = {"primer_trimmed_reads": parse_cutadapt(text)}
-        elif kind == "cutadapt_readthrough":
-            values = {"readthrough_trimmed_reads": parse_cutadapt(text)}
-        elif kind == "vsearch":
-            values = parse_vsearch(text)
-        elif kind == "fastp_merge":
-            values = parse_fastp_merge(text)
-        elif kind in PARSERS:
-            if annot_db_name != first_annot[(sample, kind, db_name)]:
-                continue
-            column = f"{kind}_{db_name}_pairs"
-            columns[column] = tuple(x.format(db=db_name) for x in DESCRIPTIONS[kind])
-            values = {column: PARSERS[kind](text)}
-        else:
-            sys.exit(f"Unknown kind {kind} for {path}")
+    rows = []  # one per count: sample, run, column, count (None if not found in a log)
+    descriptions = {}  # column -> (title, description)
+    for entry in entries.itertuples():
+        (path,) = (pathlib.Path(inputs_dir) / entry.index).iterdir()
+        if entry.kind not in PARSERS:
+            sys.exit(f"Unknown kind {entry.kind} for {path}")
+        values = PARSERS[entry.kind](ANSI_ESCAPE.sub("", path.read_text()))
+        if entry.kind in PROFILERS:
+            column = f"{entry.kind}_{entry.db_name}_pairs"
+            descriptions[column] = tuple(x.format(db=entry.db_name) for x in DESCRIPTIONS[entry.kind])
+            values = {column: values}
         for column, value in values.items():
             if value is None:
                 print(
-                    f"WARNING: count {column} not found in {path}, it is reported as NA for {sample[0]} {sample[1]}",
+                    f"WARNING: count {column} not found in {path}, it is reported as NA for {entry.sample}"
+                    f" {entry.run_accession}",
                     file=sys.stderr,
                 )
-            previous = counts[sample].get(column, 0)
-            counts[sample][column] = None if previous is None or value is None else previous + value
-            columns.setdefault(column, DESCRIPTIONS.get(column))
+            rows.append((entry.sample, entry.run_accession, column, value))
+            descriptions.setdefault(column, DESCRIPTIONS.get(column))
+
+    # the counts of a sample and run summed, NA if any is; NA for a column without counts for a sample and run
+    counts = (
+        pd.DataFrame(rows, columns=["sample", "run_accession", "column", "count"])
+        .astype({"count": "Int64"})
+        .groupby(["sample", "run_accession", "column"])["count"]
+        .agg(lambda counts: counts.sum(skipna=False))
+        .unstack("column")
+    )
 
     # preprocessing first, in the order of the steps, then the profilers in a fixed order
     order = [
@@ -198,19 +200,11 @@ def main(manifest, inputs_dir, out_tsv, out_mqc):
         "joined_pairs",
     ]
     profiler_columns = sorted(
-        (c for c in columns if c not in order), key=lambda c: (PROFILERS.index(c.split("_")[0]), c)
+        (c for c in counts.columns if c not in order), key=lambda c: (PROFILERS.index(c.split("_")[0]), c)
     )
-    header = [c for c in order if c in columns] + profiler_columns
-    samples = sorted(counts)
-
-    def row(sample, missing):
-        values = [counts[sample].get(c) for c in header]
-        return list(sample) + [missing if v is None else str(v) for v in values]
-
-    with open(out_tsv, "w") as handle:
-        handle.write("\t".join(["sample", "run_accession"] + header) + "\n")
-        for sample in samples:
-            handle.write("\t".join(row(sample, "NA")) + "\n")
+    counts = counts[[c for c in order if c in counts.columns] + profiler_columns].astype("Int64")
+    counts.columns.name = None
+    counts.to_csv(out_tsv, sep="\t", na_rep="NA")
 
     # MultiQC custom content, json strings being valid yaml
     with open(out_mqc, "w") as handle:
@@ -226,8 +220,8 @@ def main(manifest, inputs_dir, out_tsv, out_mqc):
             "#     col1_header: 'Sample'\n"
             "# headers:\n"
         )
-        for column in header:
-            title, description = columns[column]
+        for column in counts.columns:
+            title, description = descriptions[column]
             handle.write(
                 f"#     {column}:\n"
                 f"#         title: {json.dumps(title)}\n"
@@ -235,11 +229,9 @@ def main(manifest, inputs_dir, out_tsv, out_mqc):
                 "#         format: '{:,.0f}'\n"
                 "#         scale: false\n"
             )
-        handle.write("\t".join(["sample"] + header) + "\n")
-        for sample in samples:
-            # MultiQC needs a single id column
-            values = row(sample, "")
-            handle.write("\t".join([f"{values[0]}_{values[1]}"] + values[2:]) + "\n")
+        # MultiQC needs a single id column
+        counts.index = counts.index.map("_".join)
+        counts.to_csv(handle, sep="\t", na_rep="", index_label="sample")
 
 
 if __name__ == "__main__":
