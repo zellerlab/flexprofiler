@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Merge the IDTAXA profiles (of idtaxa_classify.R) of the samples into count tables.
+"""Merge the IDTAXA profiles (of IDTAXA_CLASSIFY) of the samples into count tables.
 
 usage: idtaxa_merge.py <prefix> <suffix> <profile.tsv>...
 

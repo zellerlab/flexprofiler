@@ -379,7 +379,7 @@ workflow FLEXPROFILER {
         SUBWORKFLOW: PROFILING STANDARDISATION
     */
     if (params.run_profile_standardisation) {
-        STANDARDISATION_PROFILES(PROFILING.out.classifications, PROFILING.out.profiles, ch_final_dbs)
+        STANDARDISATION_PROFILES(PROFILING.out.profiles, ch_final_dbs)
         ch_versions = ch_versions.mix(STANDARDISATION_PROFILES.out.versions)
     }
 

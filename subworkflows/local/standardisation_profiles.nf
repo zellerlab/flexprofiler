@@ -11,7 +11,6 @@ include { IDTAXA_MERGE                 } from '../../modules/local/idtaxa/merge/
 
 workflow STANDARDISATION_PROFILES {
     take:
-    classifications
     profiles
     databases
 
@@ -28,10 +27,6 @@ workflow STANDARDISATION_PROFILES {
         cayman: it[0]['tool'] == 'cayman'
         gqlib: it[0]['tool'] == 'gqlib'
         idtaxa: it[0]['tool'] == 'idtaxa'
-        unknown: true
-    }
-
-    ch_input_classifications = classifications.branch {
         unknown: true
     }
 

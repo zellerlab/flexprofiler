@@ -459,7 +459,7 @@
                 "run_idtaxa": {
                     "type": "boolean",
                     "description": "Turn on taxonomic classification of amplicon reads with IDTAXA. Requires database CSV file passed to --databases",
-                    "help_text": "IDTAXA (DECIPHER) classifies the AMPLICON samples (library_strategy column of the samplesheet) against a training set, the db_path of an idtaxa row of the database CSV (.RData as distributed with DECIPHER, or .rds). The pairs of paired-end reads are merged if they overlap, the others are handled as set by `--idtaxa_pair_handling`. The IdTaxa options (`--threshold`, default 60, and `--strand`, default both) can be changed with `ext.args` in a custom config.",
+                    "help_text": "IDTAXA (DECIPHER) classifies the AMPLICON samples (library_strategy column of the samplesheet) against a training set, the db_path of an idtaxa row of the database CSV (.RData, as distributed with DECIPHER). The pairs of paired-end reads are merged if they overlap, the others are handled as set by `--idtaxa_pair_handling`. The confidence threshold is set with `--idtaxa_threshold`, the strand of the sequences (default both) with `ext.strand` in a custom config.",
                     "fa_icon": "fas fa-toggle-on"
                 },
                 "idtaxa_pair_handling": {
@@ -476,6 +476,15 @@
                     "description": "Comma-separated db_name of the idtaxa rows of the database CSV to classify against. All idtaxa rows if not set",
                     "help_text": "The database CSV can list several IDTAXA training sets (e.g. different GTDB releases, such as R220 to match the taxonomy of mOTUs 4.0 used for the WGS samples, or SILVA), and this chooses among them by their db_name, e.g. `--idtaxa_db_names gtdb_r220` or `--idtaxa_db_names gtdb_r220,silva_r138_2`. The other idtaxa rows are ignored. A name not among the idtaxa rows of the database CSV is an error.",
                     "fa_icon": "fas fa-database"
+                },
+                "idtaxa_threshold": {
+                    "type": "integer",
+                    "default": 40,
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Minimum confidence (0-100) of the taxa assigned by IDTAXA",
+                    "help_text": "The minimum confidence (0-100) at which IdTaxa assigns a taxon: the lineage of a sequence stops at the last rank assigned above it. DECIPHER suggests 60 (very high confidence), 50 (high confidence) or 40 (moderate confidence). The default, 40, is that of vknight. Passed to IdTaxa as its `threshold`.",
+                    "fa_icon": "fas fa-sliders-h"
                 }
             },
             "fa_icon": "fas fa-align-center"

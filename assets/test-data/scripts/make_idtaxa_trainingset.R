@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # Train the IDtaxa training set of the tests on the 16S reference sequences fetched by fetch_16s_reference.py.
 #
-# usage: make_idtaxa_trainingset.R <reference_16s.fasta.gz> <trainingset.rds>
+# usage: make_idtaxa_trainingset.R <reference_16s.fasta.gz> <trainingset.RData>
 #
 # The reference headers are `<accession> <lineage>`, the lineage being `Root;d__...;...;g__...`. The training set has
 # the ranks (rootrank, domain, phylum, class, order, family, genus) from the lineage prefixes, as the pre-trained
@@ -10,7 +10,7 @@
 suppressPackageStartupMessages(library(DECIPHER))
 
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) != 2) stop("usage: make_idtaxa_trainingset.R <reference_16s.fasta.gz> <trainingset.rds>")
+if (length(args) != 2) stop("usage: make_idtaxa_trainingset.R <reference_16s.fasta.gz> <trainingset.RData>")
 
 seqs <- readDNAStringSet(args[1])
 lineages <- sub("^\\S+ ", "", names(seqs))
@@ -37,6 +37,7 @@ taxid <- data.frame(
 )
 
 set.seed(42)
-training_set <- LearnTaxa(seqs, paste0(lineages, ";"), taxid, verbose = FALSE)
-saveRDS(training_set, args[2])
-print(training_set)
+# saved as the pre-trained DECIPHER training sets, an .RData file with a trainingSet object
+trainingSet <- LearnTaxa(seqs, paste0(lineages, ";"), taxid, verbose = FALSE)
+save(trainingSet, file = args[2])
+print(trainingSet)

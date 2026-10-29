@@ -20,8 +20,6 @@ workflow PROFILING {
     main:
     ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
-    // per-read taxonomic assignments
-    ch_raw_classifications = Channel.empty()
     // count tables
     ch_raw_profiles = Channel.empty()
     // logs of the profilers and of the steps preparing the reads for a profiler, for the read counts, with the tool in
@@ -245,13 +243,11 @@ workflow PROFILING {
 
         IDTAXA_CLASSIFY(ch_input_for_idtaxa.reads, ch_input_for_idtaxa.db)
         ch_versions = ch_versions.mix(IDTAXA_CLASSIFY.out.versions.first())
-        ch_raw_classifications = ch_raw_classifications.mix(IDTAXA_CLASSIFY.out.classifications)
         ch_raw_profiles = ch_raw_profiles.mix(IDTAXA_CLASSIFY.out.profile)
         ch_read_count_logs = ch_read_count_logs.mix(IDTAXA_CLASSIFY.out.log)
     }
 
     emit:
-    classifications = ch_raw_classifications
     profiles        = ch_raw_profiles // channel: [ val(meta), [ reads ] ] - should be text files or biom
     read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman, gqlib and idtaxa (with meta.db_name), and of vsearch or fastp (merging the pairs for idtaxa), with the tool in meta.tool
     versions        = ch_versions // channel: [ versions.yml ]

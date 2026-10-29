@@ -374,7 +374,7 @@ For advice as to which tool to run in your context, please see the documentation
 
 ##### IDTaxa
 
-IDTAXA (DECIPHER) classifies 16S amplicon reads, the samples with `AMPLICON` in the `library_strategy` column of the samplesheet, against a training set. Turn it on with `--run_idtaxa` and an `idtaxa` row in the database CSV, with `db_path` a training set as distributed with DECIPHER (`.RData`) or saved with `saveRDS` (`.rds`).
+IDTAXA (DECIPHER) classifies 16S amplicon reads, the samples with `AMPLICON` in the `library_strategy` column of the samplesheet, against a training set. Turn it on with `--run_idtaxa` and an `idtaxa` row in the database CSV, with `db_path` a training set as distributed with DECIPHER (`.RData`).
 
 The database CSV can list several training sets, e.g. the GTDB release matching the taxonomy of the mOTUs version used for the WGS samples (R220 for mOTUs 4.0, used by `--run_motus4`; mOTUs 3 uses the NCBI taxonomy), a newer GTDB release, or SILVA. By default all the `idtaxa` rows are used. To use only some of them, list their `db_name` with `--idtaxa_db_names`, e.g. `--idtaxa_db_names gtdb_r220` or `--idtaxa_db_names gtdb_r220,silva_r138_2`. This way the paths are set once in the database CSV:
 
@@ -396,12 +396,12 @@ IDTAXA classifies single sequences, so the pairs of paired-end reads are first m
 
 Single-end reads are classified as they are. Only the reads given to IDTAXA change, not the analysis-ready reads.
 
-The IdTaxa options are left at the DECIPHER defaults (`--threshold 60`, `--strand both`), and are changed with `ext.args` in a custom config, as are those of vsearch and fastp:
+The confidence threshold of IdTaxa is set with `--idtaxa_threshold` (default 40, as in vknight; DECIPHER suggests 60 for very high, 50 for high and 40 for moderate confidence). The strand of the sequences is left at the DECIPHER default (`both`), and is changed with `ext.strand` in a custom config; the vsearch and fastp options with `ext.args`:
 
 ```groovy
 process {
     withName: IDTAXA_CLASSIFY {
-        ext.args = '--threshold 40'
+        ext.strand = 'top'
     }
     withName: VSEARCH_MERGEJOIN {
         ext.args = '--fastq_allowmergestagger --fastq_minovlen 20'
@@ -409,7 +409,7 @@ process {
 }
 ```
 
-Keep `--strand both` for libraries with reads in both orientations.
+Keep the strand `both` for libraries with reads in both orientations.
 
 ##### mOTUs v4
 
