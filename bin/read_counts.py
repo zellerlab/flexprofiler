@@ -26,7 +26,7 @@ def search_int(pattern, text):
     return int(match.group(1)) if match else None
 
 
-def parse_fastp(text):
+def parse_fastp(text, kind, db):
     # individual reads, each mate counted
     summary = json.loads(text)["summary"]
     return {
@@ -35,19 +35,19 @@ def parse_fastp(text):
     }
 
 
-def parse_bowtie2(text):
+def parse_bowtie2(text, kind, db):
     # single-end reads, the reads not aligned (--un)
     return {"host_removed_pairs": search_int(r"^\s*(\d+) \([\d.]+%\) aligned 0 times", text)}
 
 
-def parse_bbmap_repair(text):
+def parse_bbmap_repair(text, kind, db):
     # paired-end reads, the pairs with neither mate aligned to the host, re-paired by repair.sh after aligning the
     # mates separately: repair.sh counts the reads of the pairs, i.e. both mates
     count = search_int(r"^Pairs:\s+(\d+) reads", text)
     return {"host_removed_pairs": None if count is None else count // 2}
 
 
-def parse_cutadapt(text):
+def parse_cutadapt(text, kind, db):
     # individual reads, each mate counted: the reads with a primer (adapter) found and trimmed. cutadapt writes the
     # numbers with thousands separators, and the single-end and paired-end reports differ
     text = text.replace(",", "")
@@ -56,10 +56,11 @@ def parse_cutadapt(text):
         r1 = search_int(r"^\s*Read 1 with adapter:\s+(\d+)", text)
         r2 = search_int(r"^\s*Read 2 with adapter:\s+(\d+)", text)
         reads = None if r1 is None or r2 is None else r1 + r2
-    return reads
+    column = {"cutadapt_primers": "primer_trimmed_reads", "cutadapt_readthrough": "readthrough_trimmed_reads"}[kind]
+    return {column: reads}
 
 
-def parse_vsearch(text):
+def parse_vsearch(text, kind, db):
     # read pairs, merged or joined into one sequence
     return {
         "merged_pairs": search_int(r"^\s*(\d+)\s+Merged \(", text),
@@ -67,41 +68,41 @@ def parse_vsearch(text):
     }
 
 
-def parse_fastp_merge(text):
+def parse_fastp_merge(text, kind, db):
     # read pairs merged into one sequence (the mates of the others are kept as separate sequences)
     return {"merged_pairs": search_int(r"^Read pairs merged: (\d+)", text)}
 
 
-def parse_idtaxa(text):
+def parse_idtaxa(text, kind, db):
     # the sequences (read pairs merged or joined, mates of unmerged pairs, or single-end reads) assigned to a taxon
-    return search_int(r"^Assigned sequences: (\d+)", text)
+    return {f"{kind}_{db}_pairs": search_int(r"^Assigned sequences: (\d+)", text)}
 
 
-def parse_motus4(text):
+def parse_motus4(text, kind, db):
     # the inserts (read pairs) passing the motus filters
-    return search_int(r"Read (\d+) aligned inserts", text)
+    return {f"{kind}_{db}_pairs": search_int(r"Read (\d+) aligned inserts", text)}
 
 
-def parse_motus3(text):
+def parse_motus3(text, kind, db):
     # the inserts (read pairs) passing the motus filters
-    return search_int(r"Total number of inserts: (\d+)", text)
+    return {f"{kind}_{db}_pairs": search_int(r"Total number of inserts: (\d+)", text)}
 
 
-def parse_gene_catalogue(text):
+def parse_gene_catalogue(text, kind, db):
     # gqlib (also used by cayman) logs the counts only if there are alignments
     count = search_int(r"Reads passing filters: (\d+)", text)
     if count is None and re.search(r"Finished\.$", text, re.MULTILINE):
         count = 0
-    return count
+    return {f"{kind}_{db}_pairs": count}
 
 
-# kind -> parser, giving the counts by column, or, for the profilers, the count of the column of the database
+# kind -> parser, giving the counts by column from the log, the kind and the database (profilers) of the log
 PARSERS = {
     "fastp": parse_fastp,
     "bowtie2": parse_bowtie2,
     "bbmap_repair": parse_bbmap_repair,
-    "cutadapt_primers": lambda text: {"primer_trimmed_reads": parse_cutadapt(text)},
-    "cutadapt_readthrough": lambda text: {"readthrough_trimmed_reads": parse_cutadapt(text)},
+    "cutadapt_primers": parse_cutadapt,
+    "cutadapt_readthrough": parse_cutadapt,
     "vsearch": parse_vsearch,
     "fastp_merge": parse_fastp_merge,
     "motus4": parse_motus4,
@@ -111,6 +112,7 @@ PARSERS = {
     "idtaxa": parse_idtaxa,
 }
 
+# column, or, for the profilers, kind -> (title, description), {db} being the database
 DESCRIPTIONS = {
     "primer_trimmed_reads": (
         "Primer-trimmed reads",
@@ -165,11 +167,7 @@ def main(manifest, inputs_dir, out_tsv, out_mqc):
         (path,) = (pathlib.Path(inputs_dir) / entry.index).iterdir()
         if entry.kind not in PARSERS:
             sys.exit(f"Unknown kind {entry.kind} for {path}")
-        values = PARSERS[entry.kind](ANSI_ESCAPE.sub("", path.read_text()))
-        if entry.kind in PROFILERS:
-            column = f"{entry.kind}_{entry.db_name}_pairs"
-            descriptions[column] = tuple(x.format(db=entry.db_name) for x in DESCRIPTIONS[entry.kind])
-            values = {column: values}
+        values = PARSERS[entry.kind](ANSI_ESCAPE.sub("", path.read_text()), entry.kind, entry.db_name)
         for column, value in values.items():
             if value is None:
                 print(
@@ -178,7 +176,8 @@ def main(manifest, inputs_dir, out_tsv, out_mqc):
                     file=sys.stderr,
                 )
             rows.append((entry.sample, entry.run_accession, column, value))
-            descriptions.setdefault(column, DESCRIPTIONS.get(column))
+            description = DESCRIPTIONS.get(column) or DESCRIPTIONS[entry.kind]
+            descriptions.setdefault(column, tuple(x.format(db=entry.db_name) for x in description))
 
     # the counts of a sample and run summed, NA if any is; NA for a column without counts for a sample and run
     counts = (
