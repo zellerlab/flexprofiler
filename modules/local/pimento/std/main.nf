@@ -24,9 +24,7 @@ process PIMENTO_STD {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    pimento std -i ${reads} -o ${prefix} ${args} > ${prefix}.pimento.log 2>&1
-    # written in the working directory, with a fixed name
-    mv all_standard_primer_proportions.txt ${prefix}_all_standard_primer_proportions.txt
+    pimento std -i ${reads} -o ${prefix} ${args}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
