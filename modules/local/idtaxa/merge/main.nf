@@ -8,8 +8,9 @@ process IDTAXA_MERGE {
         : 'biocontainers/python:3.9--1'}"
 
     input:
-    // the profiles of all the samples for one training set (meta.id)
-    tuple val(meta), path(input)
+    // the profiles of all the samples for one training set (meta.id), staged in a folder, so that the command lists
+    // them with a glob, and not one by one
+    tuple val(meta), path(input, stageAs: 'profiles/*')
 
     output:
     tuple val(meta), path("*.tsv"), emit: tsv
@@ -22,7 +23,7 @@ process IDTAXA_MERGE {
     def prefix = task.ext.prefix ?: "${meta.id}"
     // the profiles are named <sample>_<training set>.idtaxa.profile.tsv
     """
-    idtaxa_merge.py ${prefix} _${meta.id}.idtaxa.profile.tsv ${input}
+    idtaxa_merge.py ${prefix} _${meta.id}.idtaxa.profile.tsv profiles/*
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

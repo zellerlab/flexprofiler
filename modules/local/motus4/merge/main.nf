@@ -8,7 +8,9 @@ process MOTUS4_MERGE {
         'biocontainers/motus:4.0.4--pyhdfd78af_0' }"
 
     input:
-    tuple val(meta), path(input)
+    // the profiles of all the samples for one database, staged in a folder, so that the command lists them with a glob,
+    // and not one by one
+    tuple val(meta), path(input, stageAs: 'profiles/*')
     path db, stageAs: 'db_mOTU' // motus4_patch.py expects the database at ./db_mOTU
 
     output:
@@ -23,11 +25,11 @@ process MOTUS4_MERGE {
     def prefix = task.ext.prefix ?: "${meta.id}"
     // motus merge needs at least 2 profiles, and a single profile has already the format of a merged one
     def merge_cmd = input instanceof Path
-        ? "cp ${input} ${prefix}.txt"
+        ? "cp profiles/* ${prefix}.txt"
         : "motus4_patch.py merge -i profile_list.txt $args -o ${prefix}.txt"
     """
     # motus merge treats a single -i argument as a file listing the profiles, so a list is passed
-    printf '%s\\n' ${input} > profile_list.txt
+    printf '%s\\n' profiles/* > profile_list.txt
 
     $merge_cmd
 
