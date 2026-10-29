@@ -485,6 +485,13 @@
                     "description": "Minimum confidence (0-100) of the taxa assigned by IDTAXA",
                     "help_text": "The minimum confidence (0-100) at which IdTaxa assigns a taxon: the lineage of a sequence stops at the last rank assigned above it. DECIPHER suggests 60 (very high confidence), 50 (high confidence) or 40 (moderate confidence). The default, 40, is that of vknight. Passed to IdTaxa as its `threshold`.",
                     "fa_icon": "fas fa-sliders-h"
+                },
+                "idtaxa_ranks": {
+                    "type": "string",
+                    "pattern": "^[^,\\s]+(,[^,\\s]+)*$",
+                    "description": "Comma-separated ranks to write a merged IDTAXA table for. All the ranks if not set",
+                    "help_text": "The merged IDTAXA tables have one table of the whole lineages, as assigned, and one table per rank (domain, phylum, ..., genus), with the lineages cut at that rank and the sequences not assigned down to it in the row unassigned. By default there is a table for each rank of the lineages; with a comma-separated list of ranks (as named in the training set, e.g. `genus` or `family,genus`), only for those. A rank that no lineage reaches gives a table with only the unassigned sequences.",
+                    "fa_icon": "fas fa-layer-group"
                 }
             },
             "fa_icon": "fas fa-align-center"

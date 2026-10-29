@@ -396,6 +396,8 @@ IDTAXA classifies single sequences, so the pairs of paired-end reads are first m
 
 Single-end reads are classified as they are. Only the reads given to IDTAXA change, not the analysis-ready reads.
 
+The profiles of the samples are merged, for each training set, into a table of the whole lineages and one table per rank (domain, phylum, ..., genus), the sequences not assigned down to a rank being in its row `unassigned`. `--idtaxa_ranks` restricts the rank tables to some ranks, e.g. `--idtaxa_ranks genus`.
+
 The confidence threshold of IdTaxa is set with `--idtaxa_threshold` (default 40, as in vknight; DECIPHER suggests 60 for very high, 50 for high and 40 for moderate confidence). The strand of the sequences is left at the DECIPHER default (`both`), and is changed with `ext.strand` in a custom config; the vsearch and fastp options with `ext.args`:
 
 ```groovy

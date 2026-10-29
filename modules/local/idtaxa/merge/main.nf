@@ -21,12 +21,14 @@ process IDTAXA_MERGE {
 
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
+    // the comma-separated ranks to write a table for, all of them if not set
+    def ranks = task.ext.ranks ?: ''
     // the profiles are named <sample>_<training set>.idtaxa.profile.tsv
     """
     # the list of the profiles is written by printf, a shell builtin, so that it is not limited by the length of a
     # command line
     printf '%s\\n' profiles/* > profiles.txt
-    idtaxa_merge.py ${prefix} _${meta.id}.idtaxa.profile.tsv profiles.txt
+    idtaxa_merge.py ${prefix} _${meta.id}.idtaxa.profile.tsv profiles.txt ${ranks}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

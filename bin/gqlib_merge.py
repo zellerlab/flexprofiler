@@ -16,6 +16,7 @@ reads, as they would be the same as the uniq_ ones otherwise: for the other samp
 collate_counts falls back to the uniq_ column too, but then keeps using it for all the following samples.
 """
 
+import collections
 import pathlib
 import sys
 
@@ -25,42 +26,34 @@ HEADER_ROWS = ["total_reads", "filtered_reads", "category", "unannotated"]
 
 
 def main(prefix, suffix, paths):
-    names = [path.split("/")[-1] for path in paths]
+    names = [pathlib.Path(path).name for path in paths]
     # the suffix is set by the module from the meta, the file names by the ext.prefix of the profilers: an error here
     # means that the two do not agree anymore
     wrong = [name for name in names if not name.endswith(suffix) or name == suffix]
     if wrong:
         raise ValueError(f"The profiles {', '.join(wrong)} do not end with {suffix}, the sample names cannot be taken from them")
-    profiles = sorted((name.removesuffix(suffix), path) for name, path in zip(names, paths))
-    duplicated = sorted({sample for sample, _ in profiles if [s for s, _ in profiles].count(sample) > 1})
+    samples = [name.removesuffix(suffix) for name in names]
+    duplicated = sorted(sample for sample, n in collections.Counter(samples).items() if n > 1)
     if duplicated:
         raise ValueError(f"Duplicated samples: {', '.join(duplicated)}")
-    headers = {path: pd.read_csv(path, sep="\t", nrows=0).columns.tolist() for _, path in profiles}
-    # the feature column, gene for gene_counts and feature for the other categories
-    feature_label = next(iter(headers.values()))[0]
 
-    columns = []
-    for header in headers.values():
-        columns += [column for column in header[1:] if column not in columns]
-    columns = [c for c in columns if not c.startswith("combined_")] + [c for c in columns if c.startswith("combined_")]
+    # sample -> profile, one row per feature (gene for gene_counts, feature for the other categories)
+    profiles = {sample: pd.read_csv(path, sep="\t", index_col=0) for sample, path in sorted(zip(samples, paths))}
+    feature_label = next(iter(profiles.values())).index.name
 
-    features = set()
-    for _, path in profiles:
-        # read as text, as collate_counts reads the feature names
-        features.update(pd.read_csv(path, sep="\t", usecols=[feature_label], dtype=str, na_filter=False)[feature_label])
+    # the count columns, the uniq_ ones then the combined_ ones
+    columns = list(dict.fromkeys(column for profile in profiles.values() for column in profile.columns))
+    columns = sorted(columns, key=lambda column: column.startswith("combined_"))
+    features = set().union(*(profile.index for profile in profiles.values()))
     index = [row for row in HEADER_ROWS if row in features] + sorted(features.difference(HEADER_ROWS))
 
     for column in columns:
-        merged = []
-        for sample, path in profiles:
-            source = column if column in headers[path] else column.replace("combined_", "uniq_", 1)
-            if source not in headers[path]:
-                raise ValueError(f"{path} has neither {column} nor {source}")
-            data = pd.read_csv(path, sep="\t", index_col=0, usecols=(feature_label, source))
-            merged.append(pd.Series(index=index, data=data[source], name=sample))
-        table = pd.concat(merged, axis=1)
-        table.columns = [sample for sample, _ in profiles]
-        table.to_csv(f"{prefix}.{column}.txt.gz", sep="\t", na_rep="NA", index_label=feature_label)
+        # a sample without the combined_ column has the same counts in the uniq_ one
+        table = pd.concat(
+            {sample: profile[column if column in profile else column.replace("combined_", "uniq_", 1)] for sample, profile in profiles.items()},
+            axis=1,
+        )
+        table.reindex(index).to_csv(f"{prefix}.{column}.txt.gz", sep="\t", na_rep="NA", index_label=feature_label)
 
 
 if __name__ == "__main__":

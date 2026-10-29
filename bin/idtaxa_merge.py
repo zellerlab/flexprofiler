@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Merge the IDTAXA profiles (of IDTAXA_CLASSIFY) of the samples into count tables.
 
-usage: idtaxa_merge.py <prefix> <suffix> <profiles.txt>
+usage: idtaxa_merge.py <prefix> <suffix> <profiles.txt> [<ranks>]
 
-<profiles.txt> lists the profiles to merge (<profile.tsv>), one path per line.
+<profiles.txt> lists the profiles to merge (<profile.tsv>), one path per line. <ranks> is a comma-separated list of
+the ranks to write a table for, all the ranks of the lineages if not given.
 
 The sample name of a profile is its file name without <suffix>. Writes, with the samples as columns (sorted by name):
 - <prefix>.lineage.tsv: the counts of each lineage, as assigned by IDTAXA (from domain to the deepest rank assigned)
@@ -24,7 +25,7 @@ def cut(lineage, lineage_ranks, rank):
     return ";".join(lineage.split(";")[: lineage_ranks.index(rank) + 1]) if rank in lineage_ranks else "unassigned"
 
 
-def main(prefix, suffix, paths):
+def main(prefix, suffix, paths, ranks=None):
     names = [pathlib.Path(path).name for path in paths]
     # the suffix is set by the module from the meta, the file names by the ext.prefix of IDTAXA_CLASSIFY: an error here
     # means that the two do not agree anymore
@@ -43,8 +44,8 @@ def main(prefix, suffix, paths):
     # the total of each sample, the same in all the tables
     totals = rows[rows["lineage"] == "total_reads"].set_index("sample")["count"]
     rows = rows[rows["lineage"] != "total_reads"]
-    # the ranks, in their order in the lineages
-    ranks = list(dict.fromkeys(rank for lineage_ranks in rows["ranks"] if lineage_ranks for rank in lineage_ranks.split(";")))
+    # the ranks to write a table for, by default all of them, in their order in the lineages
+    ranks = ranks or list(dict.fromkeys(rank for lineage_ranks in rows["ranks"] if lineage_ranks for rank in lineage_ranks.split(";")))
 
     # the whole lineages, then the lineages cut at each rank
     tables = {"lineage": rows}
@@ -63,6 +64,6 @@ def main(prefix, suffix, paths):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
+    if len(sys.argv) not in (4, 5):
         sys.exit(__doc__)
-    main(sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3]).read_text().splitlines())
+    main(sys.argv[1], sys.argv[2], pathlib.Path(sys.argv[3]).read_text().splitlines(), sys.argv[4].split(",") if len(sys.argv) == 5 else None)
