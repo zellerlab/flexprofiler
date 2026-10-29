@@ -106,11 +106,12 @@ def readPimentoPrimers(fasta, merged) {
 }
 
 /**
-* Complement of a nucleotide sequence, with IUPAC ambiguity codes.
+* Complement of a nucleotide sequence, with the IUPAC ambiguity codes (Cornish-Bowden, Nucleic Acids Res. 1985,
+* doi:10.1093/nar/13.9.3021): an unknown base becomes X, which never matches in cutadapt.
 */
 def complement(seq) {
-    def bases = [A: 'T', C: 'G', G: 'C', T: 'A', R: 'Y', Y: 'R', K: 'M', M: 'K', B: 'V', V: 'B', D: 'H', H: 'D', N: 'N', S: 'S', W: 'W']
-    return seq.toUpperCase().collect { base -> bases[base] }.join('')
+    def bases = [A: 'T', T: 'A', U: 'A', G: 'C', C: 'G', Y: 'R', R: 'Y', S: 'S', W: 'W', K: 'M', M: 'K', B: 'V', D: 'H', H: 'D', V: 'B', N: 'N']
+    return seq.toUpperCase().collect { base -> bases[base] ?: 'X' }.join('')
 }
 
 /**

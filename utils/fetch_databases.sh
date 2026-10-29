@@ -2,6 +2,7 @@
 
 # fetch_databases.sh <out_database_path> [cpus]
 # Author: Saul Pierotti
+# WARINING: many part of this script were not explicitly tested, they are mostly for reference
 # 17/02/2026
 
 set -euo pipefail
