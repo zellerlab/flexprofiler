@@ -11,20 +11,18 @@ tools:
       licence: ["PSF-2.0"]
       identifier: ""
 input:
-  - files:
-      type: file
-      description: |
-        fastp json reports, bowtie2 logs, and motus4, motus3, cayman and gqlib logs, each staged in its own folder
-        inputs/<index>/
-      pattern: "*.{json,log}"
-      ontologies: []
-  - manifest:
-      type: file
-      description: |
-        Tab-separated, without header, one row per input file: <index> <sample> <kind> <db_name> <annot_db_name>,
-        where kind is one of fastp, bowtie2, motus4, motus3, cayman, gqlib
-      pattern: "*.tsv"
-      ontologies: []
+  - - labels:
+        type: list
+        description: |
+          The labels of each file, in the order of the files: maps with the keys sample, run, kind, db_name and
+          annot_db_name, where kind is one of fastp, bowtie2, bbmap_repair, motus4, motus3, cayman, gqlib,
+          cutadapt_primers, cutadapt_readthrough, vsearch, fastp_merge and idtaxa
+    - files:
+        type: file
+        description: |
+          The logs and reports of the tools, each staged in its own folder inputs/<index>/
+        pattern: "*.{json,log}"
+        ontologies: []
 output:
   tsv:
     - read_counts.tsv:

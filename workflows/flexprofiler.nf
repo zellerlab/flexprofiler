@@ -350,33 +350,32 @@ workflow FLEXPROFILER {
     */
 
     // read counts after each step, parsed from the logs, per run or, with run merging, per merged run:
-    // [ sample, run, kind, db_name, annot_db_name, file ]
+    // [ [sample, run, kind, db_name, annot_db_name], file ]
     ch_read_count_files = PROFILING.out.logs
-        .map { meta, log_file -> [meta.id, readCountRun(meta), meta.tool, meta.db_name, meta.annot_db_name ?: '', log_file] }
+        .map { meta, log_file -> [readCountMeta(meta, meta.tool, meta.db_name, meta.annot_db_name ?: ''), log_file] }
     if (params.perform_shortread_qc) {
         ch_read_count_files = ch_read_count_files.mix(
-            SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [meta.id, readCountRun(meta), 'fastp', '', '', json] }
+            SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [readCountMeta(meta, 'fastp'), json] }
         )
     }
     if (params.perform_shortread_hostremoval) {
         ch_read_count_files = ch_read_count_files.mix(
-            SHORTREAD_HOSTREMOVAL.out.read_count_logs.map { meta, kind, log_file -> [meta.id, readCountRun(meta), kind, '', '', log_file] }
+            SHORTREAD_HOSTREMOVAL.out.read_count_logs.map { meta, kind, log_file -> [readCountMeta(meta, kind), log_file] }
         )
     }
     if (params.perform_amplicon_primertrimming) {
         ch_read_count_files = ch_read_count_files.mix(
-            AMPLICON_PRIMERTRIMMING.out.read_count_logs.map { meta, kind, log_file -> [meta.id, readCountRun(meta), kind, '', '', log_file] }
+            AMPLICON_PRIMERTRIMMING.out.read_count_logs.map { meta, kind, log_file -> [readCountMeta(meta, kind), log_file] }
         )
     }
     ch_read_count_files = ch_read_count_files.mix(
-        PROFILING.out.read_count_logs.map { meta, kind, log_file -> [meta.id, readCountRun(meta), kind, '', '', log_file] }
+        PROFILING.out.read_count_logs.map { meta, kind, log_file -> [readCountMeta(meta, kind), log_file] }
     )
-    // the files are staged in numbered folders, in the order of the manifest
-    ch_read_count_files = ch_read_count_files.toSortedList { a, b -> a[0..4].join('\t') <=> b[0..4].join('\t') ?: a[5].name <=> b[5].name }
-    ch_read_count_manifest = ch_read_count_files
-        .map { entries -> entries.withIndex().collect { entry, i -> ([i + 1] + entry[0..4]).join('\t') + '\n' }.join('') }
-        .collectFile(name: 'read_counts_manifest.tsv')
-    READ_COUNTS(ch_read_count_files.map { entries -> entries.collect { entry -> entry[5] } }, ch_read_count_manifest)
+    ch_read_count_input = ch_read_count_files
+        .collect(flat: false)
+        // [ [meta, file], ... ] to [ [meta, ...], [file, ...] ]
+        .map { entries -> entries.transpose() }
+    READ_COUNTS(ch_read_count_input)
     ch_versions = ch_versions.mix(READ_COUNTS.out.versions)
 
     /*
@@ -527,4 +526,11 @@ workflow FLEXPROFILER {
 //
 def readCountRun(meta) {
     return params.perform_runmerging && meta.is_multirun ? "merged_${meta.library_strategy}" : meta.run_accession
+}
+
+//
+// The labels of a read count file, in the order of the columns of the read counts manifest
+//
+def readCountMeta(meta, kind, db_name = '', annot_db_name = '') {
+    return [sample: meta.id, run: readCountRun(meta), kind: kind, db_name: db_name, annot_db_name: annot_db_name]
 }
