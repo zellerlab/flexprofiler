@@ -42,7 +42,7 @@
                     "pandas": "2.2.1"
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.4"
+                    "zellerlab/flexprofiler": "v0.0.5"
                 }
             }
         ],

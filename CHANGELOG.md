@@ -4,10 +4,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## Unreleased
+## v0.0.5 [30-10-2026]
+
+### Added
+- `library_strategy` column in the samplesheet, `WGS` (shotgun metagenomics) or `AMPLICON` (e.g. 16S), from the ENA controlled vocabulary; `WGS` if empty or missing. `utils/make_samplesheet.sh` writes it
+- Taxonomic classification of the `AMPLICON` samples with IDTAXA (DECIPHER) (`--run_idtaxa`), against the training sets of the `idtaxa` rows of the database sheet (`--idtaxa_db_names` to choose among them), with the confidence threshold `--idtaxa_threshold` (default 40). The profiles are merged across samples into a table of the whole lineages and one table per rank (`--idtaxa_ranks` to choose the ranks)
+- The read pairs of paired-end amplicon reads are merged before IDTAXA, and the pairs that do not overlap are handled as set by `--idtaxa_pair_handling`: joined with a padding of Ns by vsearch (`merged_plus_joined`, default), or kept as two sequences by fastp (`merged_plus_unmerged`)
+- Primer detection with PIMENTO and primer and read-through trimming with cutadapt for the `AMPLICON` runs (`--perform_amplicon_primertrimming`, on by default), with the reads trimmed in the read counts (`primer_trimmed_reads`, `readthrough_trimmed_reads`)
+- `zellerlab_amplicon` profile and `test_idtaxa` profile
+- The reads given to mOTUs v4 with `--motus4_rename_reads` are saved with `--save_analysis_ready_fastqs`, in `analysis_ready_fastqs/motus4`
+- Tests for IDTAXA, primer removal, adapter removal, host removal, and a mix of `WGS` and `AMPLICON` samples in one run
 
 ### Changed
-- Short-read host removal aligns the two mates of paired-end reads separately with bowtie2, as single-end reads, and keeps a pair only if neither mate aligns to the host, as recommended in https://doi.org/10.1016/j.crmeth.2025.101218. Before, the pairs not aligned concordantly were kept (`bowtie2 --un-conc`), including those with one mate aligned to the host. The unaligned mates are paired again with `repair.sh`, whose log gives the `hostremoval_retained_pairs` read count
+- Short-read host removal aligns the two mates of paired-end reads separately with bowtie2, as single-end reads, and keeps a pair only if neither mate aligns to the host, as recommended in https://doi.org/10.1016/j.crmeth.2025.101218. Before, the pairs not aligned concordantly were kept (`bowtie2 --un-conc`), including those with one mate aligned to the host. The unaligned mates are paired again with `repair.sh`, whose log gives the `hostremoval_retained_pairs` read count (before `host_removed_pairs`)
+- The `AMPLICON` runs are not host-removed, and Nonpareil is run only on the `WGS` runs
+- The `WGS` and `AMPLICON` runs of a sample are merged separately with `--perform_runmerging`: a merged run is named `merged_WGS` or `merged_AMPLICON` (also in the names of the concatenated FASTQ files), and a sample with a single run of a strategy keeps its run accession
+- The read counts have one row per run (columns `sample` and `run_accession`), or per merged run with `--perform_runmerging`, instead of one per sample
+- The gqlib and cayman profiles are merged by the pipeline instead of `collate_counts` of gqlib, with the same tables, but with 0 instead of NA for the features without reads in a sample
+- The profiles merged by gqlib and mOTUs v4 are listed in a file, so that the number of samples is not limited by the length of a command line
 
 ## v0.0.4 [27-10-2026]
 
