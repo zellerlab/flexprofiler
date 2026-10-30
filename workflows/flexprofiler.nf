@@ -21,6 +21,7 @@ include { methodsDescriptionText        } from '../subworkflows/local/utils_zell
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
 
+include { AMPLICON_PRIMERTRIMMING       } from '../subworkflows/local/amplicon_primertrimming'
 include { SHORTREAD_PREPROCESSING       } from '../subworkflows/local/shortread_preprocessing'
 include { NONPAREIL                     } from '../subworkflows/local/nonpareil'
 include { LONGREAD_PREPROCESSING        } from '../subworkflows/local/longread_preprocessing'
@@ -202,16 +203,38 @@ workflow FLEXPROFILER {
     }
 
     /*
+        SUBWORKFLOW: AMPLICON PRIMER TRIMMING
+    */
+
+    if (params.perform_amplicon_primertrimming) {
+        ch_fastq_by_strategy = ch_fastq_repaired.branch { meta, _reads ->
+            amplicon: meta.library_strategy == 'AMPLICON'
+            wgs: meta.library_strategy == 'WGS'
+            other: true
+        }
+        // the samplesheet schema allows only WGS and AMPLICON, this guards against the two going out of sync
+        ch_fastq_by_strategy.other.subscribe { meta, _reads ->
+            error("[zellerlab/flexprofiler] ERROR: unexpected library_strategy '${meta.library_strategy}' for ${meta.id}, it must be WGS or AMPLICON")
+        }
+        AMPLICON_PRIMERTRIMMING(ch_fastq_by_strategy.amplicon)
+        ch_fastq_primertrimmed = ch_fastq_by_strategy.wgs.mix(AMPLICON_PRIMERTRIMMING.out.reads)
+        ch_versions = ch_versions.mix(AMPLICON_PRIMERTRIMMING.out.versions)
+    }
+    else {
+        ch_fastq_primertrimmed = ch_fastq_repaired
+    }
+
+    /*
         SUBWORKFLOW: PERFORM PREPROCESSING
     */
 
     if (params.perform_shortread_qc) {
-        SHORTREAD_PREPROCESSING(ch_fastq_repaired, adapterlist)
+        SHORTREAD_PREPROCESSING(ch_fastq_primertrimmed, adapterlist)
         ch_shortreads_preprocessed = SHORTREAD_PREPROCESSING.out.reads
         ch_versions = ch_versions.mix(SHORTREAD_PREPROCESSING.out.versions)
     }
     else {
-        ch_shortreads_preprocessed = ch_fastq_repaired
+        ch_shortreads_preprocessed = ch_fastq_primertrimmed
     }
 
     if (params.perform_longread_qc) {
@@ -226,8 +249,9 @@ workflow FLEXPROFILER {
         MODULE: REDUNDANCY ESTIMATION
     */
 
+    // the redundancy estimation assumes shotgun reads
     if (params.perform_shortread_redundancyestimation) {
-        NONPAREIL(ch_shortreads_preprocessed)
+        NONPAREIL(ch_shortreads_preprocessed.filter { meta, _reads -> meta.library_strategy == 'WGS' })
         ch_versions = ch_versions.mix(NONPAREIL.out.versions)
     }
 
@@ -249,9 +273,19 @@ workflow FLEXPROFILER {
         SUBWORKFLOW: HOST REMOVAL
     */
 
+    // amplicon reads are not host reads, they are not aligned to the host genome
     if (params.perform_shortread_hostremoval) {
-        SHORTREAD_HOSTREMOVAL(ch_shortreads_filtered, ch_reference, ch_shortread_reference_index)
-        ch_shortreads_hostremoved = SHORTREAD_HOSTREMOVAL.out.reads
+        ch_shortreads_for_hostremoval = ch_shortreads_filtered.branch { meta, _reads ->
+            amplicon: meta.library_strategy == 'AMPLICON'
+            wgs: meta.library_strategy == 'WGS'
+            other: true
+        }
+        // the samplesheet schema allows only WGS and AMPLICON, this guards against the two going out of sync
+        ch_shortreads_for_hostremoval.other.subscribe { meta, _reads ->
+            error("[zellerlab/flexprofiler] ERROR: unexpected library_strategy '${meta.library_strategy}' for ${meta.id}, it must be WGS or AMPLICON")
+        }
+        SHORTREAD_HOSTREMOVAL(ch_shortreads_for_hostremoval.wgs, ch_reference, ch_shortread_reference_index)
+        ch_shortreads_hostremoved = SHORTREAD_HOSTREMOVAL.out.reads.mix(ch_shortreads_for_hostremoval.amplicon)
         ch_versions = ch_versions.mix(SHORTREAD_HOSTREMOVAL.out.versions)
     }
     else {
@@ -277,9 +311,12 @@ workflow FLEXPROFILER {
             .groupTuple()
             // groupTuple collects the runs in the order in which they finish, so they
             // are sorted to concatenate them always in the same order (the result of
-            // mOTUs depends on the order of the reads)
+            // mOTUs depends on the order of the reads). The runs are grouped by the meta without run_accession, which
+            // contains library_strategy, so the WGS and AMPLICON runs of a sample are merged separately: the merged
+            // runs are named merged_<strategy>, a single run keeps its run_accession
             .map { meta, run_accessions, reads ->
-                [meta, [run_accessions, reads].transpose().sort { it[0].toString() }.collect { it[1] }.flatten()]
+                def run_accession = run_accessions.size() > 1 ? "merged_${meta.library_strategy}" : run_accessions[0]
+                [meta + [run_accession: run_accession], [run_accessions, reads].transpose().sort { it[0].toString() }.collect { it[1] }.flatten()]
             }
             .branch { meta, reads ->
                 cat: (meta.single_end && reads.size() > 1) || (!meta.single_end && reads.size() > 2)
@@ -312,32 +349,48 @@ workflow FLEXPROFILER {
         MODULE: READ COUNTS
     */
 
-    // per-sample read counts after each step, parsed from the logs: [ sample, kind, db_name, annot_db_name, file ]
-    ch_read_count_files = PROFILING.out.logs
-        .map { meta, log_file -> [meta.id, meta.tool, meta.db_name, meta.annot_db_name ?: '', log_file] }
-    if (params.perform_shortread_qc) {
-        ch_read_count_files = ch_read_count_files.mix(
-            SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [meta.id, 'fastp', '', '', json] }
-        )
-    }
-    if (params.perform_shortread_hostremoval) {
-        ch_read_count_files = ch_read_count_files.mix(
-            SHORTREAD_HOSTREMOVAL.out.bowtie2_log.map { meta, log_file -> [meta.id, 'bowtie2', '', '', log_file] }
-        )
-    }
-    // the files are staged in numbered folders, in the order of the manifest
-    ch_read_count_files = ch_read_count_files.toSortedList { a, b -> a[0..3].join('\t') <=> b[0..3].join('\t') ?: a[4].name <=> b[4].name }
-    ch_read_count_manifest = ch_read_count_files
-        .map { entries -> entries.withIndex().collect { entry, i -> ([i + 1] + entry[0..3]).join('\t') + '\n' }.join('') }
-        .collectFile(name: 'read_counts_manifest.tsv')
-    READ_COUNTS(ch_read_count_files.map { entries -> entries.collect { entry -> entry[4] } }, ch_read_count_manifest)
+    // read counts after each step, parsed from the logs, per run or, with run merging, per merged run. The [ meta, log ]
+    // of each step, with the tool in meta.tool, are split into the logs and the rows of the read counts manifest. Logs of
+    // different steps can have the same name, so each is renamed, the manifest giving the new name: a hash of its path,
+    // unique, and stable with -resume, the work directories being kept
+    // the database names are defined only for the profiler logs, and are left empty for the other steps
+    def read_count_required_columns = ['sample', 'run_accession', 'kind']
+    def read_count_optional_columns = ['db_name']
+    def read_count_columns = ['file'] + read_count_required_columns + read_count_optional_columns
+    ch_read_count = PROFILING.out.read_count_logs
+        .mix(params.perform_shortread_qc ? SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [meta + [tool: 'fastp'], json] } : channel.empty())
+        .mix(params.perform_shortread_hostremoval ? SHORTREAD_HOSTREMOVAL.out.read_count_logs : channel.empty())
+        .mix(params.perform_amplicon_primertrimming ? AMPLICON_PRIMERTRIMMING.out.read_count_logs : channel.empty())
+        .multiMap { meta, log_file ->
+            // with run merging, the steps before it (QC, host removal, primer trimming) still have the run_accession of
+            // each run: the counts of the runs of a multi-run sample go to its merged run, named as by the run merging
+            def run = params.perform_runmerging && meta.is_multirun ? "merged_${meta.library_strategy}" : meta.run_accession
+            def file_name = "${log_file.toString().md5()}_${log_file.name}"
+            def label = [file: file_name, sample: meta.id, run_accession: run, kind: meta.tool, db_name: meta.db_name]
+            // only null or blank values count as missing, not falsy ones such as 0
+            def missing = read_count_required_columns.findAll { column ->
+                def value = label[column]
+                value == null || value.toString().trim().isEmpty()
+            }
+            if (missing) {
+                error("Read counts: ${missing.join(', ')} not defined for ${log_file}")
+            }
+            files: [file_name, log_file]
+            rows: read_count_columns.collect { column -> label[column] == null ? '' : label[column] }.join('\t')
+        }
+    ch_read_count_manifest = ch_read_count.rows
+        .collectFile(name: 'read_counts_manifest.tsv', seed: read_count_columns.join('\t'), newLine: true)
+    ch_read_count_files = ch_read_count.files
+        .collectFile { file_name, log_file -> [file_name, log_file] }
+        .collect()
+    READ_COUNTS(ch_read_count_files, ch_read_count_manifest)
     ch_versions = ch_versions.mix(READ_COUNTS.out.versions)
 
     /*
         SUBWORKFLOW: PROFILING STANDARDISATION
     */
     if (params.run_profile_standardisation) {
-        STANDARDISATION_PROFILES(PROFILING.out.classifications, PROFILING.out.profiles, ch_final_dbs)
+        STANDARDISATION_PROFILES(PROFILING.out.profiles, ch_final_dbs)
         ch_versions = ch_versions.mix(STANDARDISATION_PROFILES.out.versions)
     }
 
@@ -468,3 +521,4 @@ workflow FLEXPROFILER {
     multiqc_report = multiqc_report // channel: /path/to/multiqc_report.html
     versions       = ch_versions // channel: [ path(versions.yml) ]
 }
+

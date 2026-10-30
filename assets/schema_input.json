@@ -35,6 +35,13 @@
                 ],
                 "errorMessage": "Sequencing platform must be provided."
             },
+            "library_strategy": {
+                "type": "string",
+                "enum": ["WGS", "AMPLICON"],
+                "default": "WGS",
+                "errorMessage": "Library strategy must be WGS or AMPLICON (ENA controlled vocabulary), or left empty for WGS.",
+                "meta": ["library_strategy"]
+            },
             "fastq_1": {
                 "type": "string",
                 "exists": true,

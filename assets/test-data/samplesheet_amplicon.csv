@@ -1,0 +1,3 @@
+sample,run_accession,instrument_platform,library_strategy,fastq_1,fastq_2,fasta
+amplicon_pe,clean_pe,ILLUMINA,AMPLICON,../../../assets/test-data/data/fastq/amplicon/amplicon_clean_1.fastq.gz,../../../assets/test-data/data/fastq/amplicon/amplicon_clean_2.fastq.gz,
+amplicon_se,clean_se,ILLUMINA,AMPLICON,../../../assets/test-data/data/fastq/amplicon/amplicon_clean_se.fastq.gz,,

@@ -1,19 +1,33 @@
 #!/usr/bin/env python3
-"""Per-sample read counts after QC, host removal and alignment to each profiling database, parsed from the logs.
+"""Per-run read counts after QC, host removal and alignment to each profiling database, parsed from the logs.
 
 usage: read_counts.py <manifest.tsv> <inputs_dir> <out.tsv> <out_mqc.tsv>
 
-The manifest has one row per input file, without header: <index> <sample> <kind> <db_name> <annot_db_name>, the file
-being the only one in <inputs_dir>/<index>/. The kinds are fastp, bowtie2, motus4, motus3, cayman and gqlib. The counts
-of the files of a sample (e.g. of its runs) are summed. A column is written only if some file has its count.
+The manifest has a header and one row per input file, with the columns file (its name in <inputs_dir>), sample,
+run_accession, kind and db_name. The run_accession is that of the run, or, with run merging, the merged run of a multi-
+run sample (merged_<library_strategy>). The kinds are fastp, bowtie2, bbmap_repair, motus4, motus3, cayman and gqlib,
+and for amplicons cutadapt_primers, cutadapt_readthrough, vsearch or fastp_merge, and idtaxa. The counts of the files of
+a sample and run (e.g. of the runs merged into it) are summed. A column is written only if some file has its count.
 """
-import collections
 import json
 import pathlib
 import re
 import sys
+import textwrap
 
-PROFILERS = ["motus4", "motus3", "cayman", "gqlib"]
+import pandas as pd
+
+PROFILERS = ["motus4", "motus3", "cayman", "gqlib", "idtaxa"]
+# the columns of the preprocessing steps, in their order
+PREPROCESSING_COLUMNS = [
+    "primer_trimmed_reads",
+    "readthrough_trimmed_reads",
+    "raw_reads",
+    "qc_reads",
+    "hostremoval_retained_pairs",
+    "merged_pairs",
+    "joined_pairs",
+]
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 
 
@@ -22,7 +36,7 @@ def search_int(pattern, text):
     return int(match.group(1)) if match else None
 
 
-def parse_fastp(text):
+def parse_fastp(text, kind, db):
     # individual reads, each mate counted
     summary = json.loads(text)["summary"]
     return {
@@ -31,140 +45,189 @@ def parse_fastp(text):
     }
 
 
-def parse_bowtie2(text):
-    # the reads written as unaligned: for paired-end, the pairs not aligned concordantly (--un-conc), else the reads
-    # not aligned (--un)
-    if search_int(r"^\s*(\d+) \([\d.]+%\) were paired", text):
-        count = search_int(r"^\s*(\d+) \([\d.]+%\) aligned concordantly 0 times", text)
-    else:
-        count = search_int(r"^\s*(\d+) \([\d.]+%\) aligned 0 times", text)
-    return {"host_removed_pairs": count}
+def parse_bowtie2(text, kind, db):
+    # single-end reads, the reads not aligned (--un)
+    return {"hostremoval_retained_pairs": search_int(r"^\s*(\d+) \([\d.]+%\) aligned 0 times", text)}
 
 
-def parse_motus4(text):
+def parse_bbmap_repair(text, kind, db):
+    # paired-end reads, the pairs with neither mate aligned to the host, re-paired by repair.sh after aligning the
+    # mates separately: repair.sh counts the reads of the pairs, i.e. both mates
+    count = search_int(r"^Pairs:\s+(\d+) reads", text)
+    return {"hostremoval_retained_pairs": None if count is None else count // 2}
+
+
+def parse_cutadapt(text, kind, db):
+    # individual reads, each mate counted: the reads with a primer (adapter) found and trimmed. cutadapt writes the
+    # numbers with thousands separators, and the single-end and paired-end reports differ
+    text = text.replace(",", "")
+    reads = search_int(r"^Reads with adapters:\s+(\d+)", text)
+    if reads is None:
+        r1 = search_int(r"^\s*Read 1 with adapter:\s+(\d+)", text)
+        r2 = search_int(r"^\s*Read 2 with adapter:\s+(\d+)", text)
+        reads = None if r1 is None or r2 is None else r1 + r2
+    column = {"cutadapt_primers": "primer_trimmed_reads", "cutadapt_readthrough": "readthrough_trimmed_reads"}[kind]
+    return {column: reads}
+
+
+def parse_vsearch(text, kind, db):
+    # read pairs, merged or joined into one sequence
+    return {
+        "merged_pairs": search_int(r"^\s*(\d+)\s+Merged \(", text),
+        "joined_pairs": search_int(r"^(\d+) pairs joined", text),
+    }
+
+
+def parse_fastp_merge(text, kind, db):
+    # read pairs merged into one sequence (the mates of the others are kept as separate sequences)
+    return {"merged_pairs": search_int(r"^Read pairs merged: (\d+)", text)}
+
+
+def parse_idtaxa(text, kind, db):
+    # the sequences (read pairs merged or joined, mates of unmerged pairs, or single-end reads) assigned to a taxon
+    return {f"{kind}_{db}_pairs": search_int(r"^Assigned sequences: (\d+)", text)}
+
+
+def parse_motus4(text, kind, db):
     # the inserts (read pairs) passing the motus filters
-    return search_int(r"Read (\d+) aligned inserts", text)
+    return {f"{kind}_{db}_pairs": search_int(r"Read (\d+) aligned inserts", text)}
 
 
-def parse_motus3(text):
+def parse_motus3(text, kind, db):
     # the inserts (read pairs) passing the motus filters
-    return search_int(r"Total number of inserts: (\d+)", text)
+    return {f"{kind}_{db}_pairs": search_int(r"Total number of inserts: (\d+)", text)}
 
 
-def parse_gene_catalogue(text):
+def parse_gene_catalogue(text, kind, db):
     # gqlib (also used by cayman) logs the counts only if there are alignments
     count = search_int(r"Reads passing filters: (\d+)", text)
     if count is None and re.search(r"Finished\.$", text, re.MULTILINE):
         count = 0
-    return count
+    return {f"{kind}_{db}_pairs": count}
 
 
+# kind -> parser, giving the counts by column from the log, the kind and the database (profilers) of the log
 PARSERS = {
+    "fastp": parse_fastp,
+    "bowtie2": parse_bowtie2,
+    "bbmap_repair": parse_bbmap_repair,
+    "cutadapt_primers": parse_cutadapt,
+    "cutadapt_readthrough": parse_cutadapt,
+    "vsearch": parse_vsearch,
+    "fastp_merge": parse_fastp_merge,
     "motus4": parse_motus4,
     "motus3": parse_motus3,
     "cayman": parse_gene_catalogue,
     "gqlib": parse_gene_catalogue,
+    "idtaxa": parse_idtaxa,
 }
 
+# column, or, for the profilers, kind -> (title, description), {db} being the database
 DESCRIPTIONS = {
+    "primer_trimmed_reads": (
+        "Primer-trimmed reads",
+        "Amplicon reads with a primer found by PIMENTO trimmed at their start (cutadapt), each mate counted",
+    ),
+    "readthrough_trimmed_reads": (
+        "Read-through-trimmed reads",
+        "Amplicon reads with the opposite primer trimmed at their end (cutadapt), each mate counted",
+    ),
     "raw_reads": ("Raw reads", "Reads before QC (fastp), each mate counted"),
     "qc_reads": ("QC reads", "Reads after QC (fastp), each mate counted"),
-    "host_removed_pairs": (
-        "Host-removed pairs",
-        "Read pairs (single-end: reads) not aligned to the host genome, given to the profilers",
+    "hostremoval_retained_pairs": (
+        "Host removal retained pairs",
+        "Read pairs with neither mate aligned to the host genome (single-end: reads not aligned), given to the"
+        " profilers",
     ),
     "motus4": ("mOTUs v4 {db} pairs", "Read pairs aligned to the mOTUs v4 database {db} and passing the mOTUs filters"),
     "motus3": ("mOTUs v3 {db} pairs", "Read pairs aligned to the mOTUs v3 database {db} and passing the mOTUs filters"),
     "cayman": ("cayman {db} pairs", "Read pairs aligned to the gene catalogue {db} and passing the cayman filters"),
     "gqlib": ("gqlib {db} pairs", "Read pairs aligned to the gene catalogue {db} and passing the gqlib filters"),
+    "merged_pairs": ("Merged pairs", "Amplicon read pairs merged into one sequence (vsearch or fastp), for IDTAXA"),
+    "joined_pairs": (
+        "Joined pairs",
+        "Amplicon read pairs not merged, joined with a padding of Ns into one sequence (vsearch), for IDTAXA",
+    ),
+    "idtaxa": (
+        "IDTAXA {db} sequences",
+        "Amplicon sequences (merged or joined read pairs, mates of unmerged pairs, or single-end reads) assigned to a"
+        " taxon by IDTAXA with the training set {db}",
+    ),
 }
 
 
+def read_log(path):
+    return ANSI_ESCAPE.sub("", path.read_text())
+
+
 def main(manifest, inputs_dir, out_tsv, out_mqc):
-    entries = []
-    with open(manifest) as handle:
-        for line in handle:
-            if line.strip():
-                index, sample, kind, db_name, annot_db_name = line.rstrip("\n").split("\t")
-                (path,) = (pathlib.Path(inputs_dir) / index).iterdir()
-                entries.append((sample, kind, db_name, annot_db_name, path))
+    entries = pd.read_csv(manifest, sep="\t", dtype=str, keep_default_na=False)
 
-    # cayman and gqlib write one log per annotation of a gene catalogue, with the same counts: only those of the first
-    # annotation are used
-    first_annot = {}
-    for sample, kind, db_name, annot_db_name, _path in entries:
-        key = (sample, kind, db_name)
-        first_annot[key] = min(first_annot.get(key, annot_db_name), annot_db_name)
+    # the counts are joined to the entries by file
+    duplicated = entries.loc[entries["file"].duplicated(), "file"]
+    assert duplicated.empty, f"Files in the manifest more than once: {', '.join(duplicated.unique())}"
+    unknown = set(entries["kind"]) - set(PARSERS)
+    assert not unknown, f"Unknown kinds {', '.join(sorted(unknown))}"
 
-    counts = collections.defaultdict(dict)  # sample -> column -> count, None if not found in a log
-    columns = {}  # column -> (title, description)
-    for sample, kind, db_name, annot_db_name, path in entries:
-        text = ANSI_ESCAPE.sub("", path.read_text())
-        if kind == "fastp":
-            values = parse_fastp(text)
-        elif kind == "bowtie2":
-            values = parse_bowtie2(text)
-        elif kind in PARSERS:
-            if annot_db_name != first_annot[(sample, kind, db_name)]:
-                continue
-            column = f"{kind}_{db_name}_pairs"
-            columns[column] = tuple(x.format(db=db_name) for x in DESCRIPTIONS[kind])
-            values = {column: PARSERS[kind](text)}
-        else:
-            sys.exit(f"Unknown kind {kind} for {path}")
-        for column, value in values.items():
-            if value is None:
-                print(f"WARNING: count {column} not found in {path}, it is reported as NA for {sample}", file=sys.stderr)
-            previous = counts[sample].get(column, 0)
-            counts[sample][column] = None if previous is None or value is None else previous + value
-            columns.setdefault(column, DESCRIPTIONS.get(column))
+    entries["path"] = entries["file"].map(lambda file: pathlib.Path(inputs_dir) / file)
+    absent = entries.loc[~entries["path"].map(pathlib.Path.is_file), "file"]
+    assert absent.empty, f"Files of the manifest not in {inputs_dir}: {', '.join(absent)}"
+    # the counts of the files, one row per count, joined to the entries
+    counts = pd.DataFrame(
+        [
+            {"file": e.file, "column": column, "count": count}
+            for e in entries.itertuples()
+            for column, count in PARSERS[e.kind](read_log(e.path), e.kind, e.db_name).items()
+        ]
+    ).astype({"count": "Int64"})
+    entries = entries.merge(counts, on="file")
 
-    # QC and host removal first, then the profilers in a fixed order
-    order = ["raw_reads", "qc_reads", "host_removed_pairs"]
-    profiler_columns = sorted(
-        (c for c in columns if c not in order), key=lambda c: (PROFILERS.index(c.split("_")[0]), c)
+    missing = entries[entries["count"].isna()]
+    assert missing.empty, "Counts not found in their files:\n" + "\n".join(
+        f"{e.column} in {e.path} ({e.sample} {e.run_accession})" for e in missing.itertuples()
     )
-    header = [c for c in order if c in columns] + profiler_columns
-    samples = sorted(counts)
 
-    def row(sample, missing):
-        values = [counts[sample].get(c) for c in header]
-        return [sample] + [missing if v is None else str(v) for v in values]
+    # the counts of a sample and run summed; NA for a column without counts for a sample and run
+    counts = entries.groupby(["sample", "run_accession", "column"])["count"].sum().unstack("column")
 
-    with open(out_tsv, "w") as handle:
-        handle.write("\t".join(["sample"] + header) + "\n")
-        for sample in samples:
-            handle.write("\t".join(row(sample, "NA")) + "\n")
+    # preprocessing first, in the order of the steps, then the profilers in the order of PROFILERS, each by database
+    column_kinds = dict(zip(entries["column"], entries["kind"]))
+    profiler_columns = sorted(
+        (c for c in counts.columns if c not in PREPROCESSING_COLUMNS),
+        key=lambda c: (PROFILERS.index(column_kinds[c]), c),
+    )
+    counts = counts[[c for c in PREPROCESSING_COLUMNS if c in counts.columns] + profiler_columns].astype("Int64")
+    counts.columns.name = None
+    counts.to_csv(out_tsv, sep="\t", na_rep="NA")
 
-    # MultiQC custom content, json strings being valid yaml
+    # the MultiQC header of each column, the profiler descriptions being by kind
+    headers = {}
+    for e in entries.drop_duplicates("column").itertuples():
+        title, description = DESCRIPTIONS.get(e.column) or DESCRIPTIONS[e.kind]
+        headers[e.column] = {
+            "title": title.format(db=e.db_name),
+            "description": description.format(db=e.db_name),
+            "format": "{:,.0f}",
+            "scale": False,
+        }
+
+    # MultiQC custom content: the config as a commented header, json being valid yaml
+    config = {
+        "id": "read_counts",
+        "section_name": "Read counts",
+        "description": "Reads after each step. The raw and QC reads count each mate, the following columns count read"
+        " pairs (single-end: reads).",
+        "plot_type": "table",
+        "pconfig": {"id": "read_counts_table", "title": "Read counts", "col1_header": "Sample"},
+        "headers": {column: headers[column] for column in counts.columns},
+    }
     with open(out_mqc, "w") as handle:
-        handle.write(
-            "# id: 'read_counts'\n"
-            "# section_name: 'Read counts'\n"
-            "# description: 'Reads after each step. The raw and QC reads count each mate, the following columns count"
-            " read pairs (single-end: reads).'\n"
-            "# plot_type: 'table'\n"
-            "# pconfig:\n"
-            "#     id: 'read_counts_table'\n"
-            "#     title: 'Read counts'\n"
-            "#     col1_header: 'Sample'\n"
-            "# headers:\n"
-        )
-        for column in header:
-            title, description = columns[column]
-            handle.write(
-                f"#     {column}:\n"
-                f"#         title: {json.dumps(title)}\n"
-                f"#         description: {json.dumps(description)}\n"
-                "#         format: '{:,.0f}'\n"
-                "#         scale: false\n"
-            )
-        handle.write("\t".join(["sample"] + header) + "\n")
-        for sample in samples:
-            handle.write("\t".join(row(sample, "")) + "\n")
+        print(textwrap.indent(json.dumps(config, indent=4), "# "), file=handle)
+        # MultiQC needs a single id column
+        counts.index = counts.index.map("_".join)
+        counts.to_csv(handle, sep="\t", na_rep="", index_label="sample")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        sys.exit(__doc__)
+    assert len(sys.argv) == 5, __doc__
     main(*sys.argv[1:])

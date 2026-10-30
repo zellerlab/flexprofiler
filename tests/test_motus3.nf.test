@@ -17,23 +17,32 @@ nextflow_pipeline {
             def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             def motus3_merge      = file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" )
-            // the rows of the merged motus report for some mOTUs, with the counts of each sample (without the taxonomy)
-            def rows_of           = { lines, motus -> lines.collect { line -> line.split( "\t" ) as List }.findAll { cols -> cols[0] in motus }.collect { cols -> ( [ cols[0] ] + cols[2..-1] ).join( "\t" ) } }
             def collinsella_aerofaciens_mOTU = "ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]"
+            // the samples of a merged table, from its header (the line starting with the name of its first column), without
+            // the taxonomy column and the _db_mOTU suffix of the motus reports
+            def samples_in        = { lines, first_column -> lines.find { line -> line.startsWith( "${first_column}\t" ) }.split( "\t" ).drop( 1 ).findAll { column -> !( column in [ "consensus_taxonomy", "Taxonomy" ] ) }.collect { column -> column - ~/_db_mOTU$/ } }
+            // the value of a cell of a merged table, by feature (first column) and sample (column of the header, the line
+            // starting with the name of the first column)
+            def cell_of           = { lines, first_column, feature, sample ->
+                def header = lines.find { line -> line.startsWith( "${first_column}\t" ) }.split( "\t" ).collect { column -> column - ~/_db_mOTU$/ }
+                lines.find { line -> line.startsWith( "${feature}\t" ) }.split( "\t" )[ header.indexOf( sample ) ]
+            }
+            def samples           = [ '2612', '2612_se', '2613' ]
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
                 { assert snapshot ( read_counts ).match( "read_counts" ) },
-                // Collinsella aerofaciens, Methanobrevibacter smithii and the unassigned
-                { assert snapshot ( rows_of( motus3_merge.readLines(), [ '#mOTU', 'ref_mOTU_v31_03626', 'ref_mOTU_v31_03695', 'unassigned' ] ) ).match( "counts" ) },
+                // the whole merged report (the four mOTUs of the test database and the unassigned)
+                { assert snapshot ( motus3_merge.readLines() ).match( "counts" ) },
+                { assert samples_in( motus3_merge.readLines(), '#mOTU' ).sort() == samples },
+                // a few counts: [ mOTU, sample, value ]
+                { assert [ [ 'ref_mOTU_v31_03626', '2612', '7' ], [ 'ref_mOTU_v31_03626', '2613', '4' ], [ 'ref_mOTU_v31_03695', '2612_se', '3' ] ].every { motu, sample, value -> cell_of( motus3_merge.readLines(), '#mOTU', motu, sample ) == value } },
                 { assert snapshot (
                     getAllFilesFromDir( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains '${collinsella_aerofaciens_mOTU}' " + file.text.contains( collinsella_aerofaciens_mOTU ) },
                     getAllFilesFromDir( "${params.outdir}/motus3", include: [ '**.out' ] ).collect { file -> "${file.getName()} contains 'unassigned' " + file.text.contains( "unassigned" ) },
                     getAllFilesFromDir( "${params.outdir}/motus3", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished computation': " + file.text.contains( "Finished computation" ) },
-                    "${motus3_merge.getName()} contains 'unassigned': " + motus3_merge.text.contains( "unassigned" ),
-                    "${motus3_merge.getName()} contains '${collinsella_aerofaciens_mOTU}': " + motus3_merge.text.contains( collinsella_aerofaciens_mOTU ),
                 ).match("motus3") },
             )
         }

@@ -1,0 +1,3 @@
+sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
+host_contaminated,ERR5766181,ILLUMINA,../../../assets/test-data/data/fastq/hostremoval/host_contaminated_1.fastq.gz,../../../assets/test-data/data/fastq/hostremoval/host_contaminated_2.fastq.gz,
+host_contaminated_se,ERR5766181,ILLUMINA,../../../assets/test-data/data/fastq/hostremoval/host_contaminated_se.fastq.gz,,

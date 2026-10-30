@@ -5,11 +5,11 @@
                 "versions.yml:md5,ea540ba51fb93f5d3e9f7881c5c09ef2"
             ]
         ],
+        "timestamp": "2025-03-12T19:00:28.974489",
         "meta": {
             "nf-test": "0.9.2",
             "nextflow": "24.10.5"
-        },
-        "timestamp": "2025-03-12T19:00:28.974489"
+        }
     },
     "sarscov2_illumina_interleaved - fastq_gz - stub": {
         "content": [
@@ -39,10 +39,22 @@
                     "versions.yml:md5,ea540ba51fb93f5d3e9f7881c5c09ef2"
                 ],
                 "3": [
-                    "test.repair.sh.log:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    [
+                        {
+                            "id": "test",
+                            "single_end": false
+                        },
+                        "test.repair.sh.log:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
                 ],
                 "log": [
-                    "test.repair.sh.log:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    [
+                        {
+                            "id": "test",
+                            "single_end": false
+                        },
+                        "test.repair.sh.log:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
                 ],
                 "repaired": [
                     [
@@ -70,11 +82,11 @@
                 ]
             }
         ],
+        "timestamp": "2026-10-28T09:26:04.425499",
         "meta": {
-            "nf-test": "0.9.2",
-            "nextflow": "24.10.5"
-        },
-        "timestamp": "2025-03-12T19:00:45.093137"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
     },
     "sarscov2_illumina_interleaved - fastq_gz": {
         "content": [
@@ -82,11 +94,11 @@
                 "versions.yml:md5,ea540ba51fb93f5d3e9f7881c5c09ef2"
             ]
         ],
+        "timestamp": "2025-03-12T19:00:34.482139",
         "meta": {
             "nf-test": "0.9.2",
             "nextflow": "24.10.5"
-        },
-        "timestamp": "2025-03-12T19:00:34.482139"
+        }
     },
     "sarscov2_illumina_paired - fastq_gz - stub": {
         "content": [
@@ -116,10 +128,22 @@
                     "versions.yml:md5,ea540ba51fb93f5d3e9f7881c5c09ef2"
                 ],
                 "3": [
-                    "test.repair.sh.log:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    [
+                        {
+                            "id": "test",
+                            "single_end": false
+                        },
+                        "test.repair.sh.log:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
                 ],
                 "log": [
-                    "test.repair.sh.log:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    [
+                        {
+                            "id": "test",
+                            "single_end": false
+                        },
+                        "test.repair.sh.log:md5,d41d8cd98f00b204e9800998ecf8427e"
+                    ]
                 ],
                 "repaired": [
                     [
@@ -147,10 +171,10 @@
                 ]
             }
         ],
+        "timestamp": "2026-10-28T09:25:59.989719",
         "meta": {
-            "nf-test": "0.9.2",
-            "nextflow": "24.10.5"
-        },
-        "timestamp": "2025-03-12T19:00:39.835448"
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
     }
 }

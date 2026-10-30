@@ -1,0 +1,5 @@
+sample,run_accession,instrument_platform,library_strategy,fastq_1,fastq_2,fasta
+primers_pe,primers_pe,ILLUMINA,AMPLICON,../../../assets/test-data/data/fastq/amplicon/amplicon_primers_1.fastq.gz,../../../assets/test-data/data/fastq/amplicon/amplicon_primers_2.fastq.gz,
+primers_se,primers_se,ILLUMINA,AMPLICON,../../../assets/test-data/data/fastq/amplicon/amplicon_primers_se.fastq.gz,,
+mixed_orientation,mixed_pe,ILLUMINA,AMPLICON,../../../assets/test-data/data/fastq/amplicon/amplicon_mixed_1.fastq.gz,../../../assets/test-data/data/fastq/amplicon/amplicon_mixed_2.fastq.gz,
+no_primers,clean_pe,ILLUMINA,AMPLICON,../../../assets/test-data/data/fastq/amplicon/amplicon_clean_1.fastq.gz,../../../assets/test-data/data/fastq/amplicon/amplicon_clean_2.fastq.gz,

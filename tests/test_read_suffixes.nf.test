@@ -13,6 +13,8 @@ nextflow_pipeline {
                 outdir                  = "${outputDir}"
                 // mOTUs v4 fails on PE reads with different names
                 motus4_rename_reads     = true
+                // to check the reads given to motus4
+                save_analysis_ready_fastqs = true
             }
         }
 
@@ -21,24 +23,64 @@ nextflow_pipeline {
             def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             def gene_catalogue    = "GMGC10.human-gut.95nr.0.5.percent.prevalence"
-            // the rows of a table for some features (first column), and the same without the second column (the taxonomy of motus)
-            def rows_of           = { lines, features -> lines.findAll { line -> line.split( "\t" )[0] in features } }
-            def motus_rows_of     = { lines, motus -> rows_of( lines, motus ).collect { line -> line.split( "\t" ) as List }.collect { cols -> ( [ cols[0] ] + cols[2..-1] ).join( "\t" ) } }
+            // the samples of a merged table, from its header (the line starting with the name of its first column), without
+            // the taxonomy column and the _db_mOTU suffix of the motus reports
+            def samples_in        = { lines, first_column -> lines.find { line -> line.startsWith( "${first_column}\t" ) }.split( "\t" ).drop( 1 ).findAll { column -> !( column in [ "consensus_taxonomy", "Taxonomy" ] ) }.collect { column -> column - ~/_db_mOTU$/ } }
+            // the value of a cell of a merged table, by feature (first column) and sample (column of the header, the line
+            // starting with the name of the first column)
+            def cell_of           = { lines, first_column, feature, sample ->
+                def header = lines.find { line -> line.startsWith( "${first_column}\t" ) }.split( "\t" ).collect { column -> column - ~/_db_mOTU$/ }
+                lines.find { line -> line.startsWith( "${feature}\t" ) }.split( "\t" )[ header.indexOf( sample ) ]
+            }
+            def samples           = [ '2613_suffixed' ]
+            // the number of reads of a fastq, and of those whose name (without the comment) ends with a suffix, read line
+            // by line as the files are large
+            def names_ending      = { file, suffix ->
+                def counts = [ 0, 0 ]
+                new java.util.zip.GZIPInputStream( new FileInputStream( file.toString() ) ).newReader().eachLine { line, i ->
+                    if ( ( i - 1 ) % 4 == 0 ) {
+                        counts[0]++
+                        if ( line.split( /\s/ )[0].endsWith( suffix ) ) counts[1]++
+                    }
+                }
+                counts
+            }
+            def input_prefix      = "${baseDir}/assets/test-data/data/fastq/ERX5474937_ERR5766181_suffixed"
+            // the reads of a mate renamed for motus4
+            def renamed_reads     = { mate -> "${params.outdir}/analysis_ready_fastqs/motus4/2613_suffixed_read${mate}_renamed_reads.fastq.gz" }
+            // the merged table of each tool, with the name of its first column
+            def merged            = [
+                motus4: [ file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" ).readLines(), 'mOTU' ],
+                motus3: [ file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" ).readLines(), '#mOTU' ],
+                cayman: [ path( "${params.outdir}/cayman/merge/${gene_catalogue}/cayman_v3/${gene_catalogue}_cayman_v3.cazy.uniq_raw.txt.gz" ).linesGzip, 'feature' ],
+                gqlib:  [ path( "${params.outdir}/gqlib/merge/${gene_catalogue}/emapper_v2.1.7/${gene_catalogue}_emapper_v2.1.7.gene_counts.uniq_raw.txt.gz" ).linesGzip, 'gene' ],
+            ]
+            // a few counts of each tool: [ feature, sample, value ]
+            def cells             = [
+                motus4: [ [ 'mOTUv4.0_000924', '2613_suffixed', '6' ] ],
+                motus3: [ [ 'ref_mOTU_v31_03626', '2613_suffixed', '4' ] ],
+                cayman: [ [ 'GH13', '2613_suffixed', '9.0' ] ],
+                gqlib:  [ [ 'GMGC10.266_871_379.GLGB', '2613_suffixed', '8.0' ] ],
+            ]
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
+                // the input reads have the /1 and /2 suffixes in their names, all of them
+                { assert names_ending( "${input_prefix}_1.fastq.gz", "/1" ) == [ 537544, 537544 ] },
+                { assert names_ending( "${input_prefix}_2.fastq.gz", "/2" ) == [ 537544, 537544 ] },
+                // the reads given to motus4 have no suffix left: the 533421 pairs retained by host removal
+                { assert names_ending( renamed_reads( 1 ), "/1" ) == [ 533421, 0 ] },
+                { assert names_ending( renamed_reads( 2 ), "/2" ) == [ 533421, 0 ] },
                 // the two mates are renamed for motus4
                 { assert workflow.trace.succeeded().count { task -> task.name.contains( "MOTUS4_RENAME_READS" ) } == 2 },
                 // the counts should be the same as for sample 2613 in the other tests, whose read names have no suffix
                 { assert snapshot ( read_counts ).match( "read_counts" ) },
-                { assert snapshot (
-                    motus_rows_of( file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" ).readLines(), [ 'mOTU', 'mOTUv4.0_014686', 'mOTUv4.0_000924', 'mOTUv4.0_unassigned' ] ),
-                    motus_rows_of( file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" ).readLines(), [ '#mOTU', 'ref_mOTU_v31_03626', 'ref_mOTU_v31_03695', 'unassigned' ] ),
-                    rows_of( path( "${params.outdir}/cayman/merge/${gene_catalogue}/cayman_v3/${gene_catalogue}_cayman_v3.cazy.uniq_raw.txt.gz" ).linesGzip, [ 'feature', 'total_reads', 'filtered_reads', 'GH13', 'CBM48' ] ),
-                    rows_of( path( "${params.outdir}/gqlib/merge/${gene_catalogue}/emapper_v2.1.7/${gene_catalogue}_emapper_v2.1.7.gene_counts.uniq_raw.txt.gz" ).linesGzip, [ 'gene', 'GMGC10.266_871_379.GLGB', 'GMGC10.266_660_280.AMY' ] ),
-                ).match( "counts" ) },
+                // the whole merged tables (a few rows with the test databases)
+                { assert snapshot ( merged.collectEntries { tool, table -> [ tool, table[0] ] } ).match( "counts" ) },
+                { assert merged.collectEntries { tool, table -> [ tool, samples_in( *table ).sort() ] } == merged.collectEntries { tool, _table -> [ tool, samples ] } },
+                { assert cells.every { tool, tool_cells -> tool_cells.every { feature, sample, value -> cell_of( merged[tool][0], merged[tool][1], feature, sample ) == value } } },
             )
         }
     }

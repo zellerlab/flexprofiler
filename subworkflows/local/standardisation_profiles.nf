@@ -7,10 +7,10 @@ include { MOTUS_MERGE  as MOTUS3_MERGE } from '../../modules/nf-core/motus/merge
 include { GQLIB_MERGE                  } from '../../modules/local/gqlib/merge/main'
 // cayman profiles have the same format as the gqlib ones
 include { GQLIB_MERGE  as CAYMAN_MERGE } from '../../modules/local/gqlib/merge/main'
+include { IDTAXA_MERGE                 } from '../../modules/local/idtaxa/merge/main'
 
 workflow STANDARDISATION_PROFILES {
     take:
-    classifications
     profiles
     databases
 
@@ -26,10 +26,7 @@ workflow STANDARDISATION_PROFILES {
         motus3: it[0]['tool'] == 'motus3'
         cayman: it[0]['tool'] == 'cayman'
         gqlib: it[0]['tool'] == 'gqlib'
-        unknown: true
-    }
-
-    ch_input_classifications = classifications.branch {
+        idtaxa: it[0]['tool'] == 'idtaxa'
         unknown: true
     }
 
@@ -66,6 +63,11 @@ workflow STANDARDISATION_PROFILES {
     GQLIB_MERGE(ch_profiles_for_gqlib)
     ch_versions = ch_versions.mix(GQLIB_MERGE.out.versions.first())
 
+    // IDTAXA, merged separately for each training set, one table per rank
+    ch_profiles_for_idtaxa = groupProfiles(ch_input_profiles.idtaxa)
+    IDTAXA_MERGE(ch_profiles_for_idtaxa)
+    ch_versions = ch_versions.mix(IDTAXA_MERGE.out.versions.first())
+
     emit:
     versions = ch_versions
     mqc      = ch_multiqc_files
@@ -84,8 +86,11 @@ workflow STANDARDISATION_PROFILES {
 def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
     return ch_profiles
         .map { meta, profile -> [meta.db_name, profile] }
-        .groupTuple(groupTupleOptions)
-        .map { 
+        // groupTuple collects the profiles in the order in which they finish: they are sorted by file name (not by path,
+        // which starts with the task hash), so that the task inputs are the same in every run, for -resume, and the
+        // samples of the mOTUs v3 merged table, in the order of its inputs, are in the same order in every run
+        .groupTuple(groupTupleOptions + [sort: { profile -> profile.name }])
+        .map {
             db_name, profiles -> 
             def names = profiles.collect { it.getName() }
             def duplicates = names.findAll { name -> names.count(name) > 1 }.unique()
@@ -98,9 +103,7 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
                     "Please rename your sample column in the samplesheet accordingly."
                 )
             }
-            // groupTuple collects the profiles in the order in which they finish, so they are
-            // sorted by name to always have the samples in the same order in the merged profile
-            [[id: db_name], profiles.sort { it.getName() }]
+            [[id: db_name], profiles]
         }
 }
 
@@ -120,9 +123,8 @@ def groupProfilesByCategory(ch_profiles) {
             def key = [id: "${meta.db_name}_${meta.annot_db_name}", db_name: meta.db_name, annot_db_name: meta.annot_db_name, category: gqlibCategory(profile)]
             [key, profile]
         }
-        .groupTuple()
-        // sorted by name, as in groupProfiles
-        .map { key, profiles -> [key, profiles.sort { it.getName() }] }
+        // sorted, so that the task inputs are the same in every run, for -resume (gqlib sorts the samples itself)
+        .groupTuple(sort: true)
 }
 
 /**

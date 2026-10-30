@@ -3,12 +3,13 @@ process READ_COUNTS {
 
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/python:3.9--1'
-        : 'biocontainers/python:3.9--1'}"
+        ? 'https://depot.galaxyproject.org/singularity/pandas:2.2.1'
+        : 'biocontainers/pandas:2.2.1'}"
 
     input:
-    // each file in its own folder, inputs/<index>/, as files of different steps can have the same name
-    path files, stageAs: 'inputs/*/*'
+    // named uniquely, as in the manifest
+    path files, stageAs: 'inputs/*'
+    // with a header, one row per file: file sample run_accession kind db_name
     path manifest
 
     output:
@@ -22,14 +23,14 @@ process READ_COUNTS {
     script:
     """
     read_counts.py \\
-        $manifest \\
+        ${manifest} \\
         inputs \\
         read_counts.tsv \\
         read_counts_mqc.tsv
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        python: \$(python --version | sed 's/Python //')
+        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
     END_VERSIONS
     """
 
@@ -40,7 +41,7 @@ process READ_COUNTS {
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
-        python: \$(python --version | sed 's/Python //')
+        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
     END_VERSIONS
     """
 }

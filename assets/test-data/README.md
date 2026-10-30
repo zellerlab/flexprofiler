@@ -4,6 +4,21 @@
 
 The samplesheets (`samplesheet*.csv`) and the database sheet (`databases.csv`, with the databases of all the profilers) used by the `test_*` profiles give the paths relative to the directory where nf-test launches the pipeline (`.nf-test/tests/<hash>/`), so they work only in the nf-test tests.
 
+### Regenerating the test data
+
+[`scripts/make_test_data.sh`](scripts/make_test_data.sh) runs the commands of the sections below in order, to regenerate the test data (`scripts/make_test_data.sh --help` lists its steps and the files they write):
+
+```bash
+scripts/make_test_data.sh            # the files made only from files in the repo (the `local` group)
+scripts/make_test_data.sh download   # the files downloaded from NCBI (host reference, 16S reference)
+scripts/make_test_data.sh \
+    --motus4-db <db_mOTU v4> --motus3-db <db_mOTU v3> \
+    --gmgc10-fna <catalogue.fna.gz> --cayman-csv <annotation.csv> --gqlib-db <annotation.sqlite3> \
+    databases                        # the subsets of the full databases
+```
+
+The downloaded files can change over time, and with them the files made from them, so they are regenerated only when asked. The original reads and fastas from nf-core/taxprofiler and the hand-written files (`data/fastq/adapters/adapters.fasta`, `data/gmgc10/genes.txt`) are not regenerated. The reads are simulated with fixed seeds and compressed without timestamps, so regenerating them gives identical files.
+
 ### FASTQ
 
 The main test data used for zellerlab/flexprofiler is from [Maixner et al. (2021) _Curr. Bio._](https://doi.org/10.1016/j.cub.2021.09.031), with ENA project accession ID: PRJEB44507.
@@ -66,7 +81,17 @@ FASTA files are stored under `data/fasta/`
 
 ### Host removal reference
 
-The tests use the human mitochondrial genome (revised Cambridge Reference Sequence, [NC_012920.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_012920.1)) as host reference instead of a full human genome, so that building its bowtie2 index (done by the pipeline) and the host removal are fast. The test data are not expected to have many human reads, and the tests only check that host removal runs.
+The tests use the human mitochondrial genome (revised Cambridge Reference Sequence, [NC_012920.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_012920.1)) as host reference instead of a full human genome, so that building its bowtie2 index (done by the pipeline) and the host removal are fast. The test data are not expected to have many human reads, and most tests only check that host removal runs.
+
+#### Host-contaminated reads
+
+To test that host removal removes the host reads and keeps the others (`tests/test_hostremoval.nf.test`, `samplesheet_hostremoval.csv`), reads simulated from the host reference were added to the first 2000 pairs of ERX5474937 (sample 2613 in the other tests), in `data/fastq/hostremoval/`: 200 pairs with both mates from the host, and 200 chimeric pairs with one mate from the host and the other from ERX5474937 (100 with the host mate as R1, 100 as R2), and, for single-end reads, 200 host reads added to the R1 of the 2000 pairs. The host-derived reads have names starting with `host_` or `chimera_`, and the reads are shuffled. They were made with:
+
+```bash
+python3 scripts/make_host_contaminated_reads.py \
+    data/fastq/ERX5474937_ERR5766181_1.fastq.gz data/fastq/ERX5474937_ERR5766181_2.fastq.gz \
+    data/hostremoval/NC_012920.1.fna.gz data/fastq/hostremoval
+```
 
 The T2T-CHM13v2.0 RefSeq assembly recommended for real runs (GCF_009914755.1) does not include the mitochondrial genome, so it was downloaded from NCBI:
 
@@ -76,6 +101,59 @@ curl -s "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id
 ```
 
 The reference is stored under `data/hostremoval/`.
+
+### Adapter-contaminated reads
+
+To test that adapter removal removes the adapters and keeps the inserts (`tests/test_adapter_removal.nf.test`, `samplesheet_adapters.csv`), error-free 2x150 reads were simulated from the host reference (see above) for two library kits, TruSeq and Nextera, in `data/fastq/adapters/`. For each kit, `adapters_<kit>_{1,2}.fastq.gz` have 1000 pairs, shuffled:
+
+- 700 pairs of 300 bp fragments, longer than the reads, so without adapter (`clean_<i>`)
+- 300 pairs of fragments of 40-140 bp, shorter than the reads, which continue into the adapter of the kit and then random bases (`adapter_<insert length>_<i>`). After adapter removal, they must be as long as their insert.
+
+`adapters_<kit>_se.fastq.gz` has the R1 of the pairs. fastp detects the adapters of single-end reads only in files of at least 10000 reads, so it detects none in these. To test the detection, `adapters_truseq_se_large.fastq.gz` (`samplesheet_adapters_se.csv`) has the R1 of 12000 TruSeq pairs made in the same way, with another seed (8400 `clean_` and 3600 `adapter_` pairs). They were made with [`scripts/make_adapter_reads.py`](scripts/make_adapter_reads.py) (Python 3 standard library only):
+
+```bash
+python3 scripts/make_adapter_reads.py data/hostremoval/NC_012920.1.fna.gz data/fastq/adapters
+```
+
+`data/fastq/adapters/adapters.fasta`, written by hand, has the TruSeq R1 and R2 adapters and the Nextera adapter, for the test with an adapter list (`--shortread_qc_adapterlist`).
+
+### 16S amplicon reads and IDtaxa training set
+
+The amplicon tests (`tests/test_primer_removal.nf.test`, `tests/test_idtaxa.nf.test`) use 16S V3-V4 reads simulated from a small set of 16S reference sequences, and an IDtaxa training set trained on the same sequences, so that the genus of each read is known.
+
+#### 16S reference sequences
+
+The reference sequences are full-length (>= 1300 bp) 16S sequences from the NCBI RefSeq targeted loci (BioProject 33175) of six gut bacteria genera from five phyla (two of them in Bacillota): Escherichia, Bacteroides, Bifidobacterium, Akkermansia, Streptococcus and Clostridium. Only the sequences with the 341F (`CCTACGGGNGGCWGCAG`) and 805R (`GACTACHVGGGTATCTAATCC`) primer sites are kept, and at most the first 15 (by accession) of each genus. The headers are `<accession> Root;d__...;p__...;c__...;o__...;f__...;g__<genus>`. They were downloaded with [`scripts/fetch_16s_reference.py`](scripts/fetch_16s_reference.py) (Python 3 standard library only):
+
+```bash
+python3 scripts/fetch_16s_reference.py data/idtaxa/reference_16s.fasta.gz
+```
+
+When downloaded (28 Oct 2026), fewer sequences passed the filters for Escherichia (7) and Akkermansia (2) than for the other genera (15). As RefSeq is updated, downloading them again can give different sequences, and then different reads and training set.
+
+#### Amplicon reads
+
+The reads were simulated, error-free, from the V3-V4 amplicon (341F-805R) of each reference sequence with [`scripts/make_amplicon_reads.py`](scripts/make_amplicon_reads.py) (Python 3 standard library only), with names `<kind>_<genus>_<i>` (the genus being the truth for the classification), in `data/fastq/amplicon/`:
+
+```bash
+python3 scripts/make_amplicon_reads.py data/idtaxa/reference_16s.fasta.gz data/fastq/amplicon
+```
+
+- `amplicon_clean_{1,2}.fastq.gz`: reads with the primers already removed (the insert is the region between the primers), 5 mostly overlapping 2x250 pairs (`ovl_`) and 2 non-overlapping 2x150 pairs (`noovl_`) per reference sequence. `amplicon_clean_se.fastq.gz` has their R1. Used in `samplesheet_amplicon.csv` (IDtaxa test).
+- `amplicon_primers_{1,2}.fastq.gz`: 2x250 pairs of the whole amplicon, starting with 341F (R1) and 805R (R2), per reference sequence 5 starting with the primer (`pr_`), 2 after a 1-7 base spacer (`spacer_`), and 1 with a 120 bp region, reading through the end of the amplicon into the reverse complement of the other primer and the adapter (`rt_`). `amplicon_primers_se.fastq.gz` has their R1.
+- `amplicon_mixed_{1,2}.fastq.gz`: as `amplicon_primers`, with a quarter of the pairs flipped (`flip_`: R1 starting with 805R and R2 with 341F), as in libraries ligated in both orientations.
+
+The last two are used in `samplesheet_primers.csv` (primer removal test), with `amplicon_clean` as a sample without primers.
+
+#### IDtaxa training set
+
+The training set (`data/idtaxa/trainingset.RData`, the `trainingSet` object saved as the pre-trained DECIPHER training sets) was trained on the reference sequences with `LearnTaxa` of DECIPHER, with the ranks (rootrank, domain, phylum, class, order, family, genus) from the prefixes of the lineages, with [`scripts/make_idtaxa_trainingset.R`](scripts/make_idtaxa_trainingset.R):
+
+```bash
+Rscript scripts/make_idtaxa_trainingset.R data/idtaxa/reference_16s.fasta.gz data/idtaxa/trainingset.RData
+```
+
+The reference sequences and the training set are stored under `data/idtaxa/`.
 
 ### mOTUs v4 database
 

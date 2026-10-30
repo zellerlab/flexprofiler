@@ -8,8 +8,9 @@ process GQLIB_MERGE {
         : 'biocontainers/gqlib:2.14.4--pyhdfd78af_0'}"
 
     input:
-    // the profiles of all the samples for one database and annotation (meta.id) and one category (meta.category)
-    tuple val(meta), path(input)
+    // the profiles of all the samples for one database and annotation (meta.id) and one category (meta.category), staged
+    // in a folder, so that the command lists them with a glob, and not one by one
+    tuple val(meta), path(input, stageAs: 'profiles/*')
 
     output:
     tuple val(meta), path("*.txt.gz"), emit: txt
@@ -19,26 +20,14 @@ process GQLIB_MERGE {
     task.ext.when == null || task.ext.when
 
     script:
-    def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def files = input instanceof List ? input : [input]
-    // collate_counts takes the sample name from the file name, so the database and annotation names are removed from it
-    def suffix = "_${meta.id}.${meta.category}.txt.gz"
-    def links = files.collect { "ln -s ../${it} counts/${it.name - suffix}.${meta.category}.txt.gz" }.join('\n    ')
+    // the profiles are named <sample>_<database>_<annotation>.<category>.txt.gz, meta.id being <database>_<annotation>;
+    // one table per count column (uniq_raw, combined_raw, ...)
     """
-    mkdir counts
-    ${links}
-
-    # one table per count column (uniq_raw, combined_raw, ...), as they are in the profiles: the
-    # combined_ columns are only in the profiles of the samples with ambiguous reads, and are added
-    # to the others, as collate_counts needs the same columns in all the profiles
-    columns=\$(gqlib_merge_columns.py counts/*.txt.gz)
-    for column in \$columns; do
-        python -m gqlib.bin.collate_counts counts \\
-            --out_prefix ${prefix} \\
-            --column \$column \\
-            $args
-    done
+    # the list of the profiles is written by printf, a shell builtin, so that it is not limited by the length of a
+    # command line
+    printf '%s\\n' profiles/* > profiles.txt
+    gqlib_merge.py ${prefix}.${meta.category} _${meta.id}.${meta.category}.txt.gz profiles.txt
 
     VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
 

@@ -2,12 +2,16 @@
 // Run profiling
 //
 
+include { samplesheetToList             } from 'plugin/nf-schema'
 include { BIOAWK as MOTUS4_RENAME_READS } from '../../modules/nf-core/bioawk/main'
 include { MOTUS4_PROFILE                } from '../../modules/local/motus4/profile/main'
 include { MOTUS_PROFILE  as MOTUS3_PROFILE  } from '../../modules/nf-core/motus/profile'
 include { CAYMAN_PROFILE                } from '../../modules/local/cayman/profile/main'
 include { BWA_MEM as BWA_ALIGN         } from '../../modules/nf-core/bwa/mem/main'
 include { GQLIB_PROFILE_GENES           } from '../../modules/local/gqlib/profile_genes/main'
+include { VSEARCH_MERGEJOIN             } from '../../modules/local/vsearch/mergejoin/main'
+include { FASTP as FASTP_IDTAXA_MERGE   } from '../../modules/nf-core/fastp/main'
+include { IDTAXA_CLASSIFY               } from '../../modules/local/idtaxa/classify/main'
 
 workflow PROFILING {
     take:
@@ -17,27 +21,40 @@ workflow PROFILING {
     main:
     ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
-    ch_raw_classifications = Channel.empty()
-    // These per-read ID taxonomic assingment
+    // count tables
     ch_raw_profiles = Channel.empty()
-    ch_logs = Channel.empty()
-    // These are count tables
-    
-    // TODO: add a step to produce a total read count here
+    // logs of the profilers and of the steps preparing the reads for a profiler, for the read counts, with the tool in
+    // meta.tool: [ meta, log ]
+    ch_read_count_logs = Channel.empty()
 
     /*
         COMBINE READS WITH POSSIBLE DATABASES
     */
 
-    // Separate default 'short;long' (when necessary) databases when short/long specified in database sheet
+    // Separate default 'short;long' (when necessary) databases when short/long specified in database sheet. Each
+    // database is also keyed by the library strategy of its profiler, so that WGS reads only meet the databases of
+    // the shotgun profilers and AMPLICON reads those of the amplicon profilers
     ch_dbs = databases
         .map { meta_db, db ->
             [[meta_db.db_type.split(";")].flatten(), meta_db, db]
         }
         .transpose(by: 0)
         .map { type, meta_db, db ->
-            [[type: type], meta_db.subMap(meta_db.keySet() - 'db_type') + [type: type], db]
+            [[type: type, library_strategy: toolLibraryStrategy(meta_db.tool)], meta_db.subMap(meta_db.keySet() - 'db_type') + [type: type], db]
         }
+
+    // a profiler run on no reads is most likely a mistake in the samplesheet (library_strategy) or in the parameters
+    ['motus4', 'motus3', 'cayman', 'gqlib', 'idtaxa'].findAll { tool -> params["run_${tool}"] }.each { tool ->
+        def strategy = toolLibraryStrategy(tool)
+        reads
+            .filter { meta, _input_reads -> meta.library_strategy == strategy }
+            .count()
+            .subscribe { n ->
+                if (n == 0) {
+                    log.warn("[zellerlab/flexprofiler] --run_${tool} is set, but there are no ${strategy} samples (library_strategy column of the samplesheet) to run it on.")
+                }
+            }
+    }
 
     // Join short and long reads with their corresponding short/long database
     // Note that for not-specified `short;long`, it will match with the database.
@@ -50,7 +67,7 @@ workflow PROFILING {
     if (params.run_motus4 && params.motus4_rename_reads) {
         ch_reads_for_rename = reads
             .branch { meta, _input_reads ->
-                pe: !meta.single_end
+                pe: !meta.single_end && meta.library_strategy == 'WGS'
                 other: true
             }
 
@@ -92,12 +109,55 @@ workflow PROFILING {
             [type, [tool: 'bwa', db_name: db_name, type: type.type, profilers: db_metas], index]
         }
 
-    ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> !(db_meta.tool in ['motus4', 'cayman', 'gqlib']) }.mix(ch_dbs_bwa))
+    // the read counts of cayman and gqlib are those of the alignment, the same for all the annotations of a gene
+    // catalogue: only the log of the annotation first in the database sheet is used for them. The sheet is read again,
+    // as the order of its rows is lost in the database channel
+    def first_annots = samplesheetToList(params.databases, "assets/schema_database.json")
+        .collect { db_meta, _db_path -> db_meta }
+        .findAll { db_meta -> db_meta.tool in ['cayman', 'gqlib'] }
+        // the first row of each gene catalogue and profiler
+        .unique { db_meta -> [db_meta.tool, db_meta.db_name] }
+        .collect { db_meta -> [db_meta.tool, db_meta.db_name, db_meta.annot_db_name] }
+    def is_first_annot_log = { meta, _log_file -> [meta.tool, meta.db_name, meta.annot_db_name] in first_annots }
+
+    // IDTAXA classifies single sequences: the pairs of paired-end amplicon reads are merged if they overlap, and the
+    // others joined with a padding of Ns (merged_plus_joined, vsearch) or kept as two separate mates
+    // (merged_plus_unmerged, fastp)
+    if (params.run_idtaxa) {
+        ch_reads_for_pairhandling = reads
+            .filter { meta, _input_reads -> meta.library_strategy == 'AMPLICON' }
+            .branch { meta, _input_reads ->
+                pe: !meta.single_end
+                se: true
+            }
+        if (params.idtaxa_pair_handling == 'merged_plus_joined') {
+            VSEARCH_MERGEJOIN(ch_reads_for_pairhandling.pe)
+            ch_versions = ch_versions.mix(VSEARCH_MERGEJOIN.out.versions.first())
+            ch_read_count_logs = ch_read_count_logs.mix(VSEARCH_MERGEJOIN.out.log.map { meta, log_file -> [meta + [tool: 'vsearch'], log_file] })
+            ch_reads_pairhandled = VSEARCH_MERGEJOIN.out.reads
+        }
+        else if (params.idtaxa_pair_handling == 'merged_plus_unmerged') {
+            FASTP_IDTAXA_MERGE(ch_reads_for_pairhandling.pe, [], false, false, true)
+            ch_versions = ch_versions.mix(FASTP_IDTAXA_MERGE.out.versions.first())
+            ch_read_count_logs = ch_read_count_logs.mix(FASTP_IDTAXA_MERGE.out.log.map { meta, log_file -> [meta + [tool: 'fastp_merge'], log_file] })
+            ch_reads_pairhandled = FASTP_IDTAXA_MERGE.out.reads_merged
+        }
+        ch_reads_for_idtaxa = ch_reads_pairhandled
+            .map { meta, merged_reads -> [meta + [single_end: true], [merged_reads]] }
+            .mix(ch_reads_for_pairhandling.se)
+    }
+    else {
+        ch_reads_for_idtaxa = Channel.empty()
+    }
+
+    ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> !(db_meta.tool in ['motus4', 'cayman', 'gqlib', 'idtaxa']) }.mix(ch_dbs_bwa))
         .mix(combineReadsWithDatabases(ch_reads_for_motus4, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool == 'motus4' }))
+        .mix(combineReadsWithDatabases(ch_reads_for_idtaxa, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool == 'idtaxa' }))
         .branch { _meta, _input_reads, db_meta, _db ->
             motus4: db_meta.tool == 'motus4'
             motus3: db_meta.tool == 'motus3'
             bwa: db_meta.tool == 'bwa'
+            idtaxa: db_meta.tool == 'idtaxa'
             unknown: true
         }
 
@@ -121,7 +181,7 @@ workflow PROFILING {
         ch_versions = ch_versions.mix(MOTUS4_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS4_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS4_PROFILE.out.log)
-        ch_logs = ch_logs.mix(MOTUS4_PROFILE.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(MOTUS4_PROFILE.out.log)
     }
 
     if (params.run_motus3) {
@@ -136,7 +196,7 @@ workflow PROFILING {
         ch_versions = ch_versions.mix(MOTUS3_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS3_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS3_PROFILE.out.log)
-        ch_logs = ch_logs.mix(MOTUS3_PROFILE.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(MOTUS3_PROFILE.out.log)
     }
 
     if (params.run_cayman || params.run_gqlib) {
@@ -170,7 +230,7 @@ workflow PROFILING {
         CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.annot)
         ch_versions = ch_versions.mix(CAYMAN_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
-        ch_logs = ch_logs.mix(CAYMAN_PROFILE.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(CAYMAN_PROFILE.out.log.filter(is_first_annot_log))
     }
 
     if (params.run_gqlib) {
@@ -183,13 +243,25 @@ workflow PROFILING {
         GQLIB_PROFILE_GENES(ch_input_for_gqlib.bam, ch_input_for_gqlib.annot)
         ch_versions = ch_versions.mix(GQLIB_PROFILE_GENES.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(GQLIB_PROFILE_GENES.out.profiles)
-        ch_logs = ch_logs.mix(GQLIB_PROFILE_GENES.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(GQLIB_PROFILE_GENES.out.log.filter(is_first_annot_log))
+    }
+
+    if (params.run_idtaxa) {
+        ch_input_for_idtaxa = ch_input_for_profiling.idtaxa
+            .multiMap { read_meta, input_reads, db_meta, db ->
+                reads: [read_meta + db_meta, input_reads]
+                db: db
+            }
+
+        IDTAXA_CLASSIFY(ch_input_for_idtaxa.reads, ch_input_for_idtaxa.db)
+        ch_versions = ch_versions.mix(IDTAXA_CLASSIFY.out.versions.first())
+        ch_raw_profiles = ch_raw_profiles.mix(IDTAXA_CLASSIFY.out.profile)
+        ch_read_count_logs = ch_read_count_logs.mix(IDTAXA_CLASSIFY.out.log)
     }
 
     emit:
-    classifications = ch_raw_classifications
     profiles        = ch_raw_profiles // channel: [ val(meta), [ reads ] ] - should be text files or biom
-    logs            = ch_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman and gqlib, with meta.tool and meta.db_name
+    read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman, gqlib (of the first annotation of each gene catalogue) and idtaxa (with meta.db_name), and of vsearch or fastp (merging the pairs for idtaxa), with the tool in meta.tool
     versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }
@@ -198,15 +270,25 @@ workflow PROFILING {
 // Custom Functions
 
 /**
-* Pair reads with all databases of the matching read type (short/long).
+* Pair reads with all databases of the matching read type (short/long) and library strategy (WGS/AMPLICON).
 *
-* @param ch_reads A channel of [ meta, reads ], where meta contains the key `type`
-* @param ch_databases A channel of [ [type: type], db_meta, db ]
+* @param ch_reads A channel of [ meta, reads ], where meta contains the keys `type` and `library_strategy`
+* @param ch_databases A channel of [ [type: type, library_strategy: library_strategy], db_meta, db ]
 * @return A channel of [ meta, reads, db_meta, db ]
 */
 def combineReadsWithDatabases(ch_reads, ch_databases) {
     return ch_reads
-        .map { meta, input_reads -> [[type: meta.type], meta, input_reads] }
+        .map { meta, input_reads -> [[type: meta.type, library_strategy: meta.library_strategy], meta, input_reads] }
         .combine(ch_databases, by: 0)
         .map { _db_type, meta, input_reads, db_meta, db -> [meta, input_reads, db_meta, db] }
+}
+
+/**
+* The library strategy of the reads a profiler is run on.
+*
+* @param tool The profiler, as in the tool column of the database sheet.
+* @return AMPLICON for the amplicon profilers, WGS for the shotgun ones.
+*/
+def toolLibraryStrategy(tool) {
+    return tool in ['idtaxa'] ? 'AMPLICON' : 'WGS'
 }

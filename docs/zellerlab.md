@@ -21,6 +21,7 @@ Note that you need to have singularity installed for this to work.
 The following profiles are available:
 - `zellerlab_shark`: for use on the LUMC shark cluster, sets paths to databases etc.
 - `zellerlab_metagenomics`: for short read metagenomics profiling, sets defaults for preprocessing and collation
+- `zellerlab_amplicon`: for 16S amplicon profiling with IDTAXA, sets defaults for preprocessing (with primer trimming), run merging, collation and IDTAXA (turn it on with `--run_idtaxa`): the pairs not merged are joined with Ns (`--idtaxa_pair_handling merged_plus_joined`), and classified against the `gtdb_r220` training set of the database CSV (GTDB R220, the taxonomy of mOTUs 4.0 used by `--run_motus4`, so that 16S and shotgun profiles share the taxon names; change with `--idtaxa_db_names`), with a merged table for the genus only besides the one of the whole lineages (`--idtaxa_ranks genus`)
 - `zellerlab_minimal`: skip all non-essential QC steps, useful for large meta-analysis runs
 - `zellerlab_alice`: for testing only, on the ALICE cluster, sets paths to databases etc.
 

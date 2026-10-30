@@ -1,9 +1,9 @@
 {
     "number_of_tasks": {
         "content": [
-            15
+            21
         ],
-        "timestamp": "2026-10-27T18:58:49.572798",
+        "timestamp": "2026-10-28T10:45:22.418863",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -12,6 +12,9 @@
     "software_versions": {
         "content": [
             {
+                "BBMAP_REPAIR_HOSTREMOVAL": {
+                    "bbmap": 39.18
+                },
                 "BOWTIE2_ALIGN": {
                     "bowtie2": "2.5.4",
                     "pigz": 2.8,
@@ -36,17 +39,17 @@
                     "motus4": "4.0.4"
                 },
                 "READ_COUNTS": {
-                    "python": "3.9.5"
+                    "pandas": "2.2.1"
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.4"
+                    "zellerlab/flexprofiler": "v0.0.5"
                 }
             }
         ],
-        "timestamp": "2026-10-27T18:58:49.565912",
+        "timestamp": "2026-10-30T15:54:56.158705",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "motus4": {
@@ -60,29 +63,30 @@
                 "2612_db_mOTU.log contains 'Finished mOTUs': true",
                 "2612_se_db_mOTU.log contains 'Finished mOTUs': true",
                 "2613_db_mOTU.log contains 'Finished mOTUs': true"
-            ],
-            "motus4_db_mOTU_combined_reports.txt contains 'unassigned': true",
-            "motus4_db_mOTU_combined_reports.txt contains 'Methanobrevibacter_A smithii': true"
+            ]
         ],
-        "timestamp": "2026-06-17T09:59:53.280768",
+        "timestamp": "2026-10-30T15:54:56.175823",
         "meta": {
             "nf-test": "0.9.4",
-            "nextflow": "25.10.4"
+            "nextflow": "26.04.3"
         }
     },
     "counts": {
         "content": [
             [
-                "mOTU\t2612_db_mOTU\t2612_se_db_mOTU\t2613_db_mOTU",
-                "mOTUv4.0_000924\t18\t3\t6",
-                "mOTUv4.0_014686\t16\t3\t7",
-                "mOTUv4.0_unassigned\t116\t32\t75"
+                "#tool_version=4.0.4\tdatabase_version=4.0\tmin_alignment_length=75\tmin_mgcs=3\tcount_mode=INSERT_SCALED\tvalue_type=counts",
+                "mOTU\tTaxonomy\t2612_db_mOTU\t2612_se_db_mOTU\t2613_db_mOTU",
+                "mOTUv4.0_000924\td__Archaea;p__Methanobacteriota;c__Methanobacteria;o__Methanobacteriales;f__Methanobacteriaceae;g__Methanobrevibacter_A;s__Methanobrevibacter_A smithii\t18\t3\t6",
+                "mOTUv4.0_001912\td__Bacteria;p__Actinomycetota;c__Coriobacteriia;o__Coriobacteriales;f__Atopobiaceae;g__Paratractidigestivibacter;s__Paratractidigestivibacter sp003150175\t13\t3\t10",
+                "mOTUv4.0_014686\td__Bacteria;p__Actinomycetota;c__Coriobacteriia;o__Coriobacteriales;f__Coriobacteriaceae;g__Collinsella;s__Collinsella sp900768795\t15\t3\t7",
+                "mOTUv4.0_014998\td__Bacteria;p__Bacillota_I;c__Bacilli_A;o__Erysipelotrichales;f__Erysipelotrichaceae;g__Absicoccus;s__Absicoccus sp000434355\t3\t1\t3",
+                "mOTUv4.0_unassigned\td__;p___A;c__;o__;f__;g__;s__\t116\t32\t75"
             ]
         ],
-        "timestamp": "2026-10-27T18:58:49.582781",
+        "timestamp": "2026-10-30T15:54:56.166615",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "filenames": {
@@ -90,10 +94,16 @@
             [
                 "bowtie2",
                 "bowtie2/align",
-                "bowtie2/align/2612_ERR5766176.bowtie2.log",
-                "bowtie2/align/2612_ERR5766176_B.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176.unmapped.repair.sh.log",
+                "bowtie2/align/2612_ERR5766176_1.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_2.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_B.unmapped.repair.sh.log",
+                "bowtie2/align/2612_ERR5766176_B_1.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_B_2.bowtie2.log",
                 "bowtie2/align/2612_se_ERR5766180.bowtie2.log",
-                "bowtie2/align/2613_ERR5766181.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181_2.bowtie2.log",
                 "fastp",
                 "fastp/2612_ERR5766176.fastp.html",
                 "fastp/2612_ERR5766176.fastp.json",
@@ -128,7 +138,7 @@
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-10-27T18:58:49.578307",
+        "timestamp": "2026-10-28T19:32:49.028111",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -139,20 +149,23 @@
             [
                 [
                     "sample",
+                    "run_accession",
                     "raw_reads",
                     "qc_reads",
-                    "host_removed_pairs",
+                    "hostremoval_retained_pairs",
                     "motus4_db_mOTU_pairs"
                 ],
                 [
                     "2612",
+                    "merged_WGS",
                     "2528240",
                     "2513136",
-                    "1256238",
+                    "1256228",
                     "601"
                 ],
                 [
                     "2612_se",
+                    "ERR5766180",
                     "801532",
                     "800818",
                     "800776",
@@ -160,14 +173,15 @@
                 ],
                 [
                     "2613",
+                    "ERR5766181",
                     "1075088",
                     "1067004",
-                    "533422",
+                    "533421",
                     "310"
                 ]
             ]
         ],
-        "timestamp": "2026-10-27T18:58:49.579664",
+        "timestamp": "2026-10-28T18:35:23.816897",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

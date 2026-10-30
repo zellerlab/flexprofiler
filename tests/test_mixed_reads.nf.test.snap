@@ -1,9 +1,9 @@
 {
     "number_of_tasks": {
         "content": [
-            95
+            115
         ],
-        "timestamp": "2026-10-27T19:45:47.414566",
+        "timestamp": "2026-10-28T10:19:34.43369",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -13,6 +13,9 @@
         "content": [
             {
                 "BBMAP_REPAIR": {
+                    "bbmap": 39.18
+                },
+                "BBMAP_REPAIR_HOSTREMOVAL": {
                     "bbmap": 39.18
                 },
                 "BOWTIE2_ALIGN": {
@@ -70,7 +73,7 @@
                     "bioawk": 1.0
                 },
                 "READ_COUNTS": {
-                    "python": "3.9.5"
+                    "pandas": "2.2.1"
                 },
                 "SAMTOOLS_INDEX": {
                     "samtools": 1.2
@@ -79,44 +82,54 @@
                     "samtools": 1.2
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.4"
+                    "zellerlab/flexprofiler": "v0.0.5"
                 }
             }
         ],
-        "timestamp": "2026-10-27T19:45:47.412153",
+        "timestamp": "2026-10-30T15:34:51.630926",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "counts": {
         "content": [
-            [
-                "mOTU\t2612_se_db_mOTU\t2613_db_mOTU\t2613_mixed_db_mOTU\t2613_suffixed_db_mOTU\t2613_unordered_db_mOTU",
-                "mOTUv4.0_000924\t3\t6\t6\t6\t6",
-                "mOTUv4.0_014686\t3\t7\t7\t7\t7",
-                "mOTUv4.0_unassigned\t32\t75\t75\t75\t75"
-            ],
-            [
-                "#mOTU\t2612_se_db_mOTU\t2613_db_mOTU\t2613_mixed_db_mOTU\t2613_suffixed_db_mOTU\t2613_unordered_db_mOTU",
-                "ref_mOTU_v31_03626\t2\t4\t4\t4\t4",
-                "ref_mOTU_v31_03695\t3\t7\t7\t7\t7",
-                "unassigned\t0\t0\t0\t0\t0"
-            ],
-            [
-                "feature\t2612_se\t2613\t2613_mixed\t2613_suffixed\t2613_unordered",
-                "total_reads\t32.0\t23.0\t46.0\t23.0\t23.0",
-                "filtered_reads\t20.0\t20.0\t40.0\t20.0\t20.0",
-                "CBM48\t6.0\t5.5\t11.0\t5.5\t5.5",
-                "GH13\t12.0\t9.0\t18.0\t9.0\t9.0"
-            ],
-            [
-                "gene\t2612_se\t2613\t2613_mixed\t2613_suffixed\t2613_unordered",
-                "GMGC10.266_660_280.AMY\t9.0\t10.5\t21.0\t10.5\t10.5",
-                "GMGC10.266_871_379.GLGB\t11.0\t8.0\t16.0\t8.0\t8.0"
-            ]
+            {
+                "motus4": [
+                    "#tool_version=4.0.4\tdatabase_version=4.0\tmin_alignment_length=75\tmin_mgcs=3\tcount_mode=INSERT_SCALED\tvalue_type=counts",
+                    "mOTU\tTaxonomy\t2612_se_db_mOTU\t2613_db_mOTU\t2613_mixed_db_mOTU\t2613_suffixed_db_mOTU\t2613_unordered_db_mOTU",
+                    "mOTUv4.0_000924\td__Archaea;p__Methanobacteriota;c__Methanobacteria;o__Methanobacteriales;f__Methanobacteriaceae;g__Methanobrevibacter_A;s__Methanobrevibacter_A smithii\t3\t6\t6\t6\t6",
+                    "mOTUv4.0_001912\td__Bacteria;p__Actinomycetota;c__Coriobacteriia;o__Coriobacteriales;f__Atopobiaceae;g__Paratractidigestivibacter;s__Paratractidigestivibacter sp003150175\t3\t10\t10\t10\t10",
+                    "mOTUv4.0_014686\td__Bacteria;p__Actinomycetota;c__Coriobacteriia;o__Coriobacteriales;f__Coriobacteriaceae;g__Collinsella;s__Collinsella sp900768795\t3\t7\t7\t7\t7",
+                    "mOTUv4.0_014998\td__Bacteria;p__Bacillota_I;c__Bacilli_A;o__Erysipelotrichales;f__Erysipelotrichaceae;g__Absicoccus;s__Absicoccus sp000434355\t1\t3\t3\t3\t3",
+                    "mOTUv4.0_unassigned\td__;p___A;c__;o__;f__;g__;s__\t32\t75\t75\t75\t75"
+                ],
+                "motus3": [
+                    "# motus version 3.1.0 | merge 3.1.0 | info merged profiles: # git tag version 3.1.0 |  motus version 3.1.0 | map_tax 3.1.0 | gene database: nr3.1.0 | calc_mgc 3.1.0 -y insert.scaled_counts -l 75 | calc_motu 3.1.0 -k mOTU -C no_CAMI -g 3 -c | taxonomy: ref_mOTU_3.1.0 meta_mOTU_3.1.0 ",
+                    "# call: python /usr/local/bin/motus merge -db db_mOTU -i 2612_se_db_mOTU.out,2613_db_mOTU.out,2613_mixed_db_mOTU.out,2613_suffixed_db_mOTU.out,2613_unordered_db_mOTU.out -o motus3_db_mOTU_combined_reports.txt",
+                    "#mOTU\tconsensus_taxonomy\t2612_se_db_mOTU\t2613_db_mOTU\t2613_mixed_db_mOTU\t2613_suffixed_db_mOTU\t2613_unordered_db_mOTU",
+                    "ref_mOTU_v31_03379\tk__Archaea|p__Euryarchaeota|c__Halobacteria|o__Halobacteriales|f__Halococcaceae|g__Halococcus|s__Halococcus morrhuae\t0\t18\t18\t18\t18",
+                    "ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]\t2\t4\t4\t4\t4",
+                    "ref_mOTU_v31_03695\tk__Archaea|p__Euryarchaeota|c__Methanobacteria|o__Methanobacteriales|f__Methanobacteriaceae|g__Methanobrevibacter|s__Methanobrevibacter smithii [Methanobrevibacter smithii CAG:186/Methanobrevibacter sp. A54/Methanobrevibacter smithii]\t3\t7\t7\t7\t7",
+                    "ext_mOTU_v31_17631\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella species incertae sedis\t4\t9\t9\t9\t9",
+                    "unassigned\tunassigned\t0\t0\t0\t0\t0"
+                ],
+                "cayman": [
+                    "feature\t2612_se\t2613\t2613_mixed\t2613_suffixed\t2613_unordered",
+                    "total_reads\t32.0\t23.0\t46.0\t23.0\t23.0",
+                    "filtered_reads\t20.0\t20.0\t40.0\t20.0\t20.0",
+                    "CBM34\t2.0\t4.0\t8.0\t4.0\t4.0",
+                    "CBM48\t6.0\t5.5\t11.0\t5.5\t5.5",
+                    "GH13\t12.0\t9.0\t18.0\t9.0\t9.0"
+                ],
+                "gqlib": [
+                    "gene\t2612_se\t2613\t2613_mixed\t2613_suffixed\t2613_unordered",
+                    "GMGC10.266_660_280.AMY\t9.0\t10.5\t21.0\t10.5\t10.5",
+                    "GMGC10.266_871_379.GLGB\t11.0\t8.0\t16.0\t8.0\t8.0"
+                ]
+            }
         ],
-        "timestamp": "2026-10-27T21:17:20.037917",
+        "timestamp": "2026-10-30T17:29:01.637102",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -145,11 +158,21 @@
                 "bowtie2",
                 "bowtie2/align",
                 "bowtie2/align/2612_se_ERR5766180.bowtie2.log",
-                "bowtie2/align/2613_ERR5766181.bowtie2.log",
-                "bowtie2/align/2613_mixed_ERR5766181_suffixed.bowtie2.log",
-                "bowtie2/align/2613_mixed_ERR5766181_unordered.bowtie2.log",
-                "bowtie2/align/2613_suffixed_ERR5766181.bowtie2.log",
-                "bowtie2/align/2613_unordered_ERR5766181.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181_2.bowtie2.log",
+                "bowtie2/align/2613_mixed_ERR5766181_suffixed.unmapped.repair.sh.log",
+                "bowtie2/align/2613_mixed_ERR5766181_suffixed_1.bowtie2.log",
+                "bowtie2/align/2613_mixed_ERR5766181_suffixed_2.bowtie2.log",
+                "bowtie2/align/2613_mixed_ERR5766181_unordered.unmapped.repair.sh.log",
+                "bowtie2/align/2613_mixed_ERR5766181_unordered_1.bowtie2.log",
+                "bowtie2/align/2613_mixed_ERR5766181_unordered_2.bowtie2.log",
+                "bowtie2/align/2613_suffixed_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_suffixed_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_suffixed_ERR5766181_2.bowtie2.log",
+                "bowtie2/align/2613_unordered_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_unordered_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_unordered_ERR5766181_2.bowtie2.log",
                 "cayman",
                 "cayman/merge",
                 "cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence",
@@ -426,7 +449,6 @@
                 "motus4/profile/db_mOTU/2613_unordered_db_mOTU.out.mgc",
                 "multiqc",
                 "multiqc/multiqc_data",
-                "multiqc/multiqc_data/bowtie2_pe_plot.txt",
                 "multiqc/multiqc_data/bowtie2_se_plot.txt",
                 "multiqc/multiqc_data/fastp-insert-size-plot.txt",
                 "multiqc/multiqc_data/fastp-seq-content-gc-plot_Read_1_After_filtering.txt",
@@ -487,8 +509,6 @@
                 "multiqc/multiqc_data/samtools_alignment_plot.txt",
                 "multiqc/multiqc_plots",
                 "multiqc/multiqc_plots/pdf",
-                "multiqc/multiqc_plots/pdf/bowtie2_pe_plot-cnt.pdf",
-                "multiqc/multiqc_plots/pdf/bowtie2_pe_plot-pct.pdf",
                 "multiqc/multiqc_plots/pdf/bowtie2_se_plot-cnt.pdf",
                 "multiqc/multiqc_plots/pdf/bowtie2_se_plot-pct.pdf",
                 "multiqc/multiqc_plots/pdf/fastp-insert-size-plot.pdf",
@@ -540,8 +560,6 @@
                 "multiqc/multiqc_plots/pdf/samtools_alignment_plot-cnt.pdf",
                 "multiqc/multiqc_plots/pdf/samtools_alignment_plot-pct.pdf",
                 "multiqc/multiqc_plots/png",
-                "multiqc/multiqc_plots/png/bowtie2_pe_plot-cnt.png",
-                "multiqc/multiqc_plots/png/bowtie2_pe_plot-pct.png",
                 "multiqc/multiqc_plots/png/bowtie2_se_plot-cnt.png",
                 "multiqc/multiqc_plots/png/bowtie2_se_plot-pct.png",
                 "multiqc/multiqc_plots/png/fastp-insert-size-plot.png",
@@ -593,8 +611,6 @@
                 "multiqc/multiqc_plots/png/samtools_alignment_plot-cnt.png",
                 "multiqc/multiqc_plots/png/samtools_alignment_plot-pct.png",
                 "multiqc/multiqc_plots/svg",
-                "multiqc/multiqc_plots/svg/bowtie2_pe_plot-cnt.svg",
-                "multiqc/multiqc_plots/svg/bowtie2_pe_plot-pct.svg",
                 "multiqc/multiqc_plots/svg/bowtie2_se_plot-cnt.svg",
                 "multiqc/multiqc_plots/svg/bowtie2_se_plot-pct.svg",
                 "multiqc/multiqc_plots/svg/fastp-insert-size-plot.svg",
@@ -660,7 +676,7 @@
                 "samtools/stats/2613_unordered_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-10-27T19:45:47.41699",
+        "timestamp": "2026-10-28T19:09:04.753064",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -671,9 +687,10 @@
             [
                 [
                     "sample",
+                    "run_accession",
                     "raw_reads",
                     "qc_reads",
-                    "host_removed_pairs",
+                    "hostremoval_retained_pairs",
                     "motus4_db_mOTU_pairs",
                     "motus3_db_mOTU_pairs",
                     "cayman_GMGC10.human-gut.95nr.0.5.percent.prevalence_pairs",
@@ -681,6 +698,7 @@
                 ],
                 [
                     "2612_se",
+                    "ERR5766180",
                     "801532",
                     "800818",
                     "800776",
@@ -691,9 +709,10 @@
                 ],
                 [
                     "2613",
+                    "ERR5766181",
                     "1075088",
                     "1067004",
-                    "533422",
+                    "533421",
                     "310",
                     "390",
                     "20",
@@ -701,9 +720,10 @@
                 ],
                 [
                     "2613_mixed",
+                    "merged_WGS",
                     "2150176",
                     "2134008",
-                    "1066844",
+                    "1066842",
                     "310",
                     "390",
                     "40",
@@ -711,9 +731,10 @@
                 ],
                 [
                     "2613_suffixed",
+                    "ERR5766181",
                     "1075088",
                     "1067004",
-                    "533422",
+                    "533421",
                     "310",
                     "390",
                     "20",
@@ -721,9 +742,10 @@
                 ],
                 [
                     "2613_unordered",
+                    "ERR5766181",
                     "1075088",
                     "1067004",
-                    "533422",
+                    "533421",
                     "310",
                     "390",
                     "20",
@@ -731,7 +753,7 @@
                 ]
             ]
         ],
-        "timestamp": "2026-10-27T19:45:47.432582",
+        "timestamp": "2026-10-28T18:16:33.991476",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

@@ -15,23 +15,19 @@
                 "2612_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log contains 'Finished.': true",
                 "2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log contains 'Finished.': true",
                 "2613_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log contains 'Finished.': true"
-            ],
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains 'total_reads': true",
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains 'GH13': true",
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains '2612': true",
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains '2613': true"
+            ]
         ],
-        "timestamp": "2026-10-27T16:18:47.615295",
+        "timestamp": "2026-10-30T15:13:17.515489",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "number_of_tasks": {
         "content": [
-            35
+            47
         ],
-        "timestamp": "2026-10-27T18:34:19.599992",
+        "timestamp": "2026-10-28T09:37:09.073975",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -40,6 +36,9 @@
     "software_versions": {
         "content": [
             {
+                "BBMAP_REPAIR_HOSTREMOVAL": {
+                    "bbmap": 39.18
+                },
                 "BOWTIE2_ALIGN": {
                     "bowtie2": "2.5.4",
                     "pigz": 2.8,
@@ -74,7 +73,7 @@
                     "cat": 9.5
                 },
                 "READ_COUNTS": {
-                    "python": "3.9.5"
+                    "pandas": "2.2.1"
                 },
                 "SAMTOOLS_INDEX": {
                     "samtools": 1.2
@@ -83,14 +82,14 @@
                     "samtools": 1.2
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.4"
+                    "zellerlab/flexprofiler": "v0.0.5"
                 }
             }
         ],
-        "timestamp": "2026-10-27T19:23:57.174773",
+        "timestamp": "2026-10-30T15:13:17.468543",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "counts": {
@@ -99,6 +98,7 @@
                 "feature\t2612\t2612_se\t2613",
                 "total_reads\t80.0\t32.0\t23.0",
                 "filtered_reads\t60.0\t20.0\t20.0",
+                "CBM34\t16.0\t2.0\t4.0",
                 "CBM48\t12.0\t6.0\t5.5",
                 "GH13\t27.0\t12.0\t9.0"
             ],
@@ -106,14 +106,15 @@
                 "feature\t2612\t2612_se\t2613",
                 "total_reads\t80.0\t32.0\t23.0",
                 "filtered_reads\t60.0\t20.0\t20.0",
+                "CBM34\t728597.44991\t273224.04372\t546448.08743",
                 "CBM48\t546448.08743\t819672.13115\t751366.12022",
                 "GH13\t957307.46403\t1338490.8209\t950144.28685"
             ]
         ],
-        "timestamp": "2026-10-27T18:34:19.640835",
+        "timestamp": "2026-10-30T15:13:17.492354",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "filenames": {
@@ -121,10 +122,16 @@
             [
                 "bowtie2",
                 "bowtie2/align",
-                "bowtie2/align/2612_ERR5766176.bowtie2.log",
-                "bowtie2/align/2612_ERR5766176_B.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176.unmapped.repair.sh.log",
+                "bowtie2/align/2612_ERR5766176_1.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_2.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_B.unmapped.repair.sh.log",
+                "bowtie2/align/2612_ERR5766176_B_1.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_B_2.bowtie2.log",
                 "bowtie2/align/2612_se_ERR5766180.bowtie2.log",
-                "bowtie2/align/2613_ERR5766181.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181_2.bowtie2.log",
                 "cayman",
                 "cayman/merge",
                 "cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence",
@@ -192,7 +199,6 @@
                 "fastqc/raw/2613_ERR5766181_raw_2_fastqc.zip",
                 "multiqc",
                 "multiqc/multiqc_data",
-                "multiqc/multiqc_data/bowtie2_pe_plot.txt",
                 "multiqc/multiqc_data/bowtie2_se_plot.txt",
                 "multiqc/multiqc_data/fastp-insert-size-plot.txt",
                 "multiqc/multiqc_data/fastp-seq-content-gc-plot_Read_1_After_filtering.txt",
@@ -249,8 +255,6 @@
                 "multiqc/multiqc_data/samtools_alignment_plot.txt",
                 "multiqc/multiqc_plots",
                 "multiqc/multiqc_plots/pdf",
-                "multiqc/multiqc_plots/pdf/bowtie2_pe_plot-cnt.pdf",
-                "multiqc/multiqc_plots/pdf/bowtie2_pe_plot-pct.pdf",
                 "multiqc/multiqc_plots/pdf/bowtie2_se_plot-cnt.pdf",
                 "multiqc/multiqc_plots/pdf/bowtie2_se_plot-pct.pdf",
                 "multiqc/multiqc_plots/pdf/fastp-insert-size-plot.pdf",
@@ -296,8 +300,6 @@
                 "multiqc/multiqc_plots/pdf/samtools_alignment_plot-cnt.pdf",
                 "multiqc/multiqc_plots/pdf/samtools_alignment_plot-pct.pdf",
                 "multiqc/multiqc_plots/png",
-                "multiqc/multiqc_plots/png/bowtie2_pe_plot-cnt.png",
-                "multiqc/multiqc_plots/png/bowtie2_pe_plot-pct.png",
                 "multiqc/multiqc_plots/png/bowtie2_se_plot-cnt.png",
                 "multiqc/multiqc_plots/png/bowtie2_se_plot-pct.png",
                 "multiqc/multiqc_plots/png/fastp-insert-size-plot.png",
@@ -343,8 +345,6 @@
                 "multiqc/multiqc_plots/png/samtools_alignment_plot-cnt.png",
                 "multiqc/multiqc_plots/png/samtools_alignment_plot-pct.png",
                 "multiqc/multiqc_plots/svg",
-                "multiqc/multiqc_plots/svg/bowtie2_pe_plot-cnt.svg",
-                "multiqc/multiqc_plots/svg/bowtie2_pe_plot-pct.svg",
                 "multiqc/multiqc_plots/svg/bowtie2_se_plot-cnt.svg",
                 "multiqc/multiqc_plots/svg/bowtie2_se_plot-pct.svg",
                 "multiqc/multiqc_plots/svg/fastp-insert-size-plot.svg",
@@ -402,7 +402,7 @@
                 "samtools/stats/2613_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-10-27T18:34:19.619769",
+        "timestamp": "2026-10-28T18:48:28.102679",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -413,20 +413,23 @@
             [
                 [
                     "sample",
+                    "run_accession",
                     "raw_reads",
                     "qc_reads",
-                    "host_removed_pairs",
+                    "hostremoval_retained_pairs",
                     "cayman_GMGC10.human-gut.95nr.0.5.percent.prevalence_pairs"
                 ],
                 [
                     "2612",
+                    "merged_WGS",
                     "2528240",
                     "2513136",
-                    "1256238",
+                    "1256228",
                     "60"
                 ],
                 [
                     "2612_se",
+                    "ERR5766180",
                     "801532",
                     "800818",
                     "800776",
@@ -434,14 +437,15 @@
                 ],
                 [
                     "2613",
+                    "ERR5766181",
                     "1075088",
                     "1067004",
-                    "533422",
+                    "533421",
                     "20"
                 ]
             ]
         ],
-        "timestamp": "2026-10-27T18:34:19.629772",
+        "timestamp": "2026-10-28T17:56:09.203206",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

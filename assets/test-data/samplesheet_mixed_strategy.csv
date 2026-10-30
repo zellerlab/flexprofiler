@@ -1,0 +1,7 @@
+sample,run_accession,instrument_platform,library_strategy,fastq_1,fastq_2,fasta
+2612,ERR5766176,ILLUMINA,WGS,../../../assets/test-data/data/fastq/ERX5474932_ERR5766176_1.fastq.gz,../../../assets/test-data/data/fastq/ERX5474932_ERR5766176_2.fastq.gz,
+2612,ERR5766176_B,ILLUMINA,WGS,../../../assets/test-data/data/fastq/ERX5474932_ERR5766176_B_1.fastq.gz,../../../assets/test-data/data/fastq/ERX5474932_ERR5766176_B_2.fastq.gz,
+2612,amplicon_clean,ILLUMINA,AMPLICON,../../../assets/test-data/data/fastq/amplicon/amplicon_clean_1.fastq.gz,../../../assets/test-data/data/fastq/amplicon/amplicon_clean_2.fastq.gz,
+2612,amplicon_primers,ILLUMINA,AMPLICON,../../../assets/test-data/data/fastq/amplicon/amplicon_primers_1.fastq.gz,../../../assets/test-data/data/fastq/amplicon/amplicon_primers_2.fastq.gz,
+2613,ERR5766181,ILLUMINA,,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_1.fastq.gz,../../../assets/test-data/data/fastq/ERX5474937_ERR5766181_2.fastq.gz,
+amplicon_only,amplicon_mixed,ILLUMINA,AMPLICON,../../../assets/test-data/data/fastq/amplicon/amplicon_mixed_1.fastq.gz,../../../assets/test-data/data/fastq/amplicon/amplicon_mixed_2.fastq.gz,

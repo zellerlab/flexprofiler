@@ -15,21 +15,19 @@
                 "2612_db_mOTU.log contains 'Finished computation': true",
                 "2612_se_db_mOTU.log contains 'Finished computation': true",
                 "2613_db_mOTU.log contains 'Finished computation': true"
-            ],
-            "motus3_db_mOTU_combined_reports.txt contains 'unassigned': true",
-            "motus3_db_mOTU_combined_reports.txt contains 'ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]': true"
+            ]
         ],
-        "timestamp": "2026-05-28T16:42:47.94939",
+        "timestamp": "2026-10-30T15:46:20.985946",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "number_of_tasks": {
         "content": [
-            32
+            44
         ],
-        "timestamp": "2026-10-27T18:12:51.388318",
+        "timestamp": "2026-10-28T10:24:48.453074",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -38,6 +36,9 @@
     "software_versions": {
         "content": [
             {
+                "BBMAP_REPAIR_HOSTREMOVAL": {
+                    "bbmap": 39.18
+                },
                 "BOWTIE2_ALIGN": {
                     "bowtie2": "2.5.4",
                     "pigz": 2.8,
@@ -68,7 +69,7 @@
                     "motus3": "3.1.0"
                 },
                 "READ_COUNTS": {
-                    "python": "3.9.5"
+                    "pandas": "2.2.1"
                 },
                 "SAMTOOLS_INDEX": {
                     "samtools": 1.2
@@ -77,26 +78,30 @@
                     "samtools": 1.2
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.4"
+                    "zellerlab/flexprofiler": "v0.0.5"
                 }
             }
         ],
-        "timestamp": "2026-10-27T18:12:51.379484",
+        "timestamp": "2026-10-30T15:46:20.943632",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "counts": {
         "content": [
             [
-                "#mOTU\t2612_db_mOTU\t2612_se_db_mOTU\t2613_db_mOTU",
-                "ref_mOTU_v31_03626\t7\t2\t4",
-                "ref_mOTU_v31_03695\t20\t3\t7",
-                "unassigned\t1\t0\t0"
+                "# motus version 3.1.0 | merge 3.1.0 | info merged profiles: # git tag version 3.1.0 |  motus version 3.1.0 | map_tax 3.1.0 | gene database: nr3.1.0 | calc_mgc 3.1.0 -y insert.scaled_counts -l 75 | calc_motu 3.1.0 -k mOTU -C no_CAMI -g 3 -c | taxonomy: ref_mOTU_3.1.0 meta_mOTU_3.1.0 ",
+                "# call: python /usr/local/bin/motus merge -db db_mOTU -i 2612_db_mOTU.out,2612_se_db_mOTU.out,2613_db_mOTU.out -o motus3_db_mOTU_combined_reports.txt",
+                "#mOTU\tconsensus_taxonomy\t2612_db_mOTU\t2612_se_db_mOTU\t2613_db_mOTU",
+                "ref_mOTU_v31_03379\tk__Archaea|p__Euryarchaeota|c__Halobacteria|o__Halobacteriales|f__Halococcaceae|g__Halococcus|s__Halococcus morrhuae\t0\t0\t18",
+                "ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]\t7\t2\t4",
+                "ref_mOTU_v31_03695\tk__Archaea|p__Euryarchaeota|c__Methanobacteria|o__Methanobacteriales|f__Methanobacteriaceae|g__Methanobrevibacter|s__Methanobrevibacter smithii [Methanobrevibacter smithii CAG:186/Methanobrevibacter sp. A54/Methanobrevibacter smithii]\t20\t3\t7",
+                "ext_mOTU_v31_17631\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella species incertae sedis\t18\t4\t9",
+                "unassigned\tunassigned\t1\t0\t0"
             ]
         ],
-        "timestamp": "2026-10-27T21:21:40.077591",
+        "timestamp": "2026-10-30T18:04:43.032122",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -107,10 +112,16 @@
             [
                 "bowtie2",
                 "bowtie2/align",
-                "bowtie2/align/2612_ERR5766176.bowtie2.log",
-                "bowtie2/align/2612_ERR5766176_B.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176.unmapped.repair.sh.log",
+                "bowtie2/align/2612_ERR5766176_1.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_2.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_B.unmapped.repair.sh.log",
+                "bowtie2/align/2612_ERR5766176_B_1.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_B_2.bowtie2.log",
                 "bowtie2/align/2612_se_ERR5766180.bowtie2.log",
-                "bowtie2/align/2613_ERR5766181.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181_2.bowtie2.log",
                 "fastp",
                 "fastp/2612_ERR5766176.fastp.html",
                 "fastp/2612_ERR5766176.fastp.json",
@@ -168,7 +179,6 @@
                 "motus3/profile/db_mOTU/2613_db_mOTU.out",
                 "multiqc",
                 "multiqc/multiqc_data",
-                "multiqc/multiqc_data/bowtie2_pe_plot.txt",
                 "multiqc/multiqc_data/bowtie2_se_plot.txt",
                 "multiqc/multiqc_data/fastp-insert-size-plot.txt",
                 "multiqc/multiqc_data/fastp-seq-content-gc-plot_Read_1_After_filtering.txt",
@@ -229,8 +239,6 @@
                 "multiqc/multiqc_data/samtools_alignment_plot.txt",
                 "multiqc/multiqc_plots",
                 "multiqc/multiqc_plots/pdf",
-                "multiqc/multiqc_plots/pdf/bowtie2_pe_plot-cnt.pdf",
-                "multiqc/multiqc_plots/pdf/bowtie2_pe_plot-pct.pdf",
                 "multiqc/multiqc_plots/pdf/bowtie2_se_plot-cnt.pdf",
                 "multiqc/multiqc_plots/pdf/bowtie2_se_plot-pct.pdf",
                 "multiqc/multiqc_plots/pdf/fastp-insert-size-plot.pdf",
@@ -282,8 +290,6 @@
                 "multiqc/multiqc_plots/pdf/samtools_alignment_plot-cnt.pdf",
                 "multiqc/multiqc_plots/pdf/samtools_alignment_plot-pct.pdf",
                 "multiqc/multiqc_plots/png",
-                "multiqc/multiqc_plots/png/bowtie2_pe_plot-cnt.png",
-                "multiqc/multiqc_plots/png/bowtie2_pe_plot-pct.png",
                 "multiqc/multiqc_plots/png/bowtie2_se_plot-cnt.png",
                 "multiqc/multiqc_plots/png/bowtie2_se_plot-pct.png",
                 "multiqc/multiqc_plots/png/fastp-insert-size-plot.png",
@@ -335,8 +341,6 @@
                 "multiqc/multiqc_plots/png/samtools_alignment_plot-cnt.png",
                 "multiqc/multiqc_plots/png/samtools_alignment_plot-pct.png",
                 "multiqc/multiqc_plots/svg",
-                "multiqc/multiqc_plots/svg/bowtie2_pe_plot-cnt.svg",
-                "multiqc/multiqc_plots/svg/bowtie2_pe_plot-pct.svg",
                 "multiqc/multiqc_plots/svg/bowtie2_se_plot-cnt.svg",
                 "multiqc/multiqc_plots/svg/bowtie2_se_plot-pct.svg",
                 "multiqc/multiqc_plots/svg/fastp-insert-size-plot.svg",
@@ -400,7 +404,7 @@
                 "samtools/stats/2613_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-10-27T18:12:51.402073",
+        "timestamp": "2026-10-28T19:18:35.350333",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
@@ -411,20 +415,23 @@
             [
                 [
                     "sample",
+                    "run_accession",
                     "raw_reads",
                     "qc_reads",
-                    "host_removed_pairs",
+                    "hostremoval_retained_pairs",
                     "motus3_db_mOTU_pairs"
                 ],
                 [
                     "2612",
+                    "merged_WGS",
                     "2528240",
                     "2513136",
-                    "1256238",
+                    "1256228",
                     "431"
                 ],
                 [
                     "2612_se",
+                    "ERR5766180",
                     "801532",
                     "800818",
                     "800776",
@@ -432,14 +439,15 @@
                 ],
                 [
                     "2613",
+                    "ERR5766181",
                     "1075088",
                     "1067004",
-                    "533422",
+                    "533421",
                     "390"
                 ]
             ]
         ],
-        "timestamp": "2026-10-27T18:12:51.406227",
+        "timestamp": "2026-10-28T18:26:57.934156",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"

@@ -99,20 +99,21 @@ workflow PIPELINE_INITIALISATION {
 
     def samplesheet_rows = samplesheetToList(input, "assets/schema_input.json")
     if (params.perform_runmerging) {
-        validateInputSamplesheet(samplesheet_rows)
+        validateRunMerging(samplesheet_rows)
     }
-    // Samples with more than one run are published as analysis-ready reads only after run merging
-    def runs_per_sample = samplesheet_rows.countBy { row -> row[0].id }
+    // Samples with more than one run are published as analysis-ready reads only after run merging. The runs of a
+    // sample are merged separately for each library strategy, so they are counted per sample and strategy
+    def runs_per_sample = samplesheet_rows.countBy { row -> [row[0].id, row[0].library_strategy] }
     Channel.fromList(samplesheet_rows)
         .map { meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
-            [meta + [is_multirun: runs_per_sample[meta.id] > 1], run_accession, instrument_platform, fastq_1, fastq_2, fasta]
+            [meta + [is_multirun: runs_per_sample[[meta.id, meta.library_strategy]] > 1], run_accession, instrument_platform, fastq_1, fastq_2, fasta]
         }
         .set { ch_samplesheet }
 
     //
     // Validate and create channel from databases file provided through params.databases
     //
-    def database_rows = samplesheetToList(databases, "assets/schema_database.json")
+    def database_rows = selectIdtaxaDatabases(samplesheetToList(databases, "assets/schema_database.json"), params.idtaxa_db_names)
     validateDatabaseSheet(database_rows)
     Channel.fromList(database_rows)
         .set { ch_databases }
@@ -224,11 +225,13 @@ workflow PIPELINE_COMPLETION {
 */
 // Validate that all runs of each sample can be merged together
 //
-def validateInputSamplesheet(rows) {
+def validateRunMerging(rows) {
     // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
     // With pair merging, paired-end reads become single-end before run merging, so endedness can differ
     def check_endedness = !(params.perform_shortread_qc && params.shortread_qc_mergepairs)
-    rows.groupBy { row -> row[0].id }.each { sample, sample_rows ->
+    // the WGS and AMPLICON runs of a sample are merged separately
+    rows.groupBy { row -> [row[0].id, row[0].library_strategy] }.each { sample_strategy, sample_rows ->
+        def (sample, strategy) = sample_strategy
         def datatypes = sample_rows.collect { row ->
             def datatype = [row[2], row[5] ? 'FASTA' : 'FASTQ']
             if (check_endedness) {
@@ -241,10 +244,27 @@ def validateInputSamplesheet(rows) {
                 "Please check input samplesheet -> with --perform_runmerging, all runs of a sample must have the same " +
                 "instrument platform, file type (FASTQ/FASTA) and, unless pairs are merged with --shortread_qc_mergepairs, " +
                 "endedness (single/paired-end).\n" +
-                "Sample '${sample}' has: ${datatypes.collect { datatype -> datatype.join(' ') }.join('; ')}"
+                "Sample '${sample}' (${strategy}) has: ${datatypes.collect { datatype -> datatype.join(' ') }.join('; ')}"
             )
         }
     }
+}
+
+//
+// Keep only the idtaxa rows of the database sheet named in --idtaxa_db_names (comma-separated), all of them if not set
+//
+def selectIdtaxaDatabases(rows, db_names) {
+    // rows: [ meta, db_path ]
+    if (!db_names) {
+        return rows
+    }
+    def selected = db_names.tokenize(',')
+    def available = rows.findAll { meta, _db_path -> meta.tool == 'idtaxa' }.collect { meta, _db_path -> meta.db_name }
+    def missing = selected - available
+    if (missing) {
+        error("Please check --idtaxa_db_names -> ${missing.join(', ')} not among the idtaxa rows of the database sheet. Available: ${available.join(', ') ?: 'none'}")
+    }
+    return rows.findAll { meta, _db_path -> meta.tool != 'idtaxa' || meta.db_name in selected }
 }
 
 //
@@ -315,12 +335,21 @@ def toolCitationText() {
         "Host read removal was performed for long reads with minimap2 (Li et al. 2018) and SAMtools (Danecek et al. 2021)."
     ].join(' ').trim()
 
+    def text_amplicon_primertrimming = [
+        "The primers of amplicon reads were detected with PIMENTO (Atallah et al. 2026) and trimmed with cutadapt (Martin 2011)."
+    ].join(' ').trim()
+
+    def text_amplicon_pairmerging = [
+        "The read pairs of amplicon reads were merged with VSEARCH (Rognes et al. 2016) for IDTAXA."
+    ].join(' ').trim()
+
 
     def text_classification = [
         "Taxonomic classification or profiling was carried out with:",
         params.run_motus4 ? "mOTUs 4 (Ruscheweyh et al. 2022)," : "",
         params.run_cayman ? "Cayman (Ducarmon et al. 2026)," : "",
         params.run_gqlib ? "gqlib (https://github.com/cschu/gqlib)," : "",
+        params.run_idtaxa ? "IDTAXA (Murali et al. 2018) of DECIPHER (Wright 2016)," : "",
         ".",
     ].join(' ').trim()
 
@@ -341,10 +370,13 @@ def toolCitationText() {
         params.perform_shortread_complexityfilter ? text_shortreadcomplexity : "",
         params.perform_shortread_hostremoval ? text_shortreadhostremoval : "",
         params.perform_longread_hostremoval ? text_longreadhostremoval : "",
+        params.perform_amplicon_primertrimming ? text_amplicon_primertrimming : "",
+        params.run_idtaxa && params.idtaxa_pair_handling == 'merged_plus_joined' ? text_amplicon_pairmerging : "",
         [
             params.run_motus4,
             params.run_cayman,
-            params.run_gqlib
+            params.run_gqlib,
+            params.run_idtaxa
         ].any()
             ? text_classification
             : "",
@@ -387,6 +419,15 @@ def toolBibliographyText() {
         "<li>Langmead, B., & Salzberg, S. L. (2012). Fast gapped-read alignment with Bowtie 2. Nature Methods, 9(4), 357–359. <a href=\"https://doi.org/10.1038/nmeth.1923\">10.1038/nmeth.1923</a></li>"
     ].join(' ').trim()
 
+    def text_amplicon_primertrimming = [
+        "<li>Atallah, C., Richardson, L., Beracochea, M., & Finn, R. D. (2026). PIMENTO: a primer inference toolkit to facilitate large-scale calling of amplicon sequence variants. GigaScience, 15. <a href=\"https://doi.org/10.1093/gigascience/giag083\">10.1093/gigascience/giag083</a></li>",
+        "<li>Martin, M. (2011). Cutadapt removes adapter sequences from high-throughput sequencing reads. EMBnet.journal, 17(1), 10–12. <a href=\"https://doi.org/10.14806/ej.17.1.200\">10.14806/ej.17.1.200</a></li>"
+    ].join(' ').trim()
+
+    def text_amplicon_pairmerging = [
+        "<li>Rognes, T., Flouri, T., Nichols, B., Quince, C., & Mahé, F. (2016). VSEARCH: a versatile open source tool for metagenomics. PeerJ, 4, e2584. <a href=\"https://doi.org/10.7717/peerj.2584\">10.7717/peerj.2584</a></li>"
+    ].join(' ').trim()
+
     def text_longreadhostremoval = [
         "<li>Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. Bioinformatics , 34(18), 3094–3100. <a href=\"https://doi.org/10.1093/bioinformatics/bty191\">10.1093/bioinformatics/bty191</a></li>"
     ].join(' ').trim()
@@ -396,6 +437,8 @@ def toolBibliographyText() {
         params.run_motus4 ? "<li>Ruscheweyh, H.-J., Milanese, A., Paoli, L., Karcher, N., Clayssen, Q., Keller, M. I., Wirbel, J., Bork, P., Mende, D. R., Zeller, G., & Sunagawa, S. (2022). Cultivation-independent genomes greatly expand taxonomic-profiling capabilities of mOTUs across various environments. Microbiome, 10(1), 212. <a href=\"https://doi.org/10.1186/s40168-022-01410-z\">10.1186/s40168-022-01410-z</a></li>" : "",
         params.run_cayman ? "<li>Ducarmon, Q.R., Karcher, N., Giri, S. et al. Cayman enables large-scale analysis of gut microbiome carbohydrate-active enzyme repertoires. Nat Microbiol (2026). <a href=\"https://doi.org/10.1038/s41564-026-02318-2\">https://doi.org/10.1038/s41564-026-02318-2</a></li>" : "",
         params.run_gqlib ? "<li>Schudoma, C. gqlib: gene quantification library (gffquant). <a href=\"https://github.com/cschu/gqlib\">https://github.com/cschu/gqlib</a></li>" : "",
+        params.run_idtaxa ? "<li>Murali, A., Bhargava, A., & Wright, E. S. (2018). IDTAXA: a novel approach for accurate taxonomic classification of microbiome sequences. Microbiome, 6(1), 140. <a href=\"https://doi.org/10.1186/s40168-018-0521-5\">10.1186/s40168-018-0521-5</a></li>" : "",
+        params.run_idtaxa ? "<li>Wright, E. S. (2016). Using DECIPHER v2.0 to Analyze Big Biological Sequence Data in R. The R Journal, 8(1), 352–359. <a href=\"https://doi.org/10.32614/RJ-2016-025\">10.32614/RJ-2016-025</a></li>" : "",
     ].join(' ').trim()
 
     def text_visualisation = [
@@ -419,6 +462,8 @@ def toolBibliographyText() {
         params.perform_shortread_complexityfilter ? text_shortreadcomplexity : "",
         params.perform_shortread_hostremoval ? text_shortreadhostremoval : "",
         params.perform_longread_hostremoval ? text_longreadhostremoval : "",
+        params.perform_amplicon_primertrimming ? text_amplicon_primertrimming : "",
+        params.run_idtaxa && params.idtaxa_pair_handling == 'merged_plus_joined' ? text_amplicon_pairmerging : "",
         text_extras,
         text_classification,
         //params.run_krona ? text_visualisation : "",

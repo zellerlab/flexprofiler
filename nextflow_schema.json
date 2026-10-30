@@ -107,6 +107,13 @@
             "description": "Options for adapter clipping, quality trimming, pair-merging, and complexity filtering",
             "default": "",
             "properties": {
+                "perform_amplicon_primertrimming": {
+                    "type": "boolean",
+                    "default": true,
+                    "fa_icon": "fas fa-toggle-on",
+                    "description": "Find and trim the primers of amplicon reads (library_strategy AMPLICON), with PIMENTO and cutadapt",
+                    "help_text": "For each AMPLICON run, the primers are searched with PIMENTO (`pimento std`) against its standard primer library, separately for the two mates of paired-end reads. If primers are found, they are trimmed with cutadapt before the other preprocessing steps: all the primers found are searched at the start of both mates (also trimming pairs sequenced in the other orientation), then their reverse complements at the end of the reads (reads running past the end of the amplicon). Runs without primers are not trimmed. The PIMENTO and cutadapt options can be changed with `ext.args` in a custom config (see the usage documentation)."
+                },
                 "perform_shortread_qc": {
                     "type": "boolean",
                     "fa_icon": "fas fa-toggle-on",
@@ -398,7 +405,7 @@
                     "type": "boolean",
                     "fa_icon": "fas fa-toggle-on",
                     "description": "Turn on run merging",
-                    "help_text": "Turns on the concatenation of sequencing runs or libraries with the same sample name.\n\nThis can be useful to ensure you get a single profile per sample, rather than one profile per run or library. Note that in some cases comparing profiles of independent _libraries_ may be useful, so this parameter may not always be suitable.\n\nWARNING: merging takes into account not only the sample name, but also the sequencing technology and paired/single end status. Runs obtained with different modalities will not be merged and will result in name collisions if both run merging and profile standardisation are active."
+                    "help_text": "Turns on the concatenation of sequencing runs or libraries with the same sample name.\n\nThis can be useful to ensure you get a single profile per sample, rather than one profile per run or library. Note that in some cases comparing profiles of independent _libraries_ may be useful, so this parameter may not always be suitable.\n\nThe runs of a sample are merged separately for each library strategy (`library_strategy` column, WGS or AMPLICON): a merged run is named `merged_WGS` or `merged_AMPLICON`, and a sample with a single run of a strategy keeps its run accession. All the runs of a sample and strategy must have the same instrument platform, file type and, unless the pairs are merged with `--shortread_qc_mergepairs`, endedness, otherwise the pipeline stops with an error."
                 },
                 "save_runmerged_reads": {
                     "type": "boolean",
@@ -448,6 +455,43 @@
                     "fa_icon": "fas fa-save",
                     "description": "Save the bwa mem alignments of the reads to the cayman and gqlib gene catalogues",
                     "help_text": "The unsorted BAM files are saved to `--outdir` under `bwa/<db_name>/`. The alignments contain all hits of each read (`bwa mem -a`) and can be large."
+                },
+                "run_idtaxa": {
+                    "type": "boolean",
+                    "description": "Turn on taxonomic classification of amplicon reads with IDTAXA. Requires database CSV file passed to --databases",
+                    "help_text": "IDTAXA (DECIPHER) classifies the AMPLICON samples (library_strategy column of the samplesheet) against a training set, the db_path of an idtaxa row of the database CSV (.RData, as distributed with DECIPHER). The pairs of paired-end reads are merged if they overlap, the others are handled as set by `--idtaxa_pair_handling`. The confidence threshold is set with `--idtaxa_threshold`, the strand of the sequences (default both) with `ext.strand` in a custom config.",
+                    "fa_icon": "fas fa-toggle-on"
+                },
+                "idtaxa_pair_handling": {
+                    "type": "string",
+                    "default": "merged_plus_joined",
+                    "enum": ["merged_plus_joined", "merged_plus_unmerged"],
+                    "description": "How the read pairs of paired-end amplicon reads are given to IDTAXA",
+                    "help_text": "IDTAXA classifies single sequences. `merged_plus_joined`: the pairs are merged with vsearch if they overlap, and the others joined with a padding of Ns (R1, Ns, reverse complement of R2), so that each pair is classified once, as one sequence. `merged_plus_unmerged`: the pairs are merged with fastp if they overlap, and the two mates of the others are classified as separate sequences, so that such a pair counts twice in the profile. Only the reads given to IDTAXA change, not the analysis-ready reads. The vsearch and fastp options can be changed with `ext.args` of `VSEARCH_MERGEJOIN` and `FASTP_IDTAXA_MERGE` in a custom config.",
+                    "fa_icon": "fas fa-object-group"
+                },
+                "idtaxa_db_names": {
+                    "type": "string",
+                    "pattern": "^[^,\\s]+(,[^,\\s]+)*$",
+                    "description": "Comma-separated db_name of the idtaxa rows of the database CSV to classify against. All idtaxa rows if not set",
+                    "help_text": "The database CSV can list several IDTAXA training sets (e.g. different GTDB releases, such as R220 to match the taxonomy of mOTUs 4.0 used for the WGS samples, or SILVA), and this chooses among them by their db_name, e.g. `--idtaxa_db_names gtdb_r220` or `--idtaxa_db_names gtdb_r220,silva_r138_2`. The other idtaxa rows are ignored. A name not among the idtaxa rows of the database CSV is an error.",
+                    "fa_icon": "fas fa-database"
+                },
+                "idtaxa_threshold": {
+                    "type": "integer",
+                    "default": 40,
+                    "minimum": 0,
+                    "maximum": 100,
+                    "description": "Minimum confidence (0-100) of the taxa assigned by IDTAXA",
+                    "help_text": "The minimum confidence (0-100) at which IdTaxa assigns a taxon: the lineage of a sequence stops at the last rank assigned above it. DECIPHER suggests 60 (very high confidence), 50 (high confidence) or 40 (moderate confidence). The default, 40, is that of vknight. Passed to IdTaxa as its `threshold`.",
+                    "fa_icon": "fas fa-sliders-h"
+                },
+                "idtaxa_ranks": {
+                    "type": "string",
+                    "pattern": "^[^,\\s]+(,[^,\\s]+)*$",
+                    "description": "Comma-separated ranks to write a merged IDTAXA table for. All the ranks if not set",
+                    "help_text": "The merged IDTAXA tables have one table of the whole lineages, as assigned, and one table per rank (domain, phylum, ..., genus), with the lineages cut at that rank and the sequences not assigned down to it in the row unassigned. By default there is a table for each rank of the lineages; with a comma-separated list of ranks (as named in the training set, e.g. `genus` or `family,genus`), only for those. A rank that no lineage reaches gives a table with only the unassigned sequences.",
+                    "fa_icon": "fas fa-layer-group"
                 }
             },
             "fa_icon": "fas fa-align-center"

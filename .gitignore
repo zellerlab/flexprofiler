@@ -6,6 +6,5 @@ testing/
 testing*
 *.pyc
 null/
-.nf-test
-.nf-test.log
+.nf-test*
 nf-*-reports.tsv

@@ -98,6 +98,7 @@ This will allow classification optimisation for each data type, and make MultiQC
 | `sample`              | Unique sample name [required].                                                                                                                                                          |
 | `run_accession`       | Run ID or name unique for each (pairs of) file(s) .Can also supply sample name again here, if only a single run was generated [required].                                               |
 | `instrument_platform` | Sequencing platform reads generated on, selected from the EBI ENA [controlled vocabulary](https://www.ebi.ac.uk/ena/portal/api/controlledVocab?field=instrument_platform) [required].   |
+| `library_strategy`    | `WGS` (shotgun metagenomics) or `AMPLICON` (e.g. 16S), from the EBI ENA [controlled vocabulary](https://www.ebi.ac.uk/ena/portal/api/controlledVocab?field=library_strategy). Defaults to `WGS` when empty or when the column is missing [optional]. |
 | `fastq_1`             | Path or URL to sequencing reads or for Illumina R1 sequencing reads in FASTQ format. Must be gzipped. Can be left empty if data in FASTA is specified. Cannot be combined with `fasta`. |
 | `fastq_2`             | Path or URL to Illumina R2 sequencing reads in FASTQ format. Must be gzipped. Can be left empty if single end data. Cannot be combined with `fasta`.                                    |
 | `fasta`               | Path or URL to long-reads or contigs in FASTA format. Must be gzipped. Can be left empty if data in FASTQ is specified. Cannot be combined with `fastq_1` or `fastq_2`.                 |
@@ -340,6 +341,7 @@ It is not always necessary to report classification of reads from a host when yo
 Furthermore, particularly with human samples, you can reduce the number of false positives during classification/profiling that occur due to host-sequence contamination in reference genomes on public databases.
 
 zellerlab/flexprofiler currently offers host-removal via alignment against a reference genome with Bowtie2 for short reads and minimap2 for long reads, and the use of the unaligned reads for downstream classification/profiling.
+For paired-end short reads, the two mates are aligned separately and a pair is removed if either mate aligns to the host, as recommended by [Forbes et al. 2025](https://doi.org/10.1016/j.crmeth.2025.101218).
 
 You can supply your reference genome in FASTA format with `--hostremoval_reference`.
 You can also optionally supply a directory containing pre-indexed Bowtie2 index files with `--shortread_hostremoval_index` or a minimap2 `.mmi` file for `--longread_hostremoval_index`, however zellerlab/flexprofiler will generate these for you if necessary.
@@ -355,6 +357,7 @@ For samples that may have been sequenced over multiple runs, or for FASTQ files 
 For more information how to set up your input samplesheet, see [Multiple runs of the same sample](#multiple-runs-of-the-same-sample).
 Activating this functionality will concatenate the FASTQ files with the same sample name _after_ the optional preprocessing steps and _before_ classification/profiling.
 All runs of a sample must have the same pairing type (single- or paired-end), unless pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`), otherwise the pipeline stops with an error.
+The `WGS` and `AMPLICON` runs of a sample (`library_strategy` column) are never merged together: they are merged separately, into the runs `merged_WGS` and `merged_AMPLICON` of the sample, and a sample with a single run of a strategy keeps its `run_accession`.
 
 You can optionally save the FASTQ output of the run merging with the `--save_runmerged_reads`.
 
@@ -367,10 +370,57 @@ For advice as to which tool to run in your context, please see the documentation
 
 <!-- TODO: add section
 ##### MapSeq
+-->
 
 ##### IDTaxa
 
--->
+IDTAXA (DECIPHER) classifies 16S amplicon reads, the samples with `AMPLICON` in the `library_strategy` column of the samplesheet, against a training set. Turn it on with `--run_idtaxa` and an `idtaxa` row in the database CSV, with `db_path` a training set as distributed with DECIPHER (`.RData`).
+
+The database CSV can list several training sets, e.g. the GTDB release matching the taxonomy of the mOTUs version used for the WGS samples (R220 for mOTUs 4.0, used by `--run_motus4`; mOTUs 3 uses the NCBI taxonomy), a newer GTDB release, or SILVA. By default all the `idtaxa` rows are used. To use only some of them, list their `db_name` with `--idtaxa_db_names`, e.g. `--idtaxa_db_names gtdb_r220` or `--idtaxa_db_names gtdb_r220,silva_r138_2`. This way the paths are set once in the database CSV:
+
+```csv title="databases.csv"
+tool,db_name,db_params,db_path
+idtaxa,gtdb_r220,,/path/to/GTDB_r220.RData
+idtaxa,gtdb_r232,,/path/to/GTDB_r232-mod.RData
+idtaxa,silva_r138_2,,/path/to/SILVA_SSU_r138_2-mod.RData
+```
+
+The `db_name` also names the output files and directories, so it is worth stating the release in it.
+
+Before IDTAXA, the primers of each amplicon run are found with PIMENTO and trimmed with cutadapt (`--perform_amplicon_primertrimming`, on by default).
+
+:::warning
+The primer detection has some limitations, so check `amplicon_primers/primers.tsv` and the read counts (`primer_trimmed_reads`, `readthrough_trimmed_reads`):
+
+- PIMENTO reports a primer only if it is at the start of more than 60% of the reads of a mate (`-m 0.60`). In libraries ligated in both orientations, with 40-60% of the pairs flipped (e.g. 50/50), neither primer passes in either mate: no primer is found and the run is not trimmed, as a run without primers. The threshold can be lowered with `ext.args` (e.g. `withName: PIMENTO_STD { ext.args = '-m 0.4' }`, adding `--merged` for single-end reads), at the risk of finding primers that are not there.
+- Single-end reads are searched with `--merged`, as if they spanned the whole amplicon: the forward primers at the start of the reads, the reverse primers at their end. In single-end reads shorter than the amplicon only the forward primer is found, so the reads running past the end of the amplicon keep the reverse complement of the reverse primer, and the adapter after it (removed by fastp only if it detects it, in files of at least 10000 reads). Single-end reads starting with the reverse primer (sequenced in the other orientation) are not recognised either.
+- The reverse primer of a library cannot be deduced from the forward primer: the PIMENTO standard library has several reverse primers per region (V3-V4: 805R, 806R, 806BR, 785R, 798R), some of them binding inside the amplicon of the others.
+
+:::
+
+IDTAXA classifies single sequences, so the pairs of paired-end reads are first merged if their mates overlap. The other pairs are handled as set by `--idtaxa_pair_handling`:
+
+- `merged_plus_joined` (default): vsearch merges the overlapping pairs and joins the others with a padding of Ns (R1, `NNNNNNNN`, reverse complement of R2). Each pair is classified once, as one sequence.
+- `merged_plus_unmerged`: fastp merges the overlapping pairs and keeps both mates of the others as separate sequences, so these pairs count twice in the profile.
+
+Single-end reads are classified as they are. Only the reads given to IDTAXA change, not the analysis-ready reads.
+
+The profiles of the samples are merged, for each training set, into a table of the whole lineages and one table per rank (domain, phylum, ..., genus), the sequences not assigned down to a rank being in its row `unassigned`. `--idtaxa_ranks` restricts the rank tables to some ranks, e.g. `--idtaxa_ranks genus`.
+
+The confidence threshold of IdTaxa is set with `--idtaxa_threshold` (default 40, as in vknight; DECIPHER suggests 60 for very high, 50 for high and 40 for moderate confidence). The strand of the sequences is left at the DECIPHER default (`both`), and is changed with `ext.strand` in a custom config; the vsearch and fastp options with `ext.args`:
+
+```groovy
+process {
+    withName: IDTAXA_CLASSIFY {
+        ext.strand = 'top'
+    }
+    withName: VSEARCH_MERGEJOIN {
+        ext.args = '--fastq_allowmergestagger --fastq_minovlen 20'
+    }
+}
+```
+
+Keep the strand `both` for libraries with reads in both orientations.
 
 ##### mOTUs v4
 
