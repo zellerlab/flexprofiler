@@ -13,10 +13,21 @@ import json
 import pathlib
 import re
 import sys
+import textwrap
 
 import pandas as pd
 
 PROFILERS = ["motus4", "motus3", "cayman", "gqlib", "idtaxa"]
+# the columns of the preprocessing steps, in their order
+PREPROCESSING_COLUMNS = [
+    "primer_trimmed_reads",
+    "readthrough_trimmed_reads",
+    "raw_reads",
+    "qc_reads",
+    "host_removed_pairs",
+    "merged_pairs",
+    "joined_pairs",
+]
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*m")
 
 
@@ -152,85 +163,66 @@ def read_log(path):
 def main(manifest, inputs_dir, out_tsv, out_mqc):
     entries = pd.read_csv(manifest, sep="\t", dtype=str, keep_default_na=False)
 
+    # the counts are joined to the entries by file
+    duplicated = entries.loc[entries["file"].duplicated(), "file"]
+    assert duplicated.empty, f"Files in the manifest more than once: {', '.join(duplicated.unique())}"
     unknown = set(entries["kind"]) - set(PARSERS)
     assert not unknown, f"Unknown kinds {', '.join(sorted(unknown))}"
 
     entries["path"] = entries["file"].map(lambda file: pathlib.Path(inputs_dir) / file)
     absent = entries.loc[~entries["path"].map(pathlib.Path.is_file), "file"]
     assert absent.empty, f"Files of the manifest not in {inputs_dir}: {', '.join(absent)}"
-    # one row per count: the counts by column from the log, None if not found in it. Bracket access, as attributes such as
-    # sample and count are methods of the row
-    entries["count"] = entries.apply(
-        lambda e: list(PARSERS[e["kind"]](read_log(e["path"]), e["kind"], e["db_name"]).items()), axis=1
-    )
-    entries = entries.explode("count", ignore_index=True)
-    entries[["column", "count"]] = pd.DataFrame(entries["count"].tolist())
+    # the counts of the files, one row per count, joined to the entries
+    counts = pd.DataFrame(
+        [
+            {"file": e.file, "column": column, "count": count}
+            for e in entries.itertuples()
+            for column, count in PARSERS[e.kind](read_log(e.path), e.kind, e.db_name).items()
+        ]
+    ).astype({"count": "Int64"})
+    entries = entries.merge(counts, on="file")
 
     missing = entries[entries["count"].isna()]
-    if not missing.empty:
-        print(
-            "\n".join(
-                f"WARNING: count {e.column} not found in {e.path}, it is reported as NA for {e.sample} {e.run_accession}"
-                for e in missing.itertuples()
-            ),
-            file=sys.stderr,
-        )
-
-    # column -> (title, description), the profiler descriptions being by kind
-    descriptions = {
-        e.column: tuple(x.format(db=e.db_name) for x in DESCRIPTIONS.get(e.column) or DESCRIPTIONS[e.kind])
-        for e in entries.drop_duplicates("column").itertuples()
-    }
-
-    # the counts of a sample and run summed, NA if any is; NA for a column without counts for a sample and run
-    counts = (
-        entries[["sample", "run_accession", "column", "count"]]
-        .astype({"count": "Int64"})
-        .groupby(["sample", "run_accession", "column"])["count"]
-        .agg(lambda counts: counts.sum(skipna=False))
-        .unstack("column")
+    assert missing.empty, "Counts not found in their files:\n" + "\n".join(
+        f"{e.column} in {e.path} ({e.sample} {e.run_accession})" for e in missing.itertuples()
     )
 
-    # preprocessing first, in the order of the steps, then the profilers in a fixed order
-    order = [
-        "primer_trimmed_reads",
-        "readthrough_trimmed_reads",
-        "raw_reads",
-        "qc_reads",
-        "host_removed_pairs",
-        "merged_pairs",
-        "joined_pairs",
-    ]
+    # the counts of a sample and run summed; NA for a column without counts for a sample and run
+    counts = entries.groupby(["sample", "run_accession", "column"])["count"].sum().unstack("column")
+
+    # preprocessing first, in the order of the steps, then the profilers in the order of PROFILERS, each by database
+    column_kinds = dict(zip(entries["column"], entries["kind"]))
     profiler_columns = sorted(
-        (c for c in counts.columns if c not in order), key=lambda c: (PROFILERS.index(c.split("_")[0]), c)
+        (c for c in counts.columns if c not in PREPROCESSING_COLUMNS),
+        key=lambda c: (PROFILERS.index(column_kinds[c]), c),
     )
-    counts = counts[[c for c in order if c in counts.columns] + profiler_columns].astype("Int64")
+    counts = counts[[c for c in PREPROCESSING_COLUMNS if c in counts.columns] + profiler_columns].astype("Int64")
     counts.columns.name = None
     counts.to_csv(out_tsv, sep="\t", na_rep="NA")
 
-    # MultiQC custom content, json strings being valid yaml
+    # the MultiQC header of each column, the profiler descriptions being by kind
+    headers = {}
+    for e in entries.drop_duplicates("column").itertuples():
+        title, description = DESCRIPTIONS.get(e.column) or DESCRIPTIONS[e.kind]
+        headers[e.column] = {
+            "title": title.format(db=e.db_name),
+            "description": description.format(db=e.db_name),
+            "format": "{:,.0f}",
+            "scale": False,
+        }
+
+    # MultiQC custom content: the config as a commented header, json being valid yaml
+    config = {
+        "id": "read_counts",
+        "section_name": "Read counts",
+        "description": "Reads after each step. The raw and QC reads count each mate, the following columns count read"
+        " pairs (single-end: reads).",
+        "plot_type": "table",
+        "pconfig": {"id": "read_counts_table", "title": "Read counts", "col1_header": "Sample"},
+        "headers": {column: headers[column] for column in counts.columns},
+    }
     with open(out_mqc, "w") as handle:
-        handle.write(
-            "# id: 'read_counts'\n"
-            "# section_name: 'Read counts'\n"
-            "# description: 'Reads after each step. The raw and QC reads count each mate, the following columns count"
-            " read pairs (single-end: reads).'\n"
-            "# plot_type: 'table'\n"
-            "# pconfig:\n"
-            "#     id: 'read_counts_table'\n"
-            "#     title: 'Read counts'\n"
-            "#     col1_header: 'Sample'\n"
-            "# headers:\n"
-        )
-        for column in counts.columns:
-            title, description = descriptions[column]
-            handle.write(
-                f"#     {column}:\n"
-                f"#         title: {json.dumps(title)}\n"
-                f"#         description: {json.dumps(description)}\n"
-                "#         format: '{:,.0f}'\n"
-                "#         scale: false\n"
-            )
+        print(textwrap.indent(json.dumps(config, indent=4), "# "), file=handle)
         # MultiQC needs a single id column
         counts.index = counts.index.map("_".join)
         counts.to_csv(handle, sep="\t", na_rep="", index_label="sample")
