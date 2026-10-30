@@ -86,9 +86,10 @@ workflow STANDARDISATION_PROFILES {
 def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
     return ch_profiles
         .map { meta, profile -> [meta.db_name, profile] }
-        // groupTuple collects the profiles in the order in which they finish: they are sorted, so that the task inputs
-        // are the same in every run, for -resume (mOTUs and idtaxa_merge.py sort the samples themselves)
-        .groupTuple(groupTupleOptions + [sort: true])
+        // groupTuple collects the profiles in the order in which they finish: they are sorted by file name (not by path,
+        // which starts with the task hash), so that the task inputs are the same in every run, for -resume, and the
+        // samples of the mOTUs v3 merged table, in the order of its inputs, are in the same order in every run
+        .groupTuple(groupTupleOptions + [sort: { profile -> profile.name }])
         .map {
             db_name, profiles -> 
             def names = profiles.collect { it.getName() }
