@@ -29,6 +29,26 @@
             "nextflow": "26.04.3"
         }
     },
+    "lineage_table_merged_plus_unmerged": {
+        "content": [
+            [
+                "lineage\tamplicon_pe\tamplicon_se",
+                "d__Bacteria;p__Actinomycetota;c__Actinomycetes;o__Bifidobacteriales;f__Bifidobacteriaceae;g__Bifidobacterium\t135\t105",
+                "d__Bacteria;p__Bacillota;c__Bacilli;o__Lactobacillales;f__Streptococcaceae;g__Streptococcus\t135\t105",
+                "d__Bacteria;p__Bacillota;c__Clostridia;o__Eubacteriales;f__Clostridiaceae;g__Clostridium\t135\t105",
+                "d__Bacteria;p__Bacteroidota;c__Bacteroidia;o__Bacteroidales;f__Bacteroidaceae;g__Bacteroides\t135\t105",
+                "d__Bacteria;p__Pseudomonadota;c__Gammaproteobacteria;o__Enterobacterales;f__Enterobacteriaceae;g__Escherichia\t63\t49",
+                "d__Bacteria;p__Verrucomicrobiota;c__Verrucomicrobiia;o__Verrucomicrobiales;f__Akkermansiaceae;g__Akkermansia\t18\t14",
+                "unassigned\t0\t0",
+                "total_reads\t621\t483"
+            ]
+        ],
+        "timestamp": "2026-10-30T16:13:21.496902",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
     "software_versions": {
         "content": [
             {
@@ -93,9 +113,9 @@
     },
     "number_of_tasks_merged_plus_unmerged": {
         "content": [
-            14
+            15
         ],
-        "timestamp": "2026-10-28T18:55:52.73577",
+        "timestamp": "2026-10-30T16:17:25.889975",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
