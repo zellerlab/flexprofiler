@@ -389,6 +389,15 @@ The `db_name` also names the output files and directories, so it is worth statin
 
 Before IDTAXA, the primers of each amplicon run are found with PIMENTO and trimmed with cutadapt (`--perform_amplicon_primertrimming`, on by default).
 
+:::warning
+The primer detection has some limitations, so check `amplicon_primers/primers.tsv` and the read counts (`primer_trimmed_reads`, `readthrough_trimmed_reads`):
+
+- PIMENTO reports a primer only if it is at the start of more than 60% of the reads of a mate (`-m 0.60`). In libraries ligated in both orientations, with 40-60% of the pairs flipped (e.g. 50/50), neither primer passes in either mate: no primer is found and the run is not trimmed, as a run without primers. The threshold can be lowered with `ext.args` (e.g. `withName: PIMENTO_STD { ext.args = '-m 0.4' }`, adding `--merged` for single-end reads), at the risk of finding primers that are not there.
+- Single-end reads are searched with `--merged`, as if they spanned the whole amplicon: the forward primers at the start of the reads, the reverse primers at their end. In single-end reads shorter than the amplicon only the forward primer is found, so the reads running past the end of the amplicon keep the reverse complement of the reverse primer, and the adapter after it (removed by fastp only if it detects it, in files of at least 10000 reads). Single-end reads starting with the reverse primer (sequenced in the other orientation) are not recognised either.
+- The reverse primer of a library cannot be deduced from the forward primer: the PIMENTO standard library has several reverse primers per region (V3-V4: 805R, 806R, 806BR, 785R, 798R), some of them binding inside the amplicon of the others.
+
+:::
+
 IDTAXA classifies single sequences, so the pairs of paired-end reads are first merged if their mates overlap. The other pairs are handled as set by `--idtaxa_pair_handling`:
 
 - `merged_plus_joined` (default): vsearch merges the overlapping pairs and joins the others with a padding of Ns (R1, `NNNNNNNN`, reverse complement of R2). Each pair is classified once, as one sequence.
