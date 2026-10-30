@@ -7,9 +7,9 @@ process READ_COUNTS {
         : 'biocontainers/pandas:2.2.1'}"
 
     input:
-    // each file in its own folder, inputs/<index>/, as files of different steps can have the same name
-    path files, stageAs: 'inputs/*/*'
-    // with a header, one row per file, in the order of the files: sample run_accession kind db_name annot_db_name
+    // named uniquely, as in the manifest
+    path files, stageAs: 'inputs/*'
+    // with a header, one row per file: file sample run_accession kind db_name annot_db_name
     path manifest
 
     output:

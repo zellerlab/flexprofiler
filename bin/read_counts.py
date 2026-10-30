@@ -3,12 +3,12 @@
 
 usage: read_counts.py <manifest.tsv> <inputs_dir> <out.tsv> <out_mqc.tsv>
 
-The manifest has a header and one row per input file, in the order of the files, with the columns sample, run_accession,
-kind, db_name and annot_db_name, the file of row <i> (from 1) being the only one in <inputs_dir>/<i>/. The run_accession
-is that of the run, or, with run merging, the merged run of a multi-run sample (merged_<library_strategy>). The kinds
-are fastp, bowtie2, bbmap_repair, motus4, motus3, cayman and gqlib, and for amplicons cutadapt_primers,
-cutadapt_readthrough, vsearch or fastp_merge, and idtaxa. The counts of the files of a sample and run (e.g. of the runs
-merged into it) are summed. A column is written only if some file has its count.
+The manifest has a header and one row per input file, with the columns file (its name in <inputs_dir>), sample,
+run_accession, kind, db_name and annot_db_name. The run_accession is that of the run, or, with run merging, the merged
+run of a multi-run sample (merged_<library_strategy>). The kinds are fastp, bowtie2, bbmap_repair, motus4, motus3,
+cayman and gqlib, and for amplicons cutadapt_primers, cutadapt_readthrough, vsearch or fastp_merge, and idtaxa. The
+counts of the files of a sample and run (e.g. of the runs merged into it) are summed. A column is written only if some
+file has its count.
 """
 import json
 import pathlib
@@ -146,35 +146,53 @@ DESCRIPTIONS = {
 }
 
 
+def read_log(path):
+    return ANSI_ESCAPE.sub("", path.read_text())
+
+
 def main(manifest, inputs_dir, out_tsv, out_mqc):
     entries = pd.read_csv(manifest, sep="\t", dtype=str, keep_default_na=False)
 
     # cayman and gqlib write one log per annotation of a gene catalogue, with the same counts: only those of the first
-    # annotation are used
+    # annotation by name (min) are used, not by row (first), as the rows are in the order the logs arrived in, which can
+    # change between runs. The other steps have no annotation, so all their logs are kept (e.g. those of the runs merged
+    # into a run)
     first_annot = entries.groupby(["sample", "run_accession", "kind", "db_name"])["annot_db_name"].transform("min")
     entries = entries[entries["annot_db_name"] == first_annot]
 
-    rows = []  # one per count: sample, run, column, count (None if not found in a log)
-    descriptions = {}  # column -> (title, description)
-    for entry in entries.itertuples():
-        (path,) = (pathlib.Path(inputs_dir) / str(entry.Index + 1)).iterdir()
-        if entry.kind not in PARSERS:
-            sys.exit(f"Unknown kind {entry.kind} for {path}")
-        values = PARSERS[entry.kind](ANSI_ESCAPE.sub("", path.read_text()), entry.kind, entry.db_name)
-        for column, value in values.items():
-            if value is None:
-                print(
-                    f"WARNING: count {column} not found in {path}, it is reported as NA for {entry.sample}"
-                    f" {entry.run_accession}",
-                    file=sys.stderr,
-                )
-            rows.append((entry.sample, entry.run_accession, column, value))
-            description = DESCRIPTIONS.get(column) or DESCRIPTIONS[entry.kind]
-            descriptions.setdefault(column, tuple(x.format(db=entry.db_name) for x in description))
+    unknown = set(entries["kind"]) - set(PARSERS)
+    assert not unknown, f"Unknown kinds {', '.join(sorted(unknown))}"
+
+    entries["path"] = entries["file"].map(lambda file: pathlib.Path(inputs_dir) / file)
+    absent = entries.loc[~entries["path"].map(pathlib.Path.is_file), "file"]
+    assert absent.empty, f"Files of the manifest not in {inputs_dir}: {', '.join(absent)}"
+    # one row per count: the counts by column from the log, None if not found in it. Bracket access, as attributes such as
+    # sample and count are methods of the row
+    entries["count"] = entries.apply(
+        lambda e: list(PARSERS[e["kind"]](read_log(e["path"]), e["kind"], e["db_name"]).items()), axis=1
+    )
+    entries = entries.explode("count", ignore_index=True)
+    entries[["column", "count"]] = pd.DataFrame(entries["count"].tolist())
+
+    missing = entries[entries["count"].isna()]
+    if not missing.empty:
+        print(
+            "\n".join(
+                f"WARNING: count {e.column} not found in {e.path}, it is reported as NA for {e.sample} {e.run_accession}"
+                for e in missing.itertuples()
+            ),
+            file=sys.stderr,
+        )
+
+    # column -> (title, description), the profiler descriptions being by kind
+    descriptions = {
+        e.column: tuple(x.format(db=e.db_name) for x in DESCRIPTIONS.get(e.column) or DESCRIPTIONS[e.kind])
+        for e in entries.drop_duplicates("column").itertuples()
+    }
 
     # the counts of a sample and run summed, NA if any is; NA for a column without counts for a sample and run
     counts = (
-        pd.DataFrame(rows, columns=["sample", "run_accession", "column", "count"])
+        entries[["sample", "run_accession", "column", "count"]]
         .astype({"count": "Int64"})
         .groupby(["sample", "run_accession", "column"])["count"]
         .agg(lambda counts: counts.sum(skipna=False))
@@ -227,6 +245,5 @@ def main(manifest, inputs_dir, out_tsv, out_mqc):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        sys.exit(__doc__)
+    assert len(sys.argv) == 5, __doc__
     main(*sys.argv[1:])

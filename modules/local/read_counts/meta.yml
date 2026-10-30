@@ -14,13 +14,13 @@ input:
   - files:
       type: file
       description: |
-        The logs and reports of the tools, each staged in its own folder inputs/<index>/
+        The logs and reports of the tools, named uniquely, as in the manifest, staged in inputs/
       pattern: "*.{json,log}"
       ontologies: []
   - manifest:
       type: file
       description: |
-        Tab-separated, with a header, one row per input file, in the order of the files, with the columns sample,
+        Tab-separated, with a header, one row per input file, with the columns file (its name), sample,
         run_accession, kind, db_name and annot_db_name, where kind is one of fastp, bowtie2, bbmap_repair, motus4, motus3, cayman, gqlib,
         cutadapt_primers, cutadapt_readthrough, vsearch, fastp_merge and idtaxa
       pattern: "*.tsv"

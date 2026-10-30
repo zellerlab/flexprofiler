@@ -350,13 +350,13 @@ workflow FLEXPROFILER {
     */
 
     // read counts after each step, parsed from the logs, per run or, with run merging, per merged run. The [ meta, log ]
-    // of each step, with the tool in meta.tool, are split into the logs and the rows of the read counts manifest, in the
-    // same order: the row number of a log in the manifest is its index in the logs (staged in inputs/<index>/ by
-    // READ_COUNTS), so the rows are not sorted
+    // of each step, with the tool in meta.tool, are split into the logs and the rows of the read counts manifest. Logs of
+    // different steps can have the same name, so each is renamed, the manifest giving the new name: a hash of its path,
+    // unique, and stable with -resume, the work directories being kept
     // the database names are defined only for the profiler logs, and are left empty for the other steps
     def read_count_required_columns = ['sample', 'run_accession', 'kind']
     def read_count_optional_columns = ['db_name', 'annot_db_name']
-    def read_count_columns = read_count_required_columns + read_count_optional_columns
+    def read_count_columns = ['file'] + read_count_required_columns + read_count_optional_columns
     ch_read_count = PROFILING.out.read_count_logs
         .mix(params.perform_shortread_qc ? SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [meta + [tool: 'fastp'], json] } : channel.empty())
         .mix(params.perform_shortread_hostremoval ? SHORTREAD_HOSTREMOVAL.out.read_count_logs : channel.empty())
@@ -365,7 +365,8 @@ workflow FLEXPROFILER {
             // with run merging, the steps before it (QC, host removal, primer trimming) still have the run_accession of
             // each run: the counts of the runs of a multi-run sample go to its merged run, named as by the run merging
             def run = params.perform_runmerging && meta.is_multirun ? "merged_${meta.library_strategy}" : meta.run_accession
-            def label = [sample: meta.id, run_accession: run, kind: meta.tool, db_name: meta.db_name, annot_db_name: meta.annot_db_name]
+            def file_name = "${log_file.toString().md5()}_${log_file.name}"
+            def label = [file: file_name, sample: meta.id, run_accession: run, kind: meta.tool, db_name: meta.db_name, annot_db_name: meta.annot_db_name]
             // only null or blank values count as missing, not falsy ones such as 0
             def missing = read_count_required_columns.findAll { column ->
                 def value = label[column]
@@ -374,12 +375,15 @@ workflow FLEXPROFILER {
             if (missing) {
                 error("Read counts: ${missing.join(', ')} not defined for ${log_file}")
             }
-            files: log_file
+            files: [file_name, log_file]
             rows: read_count_columns.collect { column -> label[column] == null ? '' : label[column] }.join('\t')
         }
     ch_read_count_manifest = ch_read_count.rows
-        .collectFile(name: 'read_counts_manifest.tsv', seed: read_count_columns.join('\t'), newLine: true, sort: false)
-    READ_COUNTS(ch_read_count.files.collect(), ch_read_count_manifest)
+        .collectFile(name: 'read_counts_manifest.tsv', seed: read_count_columns.join('\t'), newLine: true)
+    ch_read_count_files = ch_read_count.files
+        .collectFile { file_name, log_file -> [file_name, log_file] }
+        .collect()
+    READ_COUNTS(ch_read_count_files, ch_read_count_manifest)
     ch_versions = ch_versions.mix(READ_COUNTS.out.versions)
 
     /*
