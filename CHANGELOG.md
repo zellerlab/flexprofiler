@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Changed
-- Short-read host removal aligns the two mates of paired-end reads separately with bowtie2, as single-end reads, and keeps a pair only if neither mate aligns to the host, as recommended in https://doi.org/10.1016/j.crmeth.2025.101218. Before, the pairs not aligned concordantly were kept (`bowtie2 --un-conc`), including those with one mate aligned to the host. The unaligned mates are paired again with `repair.sh`, whose log gives the `host_removed_pairs` read count
+- Short-read host removal aligns the two mates of paired-end reads separately with bowtie2, as single-end reads, and keeps a pair only if neither mate aligns to the host, as recommended in https://doi.org/10.1016/j.crmeth.2025.101218. Before, the pairs not aligned concordantly were kept (`bowtie2 --un-conc`), including those with one mate aligned to the host. The unaligned mates are paired again with `repair.sh`, whose log gives the `hostremoval_retained_pairs` read count
 
 ## v0.0.4 [27-10-2026]
 

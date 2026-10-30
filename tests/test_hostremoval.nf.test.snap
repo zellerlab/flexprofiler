@@ -128,7 +128,7 @@
                 [
                     "sample",
                     "run_accession",
-                    "host_removed_pairs"
+                    "hostremoval_retained_pairs"
                 ],
                 [
                     "host_contaminated",

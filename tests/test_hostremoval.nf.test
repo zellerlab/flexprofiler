@@ -52,10 +52,16 @@ nextflow_pipeline {
                 { assert output_pe_1 == input_pe.findAll { name -> !is_host( name ) } },
                 { assert output_pe_2 == output_pe_1 },
                 { assert output_se == input_se.findAll { name -> !is_host( name ) } },
-                // the host-removed pairs counted from the repair.sh log, and the reads from the bowtie2 log
-                { assert read_counts.find { row -> row[0] == "host_contaminated" }[read_counts[0].indexOf( "host_removed_pairs" )] == "2000" },
-                { assert read_counts.find { row -> row[0] == "host_contaminated_se" }[read_counts[0].indexOf( "host_removed_pairs" )] == "2000" },
+                // the pairs retained by host removal, counted from the repair.sh log, and the reads from the bowtie2 log
+                { assert read_counts.find { row -> row[0] == "host_contaminated" }[read_counts[0].indexOf( "hostremoval_retained_pairs" )] == "2000" },
+                { assert read_counts.find { row -> row[0] == "host_contaminated_se" }[read_counts[0].indexOf( "hostremoval_retained_pairs" )] == "2000" },
                 { assert snapshot ( read_counts ).match( "read_counts" ) },
+                // the host-removed reads (md5 of the uncompressed content)
+                { assert snapshot (
+                    path( "${output_dir}/host_contaminated_ERR5766181.unmapped_1_repaired.fastq.gz" ),
+                    path( "${output_dir}/host_contaminated_ERR5766181.unmapped_2_repaired.fastq.gz" ),
+                    path( "${output_dir}/host_contaminated_se_ERR5766181.unmapped.fastq.gz" ),
+                ).match( "hostremoval_retained_fastqs" ) },
             )
         }
     }

@@ -20,36 +20,51 @@ nextflow_pipeline {
             def gqlib_genes       = getAllFilesFromDir( "${params.outdir}/gqlib/profile_genes", include: [ '**.gene_counts.txt.gz' ] )
             def gqlib_ko          = getAllFilesFromDir( "${params.outdir}/gqlib/profile_genes", include: [ '**.KEGG_ko.txt.gz' ] )
             def gqlib_merge_dir   = "${params.outdir}/gqlib/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7"
-            def gqlib_merge_genes = path( "${gqlib_merge_dir}/GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.gene_counts.uniq_raw.txt.gz" )
-            def gqlib_merge_ko    = path( "${gqlib_merge_dir}/GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.KEGG_ko.uniq_raw.txt.gz" )
-            def gqlib_merge_genes_rows = gqlib_merge_genes.linesGzip
-            def gqlib_merge_ko_rows    = gqlib_merge_ko.linesGzip
             // the lines of the merged table of a category with a normalisation
             def gqlib_merge_lines = { category, norm -> path( "${gqlib_merge_dir}/GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.${category}.uniq_${norm}.txt.gz" ).linesGzip }
-            // the rows of a merged table for some features (first column), with the counts of each sample
-            def rows_of           = { lines, features -> lines.findAll { line -> line.split( "\t" )[0] in features } }
+            // the samples of a merged table, from its header (the line starting with the name of its first column), without
+            // the taxonomy column and the _db_mOTU suffix of the motus reports
+            def samples_in        = { lines, first_column -> lines.find { line -> line.startsWith( "${first_column}\t" ) }.split( "\t" ).drop( 1 ).findAll { column -> !( column in [ "consensus_taxonomy", "Taxonomy" ] ) }.collect { column -> column - ~/_db_mOTU$/ } }
+            // the value of a cell of a merged table, by feature (first column) and sample (column of the header, the line
+            // starting with the name of the first column)
+            def cell_of           = { lines, first_column, feature, sample ->
+                def header = lines.find { line -> line.startsWith( "${first_column}\t" ) }.split( "\t" ).collect { column -> column - ~/_db_mOTU$/ }
+                lines.find { line -> line.startsWith( "${feature}\t" ) }.split( "\t" )[ header.indexOf( sample ) ]
+            }
+            def samples           = [ '2612', '2612_se', '2613' ]
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
                 { assert snapshot ( read_counts ).match( "read_counts" ) },
-                // for each normalisation (--restrict_metrics in conf/modules.config)
+                // the whole merged tables of the genes and of KEGG_ko (a few rows with the test catalogue), for each
+                // normalisation (--restrict_metrics in conf/modules.config)
                 { assert snapshot (
                     [ 'raw', 'lnorm', 'scaled', 'rpkm' ].collectEntries { norm -> [
                         norm,
-                        rows_of( gqlib_merge_lines( 'gene_counts', norm ), [ 'gene', 'GMGC10.266_871_379.GLGB', 'GMGC10.266_660_280.AMY' ] ) +
-                            rows_of( gqlib_merge_lines( 'KEGG_ko', norm ), [ 'feature', 'total_reads', 'filtered_reads', 'ko:K00700' ] ),
+                        gqlib_merge_lines( 'gene_counts', norm ) + gqlib_merge_lines( 'KEGG_ko', norm ),
                     ] }
                 ).match( "counts" ) },
+                { assert [ 'raw', 'lnorm', 'scaled', 'rpkm' ].collect { norm -> [ samples_in( gqlib_merge_lines( 'gene_counts', norm ), 'gene' ).sort(), samples_in( gqlib_merge_lines( 'KEGG_ko', norm ), 'feature' ).sort() ] } == [ [ samples ] * 2 ] * 4 },
+                // a few counts of each normalisation: [ category, first column, feature, sample, value ]
+                { assert [
+                    raw:    [ [ 'gene_counts', 'gene', 'GMGC10.266_871_379.GLGB', '2612', '20.0' ],
+                              [ 'gene_counts', 'gene', 'GMGC10.266_660_280.AMY', '2613', '10.5' ],
+                              [ 'KEGG_ko', 'feature', 'ko:K00700', '2612_se', '20.0' ] ],
+                    lnorm:  [ [ 'gene_counts', 'gene', 'GMGC10.266_871_379.GLGB', '2612', '0.02165' ],
+                              [ 'gene_counts', 'gene', 'GMGC10.266_660_280.AMY', '2613', '0.00994' ],
+                              [ 'KEGG_ko', 'feature', 'ko:K00700', '2612_se', '0.02043' ] ],
+                    scaled: [ [ 'gene_counts', 'gene', 'GMGC10.266_871_379.GLGB', '2612', '21.7284' ],
+                              [ 'gene_counts', 'gene', 'GMGC10.266_660_280.AMY', '2613', '9.88909' ],
+                              [ 'KEGG_ko', 'feature', 'ko:K00700', '2612_se', '20.0' ] ],
+                    rpkm:   [ [ 'gene_counts', 'gene', 'GMGC10.266_871_379.GLGB', '2612', '360750.36075' ],
+                              [ 'gene_counts', 'gene', 'GMGC10.266_660_280.AMY', '2613', '497159.09091' ],
+                              [ 'KEGG_ko', 'feature', 'ko:K00700', '2612_se', '1021374.45887' ] ],
+                ].every { norm, norm_cells -> norm_cells.every { category, first_column, feature, sample, value -> cell_of( gqlib_merge_lines( category, norm ), first_column, feature, sample ) == value } } },
                 { assert snapshot (
                     gqlib_genes.collect { file -> "${file.getName()} contains 'GMGC10.266_871_379.GLGB': " + path( file.toString() ).linesGzip.any { it.startsWith( "GMGC10.266_871_379.GLGB\t" ) } },
                     gqlib_ko.collect { file -> "${file.getName()} contains 'total_reads': " + path( file.toString() ).linesGzip.any { it.startsWith( "total_reads\t" ) } },
-                    "${gqlib_merge_genes.getFileName()} contains 'GMGC10.266_871_379.GLGB': " + gqlib_merge_genes_rows.any { it.startsWith( "GMGC10.266_871_379.GLGB\t" ) },
-                    "${gqlib_merge_genes.getFileName()} contains '2612': " + gqlib_merge_genes_rows[0].split( "\t" ).contains( "2612" ),
-                    "${gqlib_merge_genes.getFileName()} contains '2613': " + gqlib_merge_genes_rows[0].split( "\t" ).contains( "2613" ),
-                    "${gqlib_merge_ko.getFileName()} contains 'total_reads': " + gqlib_merge_ko_rows.any { it.startsWith( "total_reads\t" ) },
-                    "${gqlib_merge_ko.getFileName()} contains 'ko:K00700': " + gqlib_merge_ko_rows.any { it.startsWith( "ko:K00700\t" ) },
                 ).match("gqlib") },
             )
         }

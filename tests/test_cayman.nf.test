@@ -17,30 +17,36 @@ nextflow_pipeline {
             def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             def cayman_profiles   = getAllFilesFromDir( "${params.outdir}/cayman", include: [ '**.cazy.txt.gz' ] )
-            def cayman_merge      = path( "${params.outdir}/cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz" )
-            def cayman_merge_rows = cayman_merge.linesGzip
+            def cayman_merge_raw  = path( "${params.outdir}/cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz" )
             def cayman_merge_rpkm = path( "${params.outdir}/cayman/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/cayman_v3/GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_rpkm.txt.gz" )
-            // the rows of a merged table for some features (first column), with the counts of each sample
-            def rows_of           = { lines, features -> lines.findAll { line -> line.split( "\t" )[0] in features } }
+            // the samples of a merged table, from its header (the line starting with the name of its first column), without
+            // the taxonomy column and the _db_mOTU suffix of the motus reports
+            def samples_in        = { lines, first_column -> lines.find { line -> line.startsWith( "${first_column}\t" ) }.split( "\t" ).drop( 1 ).findAll { column -> !( column in [ "consensus_taxonomy", "Taxonomy" ] ) }.collect { column -> column - ~/_db_mOTU$/ } }
+            // the value of a cell of a merged table, by feature (first column) and sample (column of the header, the line
+            // starting with the name of the first column)
+            def cell_of           = { lines, first_column, feature, sample ->
+                def header = lines.find { line -> line.startsWith( "${first_column}\t" ) }.split( "\t" ).collect { column -> column - ~/_db_mOTU$/ }
+                lines.find { line -> line.startsWith( "${feature}\t" ) }.split( "\t" )[ header.indexOf( sample ) ]
+            }
+            def samples           = [ '2612', '2612_se', '2613' ]
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
                 { assert snapshot ( read_counts ).match( "read_counts" ) },
-                // the raw counts and the rpkm
-                { assert snapshot (
-                    rows_of( cayman_merge_rows, [ 'feature', 'total_reads', 'filtered_reads', 'GH13', 'CBM48' ] ),
-                    rows_of( cayman_merge_rpkm.linesGzip, [ 'feature', 'total_reads', 'filtered_reads', 'GH13', 'CBM48' ] ),
-                ).match( "counts" ) },
+                // the whole merged tables (a few rows with the test catalogue), raw counts and rpkm
+                { assert snapshot ( cayman_merge_raw.linesGzip, cayman_merge_rpkm.linesGzip ).match( "counts" ) },
+                { assert [ cayman_merge_raw, cayman_merge_rpkm ].collect { table -> samples_in( table.linesGzip, 'feature' ).sort() } == [ samples ] * 2 },
+                // a few counts of each normalisation: [ feature, sample, value ]
+                { assert [
+                    ( cayman_merge_raw ):  [ [ 'GH13', '2612', '27.0' ], [ 'GH13', '2612_se', '12.0' ], [ 'GH13', '2613', '9.0' ], [ 'CBM48', '2613', '5.5' ] ],
+                    ( cayman_merge_rpkm ): [ [ 'GH13', '2612', '957307.46403' ], [ 'GH13', '2612_se', '1338490.8209' ], [ 'GH13', '2613', '950144.28685' ], [ 'CBM48', '2613', '751366.12022' ] ],
+                ].every { table, table_cells -> table_cells.every { feature, sample, value -> cell_of( table.linesGzip, 'feature', feature, sample ) == value } } },
                 { assert snapshot (
                     cayman_profiles.collect { file -> "${file.getName()} contains 'total_reads': " + path( file.toString() ).linesGzip.any { it.startsWith( "total_reads\t" ) } },
                     cayman_profiles.collect { file -> "${file.getName()} contains 'GH13': " + path( file.toString() ).linesGzip.any { it.startsWith( "GH13\t" ) } },
                     getAllFilesFromDir( "${params.outdir}/cayman", include: [ '**.log' ] ).collect { file -> "${file.getName()} contains 'Finished.': " + file.text.contains( "Finished." ) },
-                    "${cayman_merge.getFileName()} contains 'total_reads': " + cayman_merge_rows.any { it.startsWith( "total_reads\t" ) },
-                    "${cayman_merge.getFileName()} contains 'GH13': " + cayman_merge_rows.any { it.startsWith( "GH13\t" ) },
-                    "${cayman_merge.getFileName()} contains '2612': " + cayman_merge_rows[0].split( "\t" ).contains( "2612" ),
-                    "${cayman_merge.getFileName()} contains '2613': " + cayman_merge_rows[0].split( "\t" ).contains( "2613" ),
                 ).match("cayman") },
             )
         }

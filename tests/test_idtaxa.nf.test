@@ -21,6 +21,9 @@ nextflow_pipeline {
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
             def count_of          = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
             def merged_reads      = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.genus.tsv" ).readLines()
+            def lineage_reads     = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.lineage.tsv" ).readLines()
+            // the lineages of the reference sequences of the training set, without the root
+            def reference_lineages = path( "${baseDir}/assets/test-data/data/idtaxa/reference_16s.fasta.gz" ).linesGzip.findAll { line -> line.startsWith( ">" ) }.collect { line -> line.split( " ", 2 )[1] - "Root;" }.unique().sort()
             // the counts of each genus in the merged genus table: [ genus: [ amplicon_pe, amplicon_se ] ]
             def genus_counts      = merged_reads.findAll { line -> line.contains( 'g__' ) }.collectEntries { line -> def fields = line.split( "\t" ); [ ( fields[0].tokenize( ';' ).last() - 'g__' ), fields[1..-1]*.toInteger() ] }
             // the sequences simulated from each genus, from the read names of the input (<kind>_<genus>_<i>), each
@@ -38,9 +41,20 @@ nextflow_pipeline {
                 { assert count_of( "amplicon_pe", "joined_pairs" ) == "138" },
                 // one sequence per pair or single-end read, all of them classified to the genus they were simulated from
                 { assert genus_counts == simulated( 1 ).collectEntries { genus, n -> [ genus, [ n, n ] ] } },
+                // the same, explicitly: 7 pairs (5 ovl_, 2 noovl_) per reference sequence, 15 reference sequences per
+                // genus, except Escherichia (7) and Akkermansia (2)
+                { assert genus_counts == [
+                    Bifidobacterium: [ 105, 105 ], Streptococcus: [ 105, 105 ], Clostridium: [ 105, 105 ], Bacteroides: [ 105, 105 ],
+                    Escherichia: [ 49, 49 ], Akkermansia: [ 14, 14 ],
+                ] },
                 { assert merged_reads.takeRight( 2 ) == [ "unassigned\t0\t0", "total_reads\t483\t483" ] },
                 { assert snapshot ( read_counts ).match( "read_counts" ) },
                 { assert snapshot ( merged_reads ).match( "genus_table" ) },
+                // all the sequences are classified down to the genus, with the lineage of the reference sequences, so the
+                // lineage table is the genus table
+                { assert lineage_reads.findAll { line -> line.contains( 'g__' ) }.collect { line -> line.split( "\t" )[0] }.sort() == reference_lineages },
+                { assert lineage_reads == merged_reads },
+                { assert snapshot ( lineage_reads ).match( "lineage_table" ) },
             )
         }
     }
@@ -57,6 +71,12 @@ nextflow_pipeline {
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
             def count_of          = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
             def merged_reads      = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.genus.tsv" ).readLines()
+            def lineage_reads     = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.lineage.tsv" ).readLines()
+            // the number of sequences classified in amplicon_pe of each read pair, by read name without the /1 and /2
+            // suffix: one for a merged pair (named as its R1), two for an unmerged one (its two mates)
+            def sequences_of_pair = path( "${params.outdir}/idtaxa/test_16s/amplicon_pe_test_16s.idtaxa.classifications.tsv.gz" ).linesGzip.drop( 1 ).collect { line -> line.split( "\t" )[0].replaceAll( /\/[12]$/, '' ) }.countBy { name -> name }
+            // the lineages of the reference sequences of the training set, without the root
+            def reference_lineages = path( "${baseDir}/assets/test-data/data/idtaxa/reference_16s.fasta.gz" ).linesGzip.findAll { line -> line.startsWith( ">" ) }.collect { line -> line.split( " ", 2 )[1] - "Root;" }.unique().sort()
             // the counts of each genus in the merged genus table: [ genus: [ amplicon_pe, amplicon_se ] ]
             def genus_counts      = merged_reads.findAll { line -> line.contains( 'g__' ) }.collectEntries { line -> def fields = line.split( "\t" ); [ ( fields[0].tokenize( ';' ).last() - 'g__' ), fields[1..-1]*.toInteger() ] }
             // the sequences simulated from each genus, from the read names of the input (<kind>_<genus>_<i>), each
@@ -70,10 +90,26 @@ nextflow_pipeline {
                 // the 345 overlapping pairs are merged, the two mates of the 138 non-overlapping ones kept as separate
                 // sequences, all of them classified to the genus they were simulated from
                 { assert count_of( "amplicon_pe", "merged_pairs" ) == "345" },
+                // the 345 overlapping pairs (ovl_) classified as one merged sequence, and the 138 non-overlapping ones
+                // (noovl_) as their 276 mates
+                { assert sequences_of_pair.findAll { _name, n -> n == 1 }.keySet().collect { name -> name.tokenize( '_' )[0] }.countBy { kind -> kind } == [ ovl: 345 ] },
+                { assert sequences_of_pair.findAll { _name, n -> n == 2 }.keySet().collect { name -> name.tokenize( '_' )[0] }.countBy { kind -> kind } == [ noovl: 138 ] },
+                { assert sequences_of_pair.values().findAll { n -> n == 2 }.sum() == 276 },
                 { assert genus_counts == simulated( 2 ).collectEntries { genus, n -> [ genus, [ n, simulated( 1 )[genus] ] ] } },
+                // the same, explicitly: 9 sequences (5 ovl_, 2 x 2 noovl_ mates) per reference sequence in amplicon_pe,
+                // 7 in amplicon_se, with 15 reference sequences per genus, except Escherichia (7) and Akkermansia (2)
+                { assert genus_counts == [
+                    Bifidobacterium: [ 135, 105 ], Streptococcus: [ 135, 105 ], Clostridium: [ 135, 105 ], Bacteroides: [ 135, 105 ],
+                    Escherichia: [ 63, 49 ], Akkermansia: [ 18, 14 ],
+                ] },
                 { assert merged_reads.takeRight( 2 ) == [ "unassigned\t0\t0", "total_reads\t${345 + 2 * 138}\t483".toString() ] },
                 { assert snapshot ( read_counts ).match( "read_counts_merged_plus_unmerged" ) },
                 { assert snapshot ( merged_reads ).match( "genus_table_merged_plus_unmerged" ) },
+                // all the sequences are classified down to the genus, with the lineage of the reference sequences, so the
+                // lineage table is the genus table
+                { assert lineage_reads.findAll { line -> line.contains( 'g__' ) }.collect { line -> line.split( "\t" )[0] }.sort() == reference_lineages },
+                { assert lineage_reads == merged_reads },
+                { assert snapshot ( lineage_reads ).match( "lineage_table_merged_plus_unmerged" ) },
             )
         }
     }

@@ -504,7 +504,7 @@
                     "run_accession",
                     "raw_reads",
                     "qc_reads",
-                    "host_removed_pairs",
+                    "hostremoval_retained_pairs",
                     "gqlib_GMGC10.human-gut.95nr.0.5.percent.prevalence_pairs"
                 ],
                 [

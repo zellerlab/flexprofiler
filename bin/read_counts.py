@@ -24,7 +24,7 @@ PREPROCESSING_COLUMNS = [
     "readthrough_trimmed_reads",
     "raw_reads",
     "qc_reads",
-    "host_removed_pairs",
+    "hostremoval_retained_pairs",
     "merged_pairs",
     "joined_pairs",
 ]
@@ -47,14 +47,14 @@ def parse_fastp(text, kind, db):
 
 def parse_bowtie2(text, kind, db):
     # single-end reads, the reads not aligned (--un)
-    return {"host_removed_pairs": search_int(r"^\s*(\d+) \([\d.]+%\) aligned 0 times", text)}
+    return {"hostremoval_retained_pairs": search_int(r"^\s*(\d+) \([\d.]+%\) aligned 0 times", text)}
 
 
 def parse_bbmap_repair(text, kind, db):
     # paired-end reads, the pairs with neither mate aligned to the host, re-paired by repair.sh after aligning the
     # mates separately: repair.sh counts the reads of the pairs, i.e. both mates
     count = search_int(r"^Pairs:\s+(\d+) reads", text)
-    return {"host_removed_pairs": None if count is None else count // 2}
+    return {"hostremoval_retained_pairs": None if count is None else count // 2}
 
 
 def parse_cutadapt(text, kind, db):
@@ -134,8 +134,8 @@ DESCRIPTIONS = {
     ),
     "raw_reads": ("Raw reads", "Reads before QC (fastp), each mate counted"),
     "qc_reads": ("QC reads", "Reads after QC (fastp), each mate counted"),
-    "host_removed_pairs": (
-        "Host-removed pairs",
+    "hostremoval_retained_pairs": (
+        "Host removal retained pairs",
         "Read pairs with neither mate aligned to the host genome (single-end: reads not aligned), given to the"
         " profilers",
     ),

@@ -469,7 +469,7 @@
                     "run_accession",
                     "raw_reads",
                     "qc_reads",
-                    "host_removed_pairs",
+                    "hostremoval_retained_pairs",
                     "motus4_db_mOTU_pairs",
                     "motus3_db_mOTU_pairs",
                     "cayman_GMGC10.human-gut.95nr.0.5.percent.prevalence_pairs",

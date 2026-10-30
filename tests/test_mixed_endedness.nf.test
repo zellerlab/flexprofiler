@@ -37,9 +37,30 @@ nextflow_pipeline {
             def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             def gene_catalogue    = "GMGC10.human-gut.95nr.0.5.percent.prevalence"
-            // the rows of a table for some features (first column), and the same without the second column (the taxonomy of motus)
-            def rows_of           = { lines, features -> lines.findAll { line -> line.split( "\t" )[0] in features } }
-            def motus_rows_of     = { lines, motus -> rows_of( lines, motus ).collect { line -> line.split( "\t" ) as List }.collect { cols -> ( [ cols[0] ] + cols[2..-1] ).join( "\t" ) } }
+            // the samples of a merged table, from its header (the line starting with the name of its first column), without
+            // the taxonomy column and the _db_mOTU suffix of the motus reports
+            def samples_in        = { lines, first_column -> lines.find { line -> line.startsWith( "${first_column}\t" ) }.split( "\t" ).drop( 1 ).findAll { column -> !( column in [ "consensus_taxonomy", "Taxonomy" ] ) }.collect { column -> column - ~/_db_mOTU$/ } }
+            // the value of a cell of a merged table, by feature (first column) and sample (column of the header, the line
+            // starting with the name of the first column)
+            def cell_of           = { lines, first_column, feature, sample ->
+                def header = lines.find { line -> line.startsWith( "${first_column}\t" ) }.split( "\t" ).collect { column -> column - ~/_db_mOTU$/ }
+                lines.find { line -> line.startsWith( "${feature}\t" ) }.split( "\t" )[ header.indexOf( sample ) ]
+            }
+            def samples           = [ '2612_mixed' ]
+            // the merged table of each tool, with the name of its first column
+            def merged            = [
+                motus4: [ file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" ).readLines(), 'mOTU' ],
+                motus3: [ file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" ).readLines(), '#mOTU' ],
+                cayman: [ path( "${params.outdir}/cayman/merge/${gene_catalogue}/cayman_v3/${gene_catalogue}_cayman_v3.cazy.uniq_raw.txt.gz" ).linesGzip, 'feature' ],
+                gqlib:  [ path( "${params.outdir}/gqlib/merge/${gene_catalogue}/emapper_v2.1.7/${gene_catalogue}_emapper_v2.1.7.gene_counts.uniq_raw.txt.gz" ).linesGzip, 'gene' ],
+            ]
+            // a few counts of each tool: [ feature, sample, value ]
+            def cells             = [
+                motus4: [ [ 'mOTUv4.0_014686', '2612_mixed', '15' ], [ 'mOTUv4.0_000924', '2612_mixed', '18' ] ],
+                motus3: [ [ 'ref_mOTU_v31_03695', '2612_mixed', '19' ] ],
+                cayman: [ [ 'GH13', '2612_mixed', '21.0' ] ],
+                gqlib:  [ [ 'GMGC10.266_660_280.AMY', '2612_mixed', '19.0' ] ],
+            ]
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
@@ -48,12 +69,10 @@ nextflow_pipeline {
                 // the two runs are merged into one sample
                 { assert read_counts.collect { it[0] } == [ "sample", "2612_mixed" ] },
                 { assert snapshot ( read_counts ).match( "read_counts" ) },
-                { assert snapshot (
-                    motus_rows_of( file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" ).readLines(), [ 'mOTU', 'mOTUv4.0_014686', 'mOTUv4.0_000924', 'mOTUv4.0_unassigned' ] ),
-                    motus_rows_of( file( "${params.outdir}/motus3/merge/motus3_db_mOTU_combined_reports.txt" ).readLines(), [ '#mOTU', 'ref_mOTU_v31_03626', 'ref_mOTU_v31_03695', 'unassigned' ] ),
-                    rows_of( path( "${params.outdir}/cayman/merge/${gene_catalogue}/cayman_v3/${gene_catalogue}_cayman_v3.cazy.uniq_raw.txt.gz" ).linesGzip, [ 'feature', 'total_reads', 'filtered_reads', 'GH13', 'CBM48' ] ),
-                    rows_of( path( "${params.outdir}/gqlib/merge/${gene_catalogue}/emapper_v2.1.7/${gene_catalogue}_emapper_v2.1.7.gene_counts.uniq_raw.txt.gz" ).linesGzip, [ 'gene', 'GMGC10.266_871_379.GLGB', 'GMGC10.266_660_280.AMY' ] ),
-                ).match( "counts" ) },
+                // the whole merged tables (a few rows with the test databases)
+                { assert snapshot ( merged.collectEntries { tool, table -> [ tool, table[0] ] } ).match( "counts" ) },
+                { assert merged.collectEntries { tool, table -> [ tool, samples_in( *table ).sort() ] } == merged.collectEntries { tool, _table -> [ tool, samples ] } },
+                { assert cells.every { tool, tool_cells -> tool_cells.every { feature, sample, value -> cell_of( merged[tool][0], merged[tool][1], feature, sample ) == value } } },
             )
         }
     }

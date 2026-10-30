@@ -796,13 +796,13 @@ Please aware the outputs of each tool's standardised profile _may not_ be direct
 
 </details>
 
-The counts are parsed from the logs of the tools. There is one row per sample and run (columns `sample` and `run_accession`): with `--perform_runmerging`, the runs of a sample with more than one run are summed into its merged run (`merged_WGS` or `merged_AMPLICON`), and a sample with a single run keeps its `run_accession`. The table is also in the MultiQC report, in the section Read counts. A column is present only if its step was run: the raw and QC reads only with `--shortread_qc_tool fastp`, the host-removed pairs only with `--perform_shortread_hostremoval`, and one column per profiler and database.
+The counts are parsed from the logs of the tools. There is one row per sample and run (columns `sample` and `run_accession`): with `--perform_runmerging`, the runs of a sample with more than one run are summed into its merged run (`merged_WGS` or `merged_AMPLICON`), and a sample with a single run keeps its `run_accession`. The table is also in the MultiQC report, in the section Read counts. A column is present only if its step was run: the raw and QC reads only with `--shortread_qc_tool fastp`, the pairs retained by host removal only with `--perform_shortread_hostremoval`, and one column per profiler and database.
 
 | Column                      | Unit                                     | Source                                                                                                     |
 | --------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `raw_reads`                 | reads, each mate counted                 | fastp, reads before filtering                                                                              |
 | `qc_reads`                  | reads, each mate counted                 | fastp, reads after filtering                                                                               |
-| `host_removed_pairs`        | read pairs (single-end: reads)           | repair.sh, pairs with neither mate aligned to the host genome (single-end: bowtie2, reads not aligned), i.e. the reads given to the profilers |
+| `hostremoval_retained_pairs` | read pairs (single-end: reads)           | repair.sh, pairs with neither mate aligned to the host genome (single-end: bowtie2, reads not aligned), i.e. the reads given to the profilers |
 | `motus4_<db_name>_pairs`    | read pairs                               | mOTUs v4, inserts aligned to the database and passing the mOTUs filters (`Read N aligned inserts`)         |
 | `motus3_<db_name>_pairs`    | read pairs                               | mOTUs v3, inserts aligned to the database and passing the mOTUs filters (`Total number of inserts`)        |
 | `cayman_<db_name>_pairs`    | read pairs                               | cayman, reads aligned to the gene catalogue and passing the filters (`Reads passing filters`)              |
