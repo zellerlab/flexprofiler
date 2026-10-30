@@ -13,6 +13,8 @@ nextflow_pipeline {
                 outdir                  = "${outputDir}"
                 // mOTUs v4 fails on PE reads with different names
                 motus4_rename_reads     = true
+                // to check the reads given to motus4
+                save_analysis_ready_fastqs = true
             }
         }
 
@@ -31,6 +33,21 @@ nextflow_pipeline {
                 lines.find { line -> line.startsWith( "${feature}\t" ) }.split( "\t" )[ header.indexOf( sample ) ]
             }
             def samples           = [ '2613_suffixed' ]
+            // the number of reads of a fastq, and of those whose name (without the comment) ends with a suffix, read line
+            // by line as the files are large
+            def names_ending      = { file, suffix ->
+                def counts = [ 0, 0 ]
+                new java.util.zip.GZIPInputStream( new FileInputStream( file.toString() ) ).newReader().eachLine { line, i ->
+                    if ( ( i - 1 ) % 4 == 0 ) {
+                        counts[0]++
+                        if ( line.split( /\s/ )[0].endsWith( suffix ) ) counts[1]++
+                    }
+                }
+                counts
+            }
+            def input_prefix      = "${baseDir}/assets/test-data/data/fastq/ERX5474937_ERR5766181_suffixed"
+            // the reads of a mate renamed for motus4
+            def renamed_reads     = { mate -> "${params.outdir}/analysis_ready_fastqs/motus4/2613_suffixed_read${mate}_renamed_reads.fastq.gz" }
             // the merged table of each tool, with the name of its first column
             def merged            = [
                 motus4: [ file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" ).readLines(), 'mOTU' ],
@@ -50,6 +67,12 @@ nextflow_pipeline {
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
+                // the input reads have the /1 and /2 suffixes in their names, all of them
+                { assert names_ending( "${input_prefix}_1.fastq.gz", "/1" ) == [ 537544, 537544 ] },
+                { assert names_ending( "${input_prefix}_2.fastq.gz", "/2" ) == [ 537544, 537544 ] },
+                // the reads given to motus4 have no suffix left: the 533421 pairs retained by host removal
+                { assert names_ending( renamed_reads( 1 ), "/1" ) == [ 533421, 0 ] },
+                { assert names_ending( renamed_reads( 2 ), "/2" ) == [ 533421, 0 ] },
                 // the two mates are renamed for motus4
                 { assert workflow.trace.succeeded().count { task -> task.name.contains( "MOTUS4_RENAME_READS" ) } == 2 },
                 // the counts should be the same as for sample 2613 in the other tests, whose read names have no suffix

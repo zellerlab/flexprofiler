@@ -13,6 +13,8 @@ nextflow_pipeline {
                 outdir                  = "${outputDir}"
                 // the pairs are put back in order with bbmap repair
                 perform_repair_pe_order = true
+                // to check the order of the pairs given to the profilers
+                save_analysis_ready_fastqs = true
             }
         }
 
@@ -31,6 +33,28 @@ nextflow_pipeline {
                 lines.find { line -> line.startsWith( "${feature}\t" ) }.split( "\t" )[ header.indexOf( sample ) ]
             }
             def samples           = [ '2613_unordered' ]
+            def count_of          = { column -> read_counts.find { row -> row[0] == "2613_unordered" }[read_counts[0].indexOf( column )] }
+            // the number of pairs of two fastqs, and of those whose mates have different names (without the comment and
+            // the /1 and /2 suffix), read line by line as the files are large
+            def unsynced_pairs    = { file_1, file_2 ->
+                def name    = { line -> line.split( /\s/ )[0].replaceAll( /\/[12]$/, '' ) }
+                def readers = [ file_1, file_2 ].collect { file -> new java.util.zip.GZIPInputStream( new FileInputStream( file.toString() ) ).newReader() }
+                def counts  = [ 0, 0 ]
+                def i       = 0
+                def line_1
+                while ( ( line_1 = readers[0].readLine() ) != null ) {
+                    def line_2 = readers[1].readLine()
+                    if ( i % 4 == 0 ) {
+                        counts[0]++
+                        if ( name( line_1 ) != name( line_2 ) ) counts[1]++
+                    }
+                    i++
+                }
+                readers*.close()
+                counts
+            }
+            def input_dir         = "${baseDir}/assets/test-data/data/fastq"
+            def output_prefix     = "${params.outdir}/analysis_ready_fastqs/2613_unordered_ERR5766181.unmapped"
             // the merged table of each tool, with the name of its first column
             def merged            = [
                 motus4: [ file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" ).readLines(), 'mOTU' ],
@@ -51,6 +75,14 @@ nextflow_pipeline {
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
                 { assert workflow.trace.succeeded().count { task -> task.name.contains( ":BBMAP_REPAIR (" ) } == 1 },
+                // the input pairs are out of order: the mates of all but 3 of the 537544 pairs differ (and none with the
+                // original second file, the control)
+                { assert unsynced_pairs( "${input_dir}/ERX5474937_ERR5766181_1.fastq.gz", "${input_dir}/ERX5474937_ERR5766181_unordered_2.fastq.gz" ) == [ 537544, 537541 ] },
+                { assert unsynced_pairs( "${input_dir}/ERX5474937_ERR5766181_1.fastq.gz", "${input_dir}/ERX5474937_ERR5766181_2.fastq.gz" ) == [ 537544, 0 ] },
+                // the pairs given to the profilers are all in order, the 533421 pairs retained by host removal
+                { assert unsynced_pairs( "${output_prefix}_1_repaired.fastq.gz", "${output_prefix}_2_repaired.fastq.gz" ) == [ 533421, 0 ] },
+                // the same counts as for sample 2613 with the pairs in order (test_read_suffixes): no pair is lost
+                { assert [ 'raw_reads', 'qc_reads', 'hostremoval_retained_pairs' ].collect { column -> count_of( column ) } == [ '1075088', '1067004', '533421' ] },
                 // the counts should be close to those of sample 2613 in the other tests, whose pairs are in order
                 // (bwa estimates the insert size from batches of reads, so the order of the pairs can change a few alignments)
                 { assert snapshot ( read_counts ).match( "read_counts" ) },

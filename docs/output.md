@@ -363,6 +363,7 @@ This optional results directory will only be present in the pipeline results whe
 
 - `analysis_ready_fastqs/`
   - `<sample_id>_{fq,fastq}.gz`: Final reads that underwent preprocessing and were sent for classification/profiling.
+  - `motus4/<sample_id>_read{1,2}_renamed_reads.fastq.gz` (without `--perform_runmerging`, `<sample_id>_<run_accession>_read{1,2}_...`): With `--motus4_rename_reads`, the paired-end reads given to mOTUs v4, with the `/1` and `/2` suffixes removed from the read names (the other profilers get the reads above).
 
 </details>
 

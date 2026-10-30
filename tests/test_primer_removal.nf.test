@@ -31,8 +31,27 @@ nextflow_pipeline {
             // the primers, with the IUPAC codes of their sequences, searched in the first 60 bases of the reads
             def primer_regex      = ~/CCTACGGG[ACGT]GGC[AT]GCAG|GACTAC[ACT][ACG]GGGTATCTAATCC/
             def with_primer       = { rows -> rows.count { _name, seq -> seq.take( 60 ) =~ primer_regex } }
+            // the reverse complements of 805R and 341F, read after the end of the amplicon by the read-through pairs
+            def rc_805R_regex     = ~/GGATTAGATACCC[CGT][AGT]GTAGTC/
+            def rc_341F_regex     = ~/CTGC[AT]GCC[ACGT]CCCGTAGG/
+            // of the read-through reads (rt_) of a fastq: [ reads, 250 bp long, with rc(805R), with rc(341F) ]
+            def readthrough_stats = { rows ->
+                def rt = rows.findAll { name, _seq -> name.startsWith( 'rt_' ) }
+                [ rt.size(), rt.count { _name, seq -> seq.length() == 250 }, rt.count { _name, seq -> seq =~ rc_805R_regex }, rt.count { _name, seq -> seq =~ rc_341F_regex } ]
+            }
             def ready_files       = [ "primers_pe_primers_pe_1", "primers_pe_primers_pe_2", "mixed_orientation_mixed_pe_1", "mixed_orientation_mixed_pe_2", "primers_se_primers_se" ]
             def input_clean       = reads( "${baseDir}/assets/test-data/data/fastq/amplicon/amplicon_clean_1.fastq.gz" )
+            // the input file of each analysis-ready file
+            def inputs            = [
+                primers_pe_primers_pe_1: "amplicon_primers_1", primers_pe_primers_pe_2: "amplicon_primers_2",
+                mixed_orientation_mixed_pe_1: "amplicon_mixed_1", mixed_orientation_mixed_pe_2: "amplicon_mixed_2",
+                primers_se_primers_se: "amplicon_primers_se",
+            ]
+            def input_reads       = { name -> reads( "${baseDir}/assets/test-data/data/fastq/amplicon/${inputs[name]}.fastq.gz" ) }
+            // the outputs of PIMENTO for each read file: [ primers found (fasta), region and proportion of the reads with the primer ]
+            def pimento           = { name -> [ "primers.fasta", "primer_out.txt" ].collect { suffix -> path( "${params.outdir}/amplicon_primers/pimento/${name}_std_${suffix}" ).readLines() } }
+            def primer_341F       = [ ">341F", "CCTACGGGNGGCWGCAG" ]
+            def primer_805R       = [ ">805R", "GACTACHVGGGTATCTAATCC" ]
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( software_versions ).match( "software_versions" ) },
@@ -41,10 +60,74 @@ nextflow_pipeline {
                 // PIMENTO finds 341F at the start of R1 and 805R at the start of R2 (also with a quarter of the pairs
                 // flipped), 341F for the single-end reads, and no primer for the reads without primers
                 { assert snapshot ( primers ).match( "primers" ) },
+                // explicitly: all the reads start with the primer, but a quarter of the mixed_orientation pairs, which
+                // are flipped (R1 starting with 805R), and the reads without primers have none
+                { assert primers == [
+                    [ "sample", "run_accession", "mate", "region", "primer", "proportion" ],
+                    [ "mixed_orientation", "mixed_pe", "1", "V3-V4", "341F", "0.75" ],
+                    [ "mixed_orientation", "mixed_pe", "2", "V3-V4", "805R", "0.75" ],
+                    [ "no_primers", "clean_pe", "1", "", "", "" ],
+                    [ "no_primers", "clean_pe", "2", "", "", "" ],
+                    [ "primers_pe", "primers_pe", "1", "V3-V4", "341F", "1.0" ],
+                    [ "primers_pe", "primers_pe", "2", "V3-V4", "805R", "1.0" ],
+                    [ "primers_se", "primers_se", "1", "V3-V4", "341F", "1.0" ],
+                ] },
+                { assert [
+                    "mixed_orientation_mixed_pe_1", "mixed_orientation_mixed_pe_2", "no_primers_clean_pe_1", "no_primers_clean_pe_2",
+                    "primers_pe_primers_pe_1", "primers_pe_primers_pe_2", "primers_se_primers_se_1",
+                ].collectEntries { name -> [ name, pimento( name ) ] } == [
+                    mixed_orientation_mixed_pe_1: [ primer_341F, [ "V3-V4", "341F: 0.75" ] ],
+                    mixed_orientation_mixed_pe_2: [ primer_805R, [ "V3-V4", "805R: 0.75" ] ],
+                    no_primers_clean_pe_1:        [ [], [] ],
+                    no_primers_clean_pe_2:        [ [], [] ],
+                    primers_pe_primers_pe_1:      [ primer_341F, [ "V3-V4", "341F: 1.0" ] ],
+                    primers_pe_primers_pe_2:      [ primer_805R, [ "V3-V4", "805R: 1.0" ] ],
+                    primers_se_primers_se_1:      [ primer_341F, [ "V3-V4", "341F: 1.0" ] ],
+                ] },
+                // the input reads all start with a primer (552 reads per file), so that the check below is not passed
+                // without trimming anything, and the reads without primers have none (the control)
+                { assert ready_files.collectEntries { name -> [ name, with_primer( input_reads( name ) ) ] } == ready_files.collectEntries { name -> [ name, 552 ] } },
+                { assert ready_files.collect { name -> input_reads( name ).size() } == [ 552 ] * 5 },
+                { assert with_primer( input_clean ) == 0 },
                 // no primer left at the start of the reads, also in the flipped pairs and after a spacer
                 { assert ready_files.every { name -> with_primer( ready( name ) ) == 0 } },
-                // the read-through pairs (rt_) are cut at the end of the amplicon region (120 bp)
-                { assert ready_files.take( 4 ).every { name -> ready( name ).findAll { read_name, _seq -> read_name.startsWith( 'rt_' ) }.every { _read_name, seq -> seq.length() == 120 } } },
+                // the input read-through reads (rt_) are full length (250 bp) and read into the reverse complement of the
+                // other primer (805R for R1, 341F for R2), so that the check below is not passed without trimming them;
+                // in the mixed pairs, the 18 flipped read-through pairs are named flip_
+                { assert ready_files.collectEntries { name -> [ name, readthrough_stats( input_reads( name ) ) ] } == [
+                    primers_pe_primers_pe_1:      [ 69, 69, 69, 0 ],
+                    primers_pe_primers_pe_2:      [ 69, 69, 0, 69 ],
+                    mixed_orientation_mixed_pe_1: [ 51, 51, 51, 0 ],
+                    mixed_orientation_mixed_pe_2: [ 51, 51, 0, 51 ],
+                    primers_se_primers_se:        [ 69, 69, 69, 0 ],
+                ] },
+                // after trimming, no read reads into a reverse-complemented primer, including the flipped read-through
+                // pairs (flip_), and the read-through reads (rt_) are cut at the end of the amplicon region (120 bp):
+                // the primers found by PIMENTO in the two mates (341F in R1, 805R in R2) are trimmed at the start of both
+                // mates, and their reverse complements at the end.
+                // Except the single-end reads, in which PIMENTO finds only 341F, so only rc(341F) is trimmed at their end:
+                // PIMENTO searches them with --merged, i.e. the forward primers in the first 50 bases and the reverse
+                // primers in the last 50 bases (as if the reads spanned the whole amplicon), and reports a primer only if
+                // it is in more than 60% of the reads. 805R is in none of the 250 bp reads but the 69 read-through ones
+                // (12.5%), and in these it is not in the last 50 bases either, followed by the adapter and random bases.
+                // fastp, run after, does not remove the adapter either: it detects the adapter of single-end reads only in
+                // files of at least 10000 reads. So the read-through reads keep rc(805R), the adapter and the random
+                // bases, and lose only 341F (233 bp; one also 3 bases at its end matching the start of rc(341F)) (see TODO.md)
+                { assert ready_files.collectEntries { name -> [ name, ready( name ).count { _name, seq -> seq =~ rc_805R_regex || seq =~ rc_341F_regex } ] } == [
+                    primers_pe_primers_pe_1:      0,
+                    primers_pe_primers_pe_2:      0,
+                    mixed_orientation_mixed_pe_1: 0,
+                    mixed_orientation_mixed_pe_2: 0,
+                    primers_se_primers_se:        69,
+                ] },
+                // the lengths of the read-through reads (rt_): [ length: reads ]
+                { assert ready_files.collectEntries { name -> [ name, ready( name ).findAll { read_name, _seq -> read_name.startsWith( 'rt_' ) }.countBy { _read_name, seq -> seq.length() } ] } == [
+                    primers_pe_primers_pe_1:      [ 120: 69 ],
+                    primers_pe_primers_pe_2:      [ 120: 69 ],
+                    mixed_orientation_mixed_pe_1: [ 120: 51 ],
+                    mixed_orientation_mixed_pe_2: [ 120: 51 ],
+                    primers_se_primers_se:        [ 233: 68, 230: 1 ],
+                ] },
                 // the reads without primers are not trimmed
                 { assert workflow.trace.tasks().count { task -> task.name =~ /CUTADAPT.*no_primers/ } == 0 },
                 { assert ready( "no_primers_clean_pe_1" ) == input_clean },
