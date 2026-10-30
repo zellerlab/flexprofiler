@@ -9,6 +9,8 @@ Nextera), writes to <out_dir>:
   pairs of fragments shorter than the reads, between 40 and 140 bp, so that the reads continue into the adapter of the
   kit and then random bases (adapter_<insert length>_<i>), shuffled
 - adapters_<kit>_se.fastq.gz: the R1 of the pairs
+and adapters_truseq_se_large.fastq.gz, the R1 of N_CLEAN_LARGE and N_ADAPTER_LARGE TruSeq pairs made in the same way
+(with another seed), as fastp detects the adapters of single-end reads only in files of at least 10000 reads.
 After adapter removal, the reads must have no adapter left, and the reads of the adapter_ pairs must be as long as
 their insert.
 """
@@ -19,6 +21,7 @@ import sys
 
 SEED = 42
 N_CLEAN, N_ADAPTER = 700, 300
+N_CLEAN_LARGE, N_ADAPTER_LARGE = 8400, 3600
 LENGTH = 150
 CLEAN_FRAGMENT = 300
 ADAPTERS = {
@@ -53,23 +56,30 @@ def write(path, records):
             handle.write(f"@{name}\n{seq}\n+\n{'I' * len(seq)}\n".encode())
 
 
+def make_pairs(genome, adapter_1, adapter_2, n_clean, n_adapter, rng):
+    pairs = []
+    for i in range(n_clean):
+        insert = fragment(genome, CLEAN_FRAGMENT, rng)
+        pairs.append((f"clean_{i}", insert[:LENGTH], revcomp(insert)[:LENGTH]))
+    for i in range(n_adapter):
+        insert = fragment(genome, rng.randint(40, 140), rng)
+        pairs.append((f"adapter_{len(insert)}_{i}", read(insert, adapter_1, rng), read(revcomp(insert), adapter_2, rng)))
+    rng.shuffle(pairs)
+    return pairs
+
+
 def main(genome_path, out_dir):
     rng = random.Random(SEED)
     genome = read_fasta(genome_path)
     out_dir = pathlib.Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     for kit, (adapter_1, adapter_2) in ADAPTERS.items():
-        pairs = []
-        for i in range(N_CLEAN):
-            insert = fragment(genome, CLEAN_FRAGMENT, rng)
-            pairs.append((f"clean_{i}", insert[:LENGTH], revcomp(insert)[:LENGTH]))
-        for i in range(N_ADAPTER):
-            insert = fragment(genome, rng.randint(40, 140), rng)
-            pairs.append((f"adapter_{len(insert)}_{i}", read(insert, adapter_1, rng), read(revcomp(insert), adapter_2, rng)))
-        rng.shuffle(pairs)
+        pairs = make_pairs(genome, adapter_1, adapter_2, N_CLEAN, N_ADAPTER, rng)
         write(out_dir / f"adapters_{kit}_1.fastq.gz", [(f"{name}/1", r1) for name, r1, _ in pairs])
         write(out_dir / f"adapters_{kit}_2.fastq.gz", [(f"{name}/2", r2) for name, _, r2 in pairs])
         write(out_dir / f"adapters_{kit}_se.fastq.gz", [(name, r1) for name, r1, _ in pairs])
+    pairs = make_pairs(genome, *ADAPTERS["truseq"], N_CLEAN_LARGE, N_ADAPTER_LARGE, random.Random(SEED + 1))
+    write(out_dir / "adapters_truseq_se_large.fastq.gz", [(name, r1) for name, r1, _ in pairs])
 
 
 if __name__ == "__main__":

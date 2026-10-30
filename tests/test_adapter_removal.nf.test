@@ -33,17 +33,31 @@ nextflow_pipeline {
                     wrong_length: records.count { name, seq -> name.startsWith( "adapter_" ) && seq.length() != name.tokenize( '_' )[1].toInteger() },
                 ]
             }
+            // the input file of each sample
+            def inputs            = [
+                truseq_pe_truseq_1: "adapters_truseq_1", truseq_pe_truseq_2: "adapters_truseq_2", truseq_se_truseq: "adapters_truseq_se",
+                nextera_pe_nextera_1: "adapters_nextera_1", nextera_pe_nextera_2: "adapters_nextera_2", nextera_se_nextera: "adapters_nextera_se",
+            ]
             def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
             def stats             = samples.collectEntries { name -> [ name, adapterStats( path( "${params.outdir}/analysis_ready_fastqs/${name}.fastp.fastq.gz" ).linesGzip ) ] }
+            def input_stats       = samples.collectEntries { name -> [ name, adapterStats( path( "${baseDir}/assets/test-data/data/fastq/adapters/${inputs[name]}.fastq.gz" ).linesGzip ) ] }
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
+                // the input reads fail the checks below, so that they are not passed without removing anything: the
+                // 300 adapter_ reads are longer than their insert, and all of them have an adapter, except those with
+                // an insert of 138-140 bp (9 TruSeq, 6 Nextera), which read less than the 13 bases searched
+                { assert input_stats == samples.collectEntries { name -> [ name, [ reads: 1000, with_adapter: name.startsWith( "truseq" ) ? 291 : 294, wrong_length: 300 ] ] } },
+                { assert samples.every { name -> input_stats[name].with_adapter > 0 && input_stats[name].wrong_length > 0 } },
                 // paired-end: the adapters are found from the overlap of the mates, and removed exactly
                 { assert samples.findAll { name -> name.contains( "_pe_" ) }.every { name -> stats[name].with_adapter == 0 && stats[name].wrong_length == 0 } },
-                // single-end: fastp detects no adapter in these small files, so they are left (see TODO.md); this
-                // documents the current behaviour, the test with an adapter list checks that they can be removed
+                // single-end: fastp detects adapters only in files of at least 10000 reads, so they are left in these
+                // small files; this documents the current behaviour, the tests with an adapter list and with a larger
+                // single-end file check that they can be removed. The log of these files is also the negative control
+                // of the detection check of the test with a larger single-end file
+                { assert [ "truseq_se_truseq", "nextera_se_nextera" ].every { name -> path( "${params.outdir}/fastp/${name}.fastp.log" ).text.contains( "No adapter detected for read1" ) } },
                 { assert snapshot ( stats ).match( "adapter_stats" ) },
                 { assert snapshot ( read_counts ).match( "read_counts" ) },
             )
@@ -75,14 +89,68 @@ nextflow_pipeline {
                     wrong_length: records.count { name, seq -> name.startsWith( "adapter_" ) && seq.length() != name.tokenize( '_' )[1].toInteger() },
                 ]
             }
+            // the input file of each sample
+            def inputs            = [
+                truseq_pe_truseq_1: "adapters_truseq_1", truseq_pe_truseq_2: "adapters_truseq_2", truseq_se_truseq: "adapters_truseq_se",
+                nextera_pe_nextera_1: "adapters_nextera_1", nextera_pe_nextera_2: "adapters_nextera_2", nextera_se_nextera: "adapters_nextera_se",
+            ]
             def stats             = samples.collectEntries { name -> [ name, adapterStats( path( "${params.outdir}/analysis_ready_fastqs/${name}.fastp.fastq.gz" ).linesGzip ) ] }
+            def input_stats       = samples.collectEntries { name -> [ name, adapterStats( path( "${baseDir}/assets/test-data/data/fastq/adapters/${inputs[name]}.fastq.gz" ).linesGzip ) ] }
             assertAll(
                 { assert workflow.success },
+                // the input reads fail the check below, so that it is not passed without removing anything: all the
+                // adapter_ reads have an adapter, except those with an insert of 138-140 bp (9 TruSeq, 6 Nextera),
+                // which read less than the 13 bases searched
+                { assert input_stats == samples.collectEntries { name -> [ name, [ reads: 1000, with_adapter: name.startsWith( "truseq" ) ? 291 : 294, wrong_length: 300 ] ] } },
+                { assert samples.every { name -> input_stats[name].with_adapter > 0 } },
                 // with the adapters given, they are removed also from the single-end reads; the adapter search
                 // allows mismatches, so an insert ending like the start of an adapter can be cut a few bases short
                 // (adapter_99_16 of the Nextera pairs, to 91 bp), kept in the snapshot
                 { assert samples.every { name -> stats[name].with_adapter == 0 } },
                 { assert snapshot ( stats ).match( "adapter_stats_adapterlist" ) },
+            )
+        }
+    }
+
+    test("test_adapter_removal_se_detection") {
+        when {
+            params {
+                // 12000 single-end TruSeq reads made as those above, as fastp detects the adapters of single-end
+                // reads only in files of at least 10000 reads (see assets/test-data/README.md)
+                input                      = "${baseDir}/assets/test-data/samplesheet_adapters_se.csv"
+                outdir                     = "${outputDir}"
+                perform_shortread_hostremoval = false
+                perform_runmerging         = false
+                save_analysis_ready_fastqs = true
+                run_gqlib                  = false
+            }
+        }
+
+        then {
+            // the reads with a TruSeq or Nextera adapter left (their first 13 bases), and the reads of the pairs with a
+            // short fragment (adapter_<insert length>_<i>) not trimmed to the fragment length
+            def adapterStats      = { lines ->
+                def records = lines.collate( 4 ).collect { record -> [ record[0].substring( 1 ).split( /\s/ )[0].replaceAll( /\/[12]$/, '' ), record[1] ] }
+                [
+                    reads: records.size(),
+                    with_adapter: records.count { _name, seq -> seq.contains( "AGATCGGAAGAGC" ) || seq.contains( "CTGTCTCTTATAC" ) },
+                    wrong_length: records.count { name, seq -> name.startsWith( "adapter_" ) && seq.length() != name.tokenize( '_' )[1].toInteger() },
+                ]
+            }
+            def fastp_log         = path( "${params.outdir}/fastp/truseq_se_large_truseq_large.fastp.log" ).text
+            def stats             = adapterStats( path( "${params.outdir}/analysis_ready_fastqs/truseq_se_large_truseq_large.fastp.fastq.gz" ).linesGzip )
+            def input_stats       = adapterStats( path( "${baseDir}/assets/test-data/data/fastq/adapters/adapters_truseq_se_large.fastq.gz" ).linesGzip )
+            assertAll(
+                { assert workflow.success },
+                // the input reads fail the check below, so that it is not passed without removing anything: the 3600
+                // adapter_ reads are longer than their insert, and all but those with an insert of 138-140 bp have an
+                // adapter
+                { assert input_stats == [ reads: 12000, with_adapter: 3508, wrong_length: 3600 ] },
+                { assert input_stats.with_adapter > 0 },
+                // fastp detects the adapter without an adapter list, and removes it
+                { assert fastp_log.contains( "Detecting adapter sequence for read1" ) && !fastp_log.contains( "No adapter detected for read1" ) },
+                { assert stats.with_adapter == 0 },
+                { assert snapshot ( stats ).match( "adapter_stats_se_detection" ) },
             )
         }
     }

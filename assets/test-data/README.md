@@ -109,7 +109,7 @@ To test that adapter removal removes the adapters and keeps the inserts (`tests/
 - 700 pairs of 300 bp fragments, longer than the reads, so without adapter (`clean_<i>`)
 - 300 pairs of fragments of 40-140 bp, shorter than the reads, which continue into the adapter of the kit and then random bases (`adapter_<insert length>_<i>`). After adapter removal, they must be as long as their insert.
 
-`adapters_<kit>_se.fastq.gz` has the R1 of the pairs. They were made with [`scripts/make_adapter_reads.py`](scripts/make_adapter_reads.py) (Python 3 standard library only):
+`adapters_<kit>_se.fastq.gz` has the R1 of the pairs. fastp detects the adapters of single-end reads only in files of at least 10000 reads, so it detects none in these. To test the detection, `adapters_truseq_se_large.fastq.gz` (`samplesheet_adapters_se.csv`) has the R1 of 12000 TruSeq pairs made in the same way, with another seed (8400 `clean_` and 3600 `adapter_` pairs). They were made with [`scripts/make_adapter_reads.py`](scripts/make_adapter_reads.py) (Python 3 standard library only):
 
 ```bash
 python3 scripts/make_adapter_reads.py data/hostremoval/NC_012920.1.fna.gz data/fastq/adapters

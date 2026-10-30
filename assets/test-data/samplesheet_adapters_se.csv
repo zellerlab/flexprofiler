@@ -1,0 +1,2 @@
+sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
+truseq_se_large,truseq_large,ILLUMINA,../../../assets/test-data/data/fastq/adapters/adapters_truseq_se_large.fastq.gz,,
