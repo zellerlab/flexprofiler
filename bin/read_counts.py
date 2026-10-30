@@ -3,12 +3,12 @@
 
 usage: read_counts.py <manifest.tsv> <inputs_dir> <out.tsv> <out_mqc.tsv>
 
-The manifest has one row per input file, without header: <index> <sample> <run> <kind> <db_name> <annot_db_name>, the
-file being the only one in <inputs_dir>/<index>/. The run is the run_accession, or, with run merging, the merged run of a
-multi-run sample (merged_<library_strategy>). The kinds are fastp, bowtie2, bbmap_repair, motus4, motus3, cayman and
-gqlib, and for amplicons cutadapt_primers, cutadapt_readthrough, vsearch or fastp_merge, and idtaxa. The counts of the
-files of a sample and run (e.g. of the runs merged into it) are summed. A column is written only if some file has its
-count.
+The manifest has a header and one row per input file, in the order of the files, with the columns sample, run_accession,
+kind, db_name and annot_db_name, the file of row <i> (from 1) being the only one in <inputs_dir>/<i>/. The run_accession
+is that of the run, or, with run merging, the merged run of a multi-run sample (merged_<library_strategy>). The kinds
+are fastp, bowtie2, bbmap_repair, motus4, motus3, cayman and gqlib, and for amplicons cutadapt_primers,
+cutadapt_readthrough, vsearch or fastp_merge, and idtaxa. The counts of the files of a sample and run (e.g. of the runs
+merged into it) are summed. A column is written only if some file has its count.
 """
 import json
 import pathlib
@@ -147,14 +147,7 @@ DESCRIPTIONS = {
 
 
 def main(manifest, inputs_dir, out_tsv, out_mqc):
-    entries = pd.read_csv(
-        manifest,
-        sep="\t",
-        header=None,
-        names=["index", "sample", "run_accession", "kind", "db_name", "annot_db_name"],
-        dtype=str,
-        keep_default_na=False,
-    )
+    entries = pd.read_csv(manifest, sep="\t", dtype=str, keep_default_na=False)
 
     # cayman and gqlib write one log per annotation of a gene catalogue, with the same counts: only those of the first
     # annotation are used
@@ -164,7 +157,7 @@ def main(manifest, inputs_dir, out_tsv, out_mqc):
     rows = []  # one per count: sample, run, column, count (None if not found in a log)
     descriptions = {}  # column -> (title, description)
     for entry in entries.itertuples():
-        (path,) = (pathlib.Path(inputs_dir) / entry.index).iterdir()
+        (path,) = (pathlib.Path(inputs_dir) / str(entry.Index + 1)).iterdir()
         if entry.kind not in PARSERS:
             sys.exit(f"Unknown kind {entry.kind} for {path}")
         values = PARSERS[entry.kind](ANSI_ESCAPE.sub("", path.read_text()), entry.kind, entry.db_name)

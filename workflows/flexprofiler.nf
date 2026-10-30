@@ -350,29 +350,36 @@ workflow FLEXPROFILER {
     */
 
     // read counts after each step, parsed from the logs, per run or, with run merging, per merged run. The [ meta, log ]
-    // of each step, with the tool in meta.tool, are labelled for the read counts manifest, in the order of its columns
-    // (the database names are those of the profiler logs, empty for the other steps):
-    // [ [sample, run, kind, db_name, annot_db_name], file ]
-    ch_read_count_files = PROFILING.out.read_count_logs
+    // of each step, with the tool in meta.tool, are split into the logs and the rows of the read counts manifest, in the
+    // same order: the row number of a log in the manifest is its index in the logs (staged in inputs/<index>/ by
+    // READ_COUNTS), so the rows are not sorted
+    // the database names are defined only for the profiler logs, and are left empty for the other steps
+    def read_count_required_columns = ['sample', 'run_accession', 'kind']
+    def read_count_optional_columns = ['db_name', 'annot_db_name']
+    def read_count_columns = read_count_required_columns + read_count_optional_columns
+    ch_read_count = PROFILING.out.read_count_logs
         .mix(params.perform_shortread_qc ? SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [meta + [tool: 'fastp'], json] } : channel.empty())
         .mix(params.perform_shortread_hostremoval ? SHORTREAD_HOSTREMOVAL.out.read_count_logs : channel.empty())
         .mix(params.perform_amplicon_primertrimming ? AMPLICON_PRIMERTRIMMING.out.read_count_logs : channel.empty())
-        .map { meta, log_file ->
+        .multiMap { meta, log_file ->
             // with run merging, the steps before it (QC, host removal, primer trimming) still have the run_accession of
             // each run: the counts of the runs of a multi-run sample go to its merged run, named as by the run merging
             def run = params.perform_runmerging && meta.is_multirun ? "merged_${meta.library_strategy}" : meta.run_accession
-            [[sample: meta.id, run: run, kind: meta.tool, db_name: meta.db_name ?: '', annot_db_name: meta.annot_db_name ?: ''], log_file]
+            def label = [sample: meta.id, run_accession: run, kind: meta.tool, db_name: meta.db_name, annot_db_name: meta.annot_db_name]
+            // only null or blank values count as missing, not falsy ones such as 0
+            def missing = read_count_required_columns.findAll { column ->
+                def value = label[column]
+                value == null || value.toString().trim().isEmpty()
+            }
+            if (missing) {
+                error("Read counts: ${missing.join(', ')} not defined for ${log_file}")
+            }
+            files: log_file
+            rows: read_count_columns.collect { column -> label[column] == null ? '' : label[column] }.join('\t')
         }
-    ch_read_count_input = ch_read_count_files
-        .collect(flat: false)
-        // [ [meta, file], ... ] to [ [meta, ...], [file, ...] ]
-        .map { entries -> entries.transpose() }
-    // the manifest describes each file, in the order of the files (staged in inputs/<index>/ by READ_COUNTS): READ_COUNTS
-    // runs once, so the files and the manifest come from the same single item and cannot get out of step
-    ch_read_count_manifest = ch_read_count_input
-        .map { labels, _files -> labels.withIndex().collect { label, i -> ([i + 1] + label.values()).join('\t') }.join('\n') }
-        .collectFile(name: 'read_counts_manifest.tsv', newLine: true)
-    READ_COUNTS(ch_read_count_input.map { _labels, files -> files }, ch_read_count_manifest)
+    ch_read_count_manifest = ch_read_count.rows
+        .collectFile(name: 'read_counts_manifest.tsv', seed: read_count_columns.join('\t'), newLine: true, sort: false)
+    READ_COUNTS(ch_read_count.files.collect(), ch_read_count_manifest)
     ch_versions = ch_versions.mix(READ_COUNTS.out.versions)
 
     /*
