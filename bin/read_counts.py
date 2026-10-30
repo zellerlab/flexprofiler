@@ -4,11 +4,10 @@
 usage: read_counts.py <manifest.tsv> <inputs_dir> <out.tsv> <out_mqc.tsv>
 
 The manifest has a header and one row per input file, with the columns file (its name in <inputs_dir>), sample,
-run_accession, kind, db_name and annot_db_name. The run_accession is that of the run, or, with run merging, the merged
-run of a multi-run sample (merged_<library_strategy>). The kinds are fastp, bowtie2, bbmap_repair, motus4, motus3,
-cayman and gqlib, and for amplicons cutadapt_primers, cutadapt_readthrough, vsearch or fastp_merge, and idtaxa. The
-counts of the files of a sample and run (e.g. of the runs merged into it) are summed. A column is written only if some
-file has its count.
+run_accession, kind and db_name. The run_accession is that of the run, or, with run merging, the merged run of a multi-
+run sample (merged_<library_strategy>). The kinds are fastp, bowtie2, bbmap_repair, motus4, motus3, cayman and gqlib,
+and for amplicons cutadapt_primers, cutadapt_readthrough, vsearch or fastp_merge, and idtaxa. The counts of the files of
+a sample and run (e.g. of the runs merged into it) are summed. A column is written only if some file has its count.
 """
 import json
 import pathlib
@@ -152,13 +151,6 @@ def read_log(path):
 
 def main(manifest, inputs_dir, out_tsv, out_mqc):
     entries = pd.read_csv(manifest, sep="\t", dtype=str, keep_default_na=False)
-
-    # cayman and gqlib write one log per annotation of a gene catalogue, with the same counts: only those of the first
-    # annotation by name (min) are used, not by row (first), as the rows are in the order the logs arrived in, which can
-    # change between runs. The other steps have no annotation, so all their logs are kept (e.g. those of the runs merged
-    # into a run)
-    first_annot = entries.groupby(["sample", "run_accession", "kind", "db_name"])["annot_db_name"].transform("min")
-    entries = entries[entries["annot_db_name"] == first_annot]
 
     unknown = set(entries["kind"]) - set(PARSERS)
     assert not unknown, f"Unknown kinds {', '.join(sorted(unknown))}"

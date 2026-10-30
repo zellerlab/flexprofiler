@@ -2,6 +2,7 @@
 // Run profiling
 //
 
+include { samplesheetToList             } from 'plugin/nf-schema'
 include { BIOAWK as MOTUS4_RENAME_READS } from '../../modules/nf-core/bioawk/main'
 include { MOTUS4_PROFILE                } from '../../modules/local/motus4/profile/main'
 include { MOTUS_PROFILE  as MOTUS3_PROFILE  } from '../../modules/nf-core/motus/profile'
@@ -107,6 +108,17 @@ workflow PROFILING {
             def index = ['amb', 'ann', 'bwt', 'pac', 'sa'].collect { ext -> file("${fasta}.${ext}", checkIfExists: true) }
             [type, [tool: 'bwa', db_name: db_name, type: type.type, profilers: db_metas], index]
         }
+
+    // the read counts of cayman and gqlib are those of the alignment, the same for all the annotations of a gene
+    // catalogue: only the log of the annotation first in the database sheet is used for them. The sheet is read again,
+    // as the order of its rows is lost in the database channel
+    def first_annots = samplesheetToList(params.databases, "assets/schema_database.json")
+        .collect { db_meta, _db_path -> db_meta }
+        .findAll { db_meta -> db_meta.tool in ['cayman', 'gqlib'] }
+        // the first row of each gene catalogue and profiler
+        .unique { db_meta -> [db_meta.tool, db_meta.db_name] }
+        .collect { db_meta -> [db_meta.tool, db_meta.db_name, db_meta.annot_db_name] }
+    def is_first_annot_log = { meta, _log_file -> [meta.tool, meta.db_name, meta.annot_db_name] in first_annots }
 
     // IDTAXA classifies single sequences: the pairs of paired-end amplicon reads are merged if they overlap, and the
     // others joined with a padding of Ns (merged_plus_joined, vsearch) or kept as two separate mates
@@ -218,7 +230,7 @@ workflow PROFILING {
         CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.annot)
         ch_versions = ch_versions.mix(CAYMAN_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
-        ch_read_count_logs = ch_read_count_logs.mix(CAYMAN_PROFILE.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(CAYMAN_PROFILE.out.log.filter(is_first_annot_log))
     }
 
     if (params.run_gqlib) {
@@ -231,7 +243,7 @@ workflow PROFILING {
         GQLIB_PROFILE_GENES(ch_input_for_gqlib.bam, ch_input_for_gqlib.annot)
         ch_versions = ch_versions.mix(GQLIB_PROFILE_GENES.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(GQLIB_PROFILE_GENES.out.profiles)
-        ch_read_count_logs = ch_read_count_logs.mix(GQLIB_PROFILE_GENES.out.log)
+        ch_read_count_logs = ch_read_count_logs.mix(GQLIB_PROFILE_GENES.out.log.filter(is_first_annot_log))
     }
 
     if (params.run_idtaxa) {
@@ -249,7 +261,7 @@ workflow PROFILING {
 
     emit:
     profiles        = ch_raw_profiles // channel: [ val(meta), [ reads ] ] - should be text files or biom
-    read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman, gqlib and idtaxa (with meta.db_name), and of vsearch or fastp (merging the pairs for idtaxa), with the tool in meta.tool
+    read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman, gqlib (of the first annotation of each gene catalogue) and idtaxa (with meta.db_name), and of vsearch or fastp (merging the pairs for idtaxa), with the tool in meta.tool
     versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }

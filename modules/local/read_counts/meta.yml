@@ -21,7 +21,7 @@ input:
       type: file
       description: |
         Tab-separated, with a header, one row per input file, with the columns file (its name), sample,
-        run_accession, kind, db_name and annot_db_name, where kind is one of fastp, bowtie2, bbmap_repair, motus4, motus3, cayman, gqlib,
+        run_accession, kind and db_name, where kind is one of fastp, bowtie2, bbmap_repair, motus4, motus3, cayman, gqlib,
         cutadapt_primers, cutadapt_readthrough, vsearch, fastp_merge and idtaxa
       pattern: "*.tsv"
       ontologies: []

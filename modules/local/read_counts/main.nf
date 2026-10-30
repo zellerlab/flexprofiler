@@ -9,7 +9,7 @@ process READ_COUNTS {
     input:
     // named uniquely, as in the manifest
     path files, stageAs: 'inputs/*'
-    // with a header, one row per file: file sample run_accession kind db_name annot_db_name
+    // with a header, one row per file: file sample run_accession kind db_name
     path manifest
 
     output:

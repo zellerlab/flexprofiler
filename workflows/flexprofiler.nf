@@ -355,7 +355,7 @@ workflow FLEXPROFILER {
     // unique, and stable with -resume, the work directories being kept
     // the database names are defined only for the profiler logs, and are left empty for the other steps
     def read_count_required_columns = ['sample', 'run_accession', 'kind']
-    def read_count_optional_columns = ['db_name', 'annot_db_name']
+    def read_count_optional_columns = ['db_name']
     def read_count_columns = ['file'] + read_count_required_columns + read_count_optional_columns
     ch_read_count = PROFILING.out.read_count_logs
         .mix(params.perform_shortread_qc ? SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [meta + [tool: 'fastp'], json] } : channel.empty())
@@ -366,7 +366,7 @@ workflow FLEXPROFILER {
             // each run: the counts of the runs of a multi-run sample go to its merged run, named as by the run merging
             def run = params.perform_runmerging && meta.is_multirun ? "merged_${meta.library_strategy}" : meta.run_accession
             def file_name = "${log_file.toString().md5()}_${log_file.name}"
-            def label = [file: file_name, sample: meta.id, run_accession: run, kind: meta.tool, db_name: meta.db_name, annot_db_name: meta.annot_db_name]
+            def label = [file: file_name, sample: meta.id, run_accession: run, kind: meta.tool, db_name: meta.db_name]
             // only null or blank values count as missing, not falsy ones such as 0
             def missing = read_count_required_columns.findAll { column ->
                 def value = label[column]
