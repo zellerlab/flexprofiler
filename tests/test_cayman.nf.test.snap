@@ -15,16 +15,12 @@
                 "2612_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log contains 'Finished.': true",
                 "2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log contains 'Finished.': true",
                 "2613_GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cayman.log contains 'Finished.': true"
-            ],
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains 'total_reads': true",
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains 'GH13': true",
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains '2612': true",
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_cayman_v3.cazy.uniq_raw.txt.gz contains '2613': true"
+            ]
         ],
-        "timestamp": "2026-10-27T16:18:47.615295",
+        "timestamp": "2026-10-30T15:13:17.515489",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "number_of_tasks": {
@@ -77,7 +73,7 @@
                     "cat": 9.5
                 },
                 "READ_COUNTS": {
-                    "python": "3.9.5"
+                    "pandas": "2.2.1"
                 },
                 "SAMTOOLS_INDEX": {
                     "samtools": 1.2
@@ -90,10 +86,10 @@
                 }
             }
         ],
-        "timestamp": "2026-10-28T09:37:09.054247",
+        "timestamp": "2026-10-30T15:13:17.468543",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "counts": {
@@ -102,6 +98,7 @@
                 "feature\t2612\t2612_se\t2613",
                 "total_reads\t80.0\t32.0\t23.0",
                 "filtered_reads\t60.0\t20.0\t20.0",
+                "CBM34\t16.0\t2.0\t4.0",
                 "CBM48\t12.0\t6.0\t5.5",
                 "GH13\t27.0\t12.0\t9.0"
             ],
@@ -109,14 +106,15 @@
                 "feature\t2612\t2612_se\t2613",
                 "total_reads\t80.0\t32.0\t23.0",
                 "filtered_reads\t60.0\t20.0\t20.0",
+                "CBM34\t728597.44991\t273224.04372\t546448.08743",
                 "CBM48\t546448.08743\t819672.13115\t751366.12022",
                 "GH13\t957307.46403\t1338490.8209\t950144.28685"
             ]
         ],
-        "timestamp": "2026-10-27T18:34:19.640835",
+        "timestamp": "2026-10-30T15:13:17.492354",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "filenames": {

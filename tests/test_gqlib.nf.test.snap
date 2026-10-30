@@ -49,7 +49,7 @@
                     "cat": 9.5
                 },
                 "READ_COUNTS": {
-                    "python": "3.9.5"
+                    "pandas": "2.2.1"
                 },
                 "SAMTOOLS_INDEX": {
                     "samtools": 1.2
@@ -62,10 +62,10 @@
                 }
             }
         ],
-        "timestamp": "2026-10-28T09:42:24.398349",
+        "timestamp": "2026-10-30T15:19:30.356448",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "counts": {
@@ -78,7 +78,15 @@
                     "feature\t2612\t2612_se\t2613",
                     "total_reads\t80.0\t32.0\t23.0",
                     "filtered_reads\t60.0\t20.0\t20.0",
-                    "ko:K00700\t55.0\t20.0\t18.5"
+                    "category\t55.0\t20.0\t18.5",
+                    "ko:K00700\t55.0\t20.0\t18.5",
+                    "ko:K00705\t35.0\t9.0\t10.5",
+                    "ko:K01187\t55.0\t20.0\t18.5",
+                    "ko:K01200\t35.0\t9.0\t10.5",
+                    "ko:K01236\t20.0\t11.0\t8.0",
+                    "ko:K02438\t35.0\t9.0\t10.5",
+                    "ko:K06044\t35.0\t9.0\t10.5",
+                    "ko:K17734\t20.0\t11.0\t8.0"
                 ],
                 "lnorm": [
                     "gene\t2612\t2612_se\t2613",
@@ -87,7 +95,15 @@
                     "feature\t2612\t2612_se\t2613",
                     "total_reads\t80.0\t32.0\t23.0",
                     "filtered_reads\t60.0\t20.0\t20.0",
-                    "ko:K00700\t0.05479\t0.02043\t0.0186"
+                    "category\t0.05479\t0.02043\t0.0186",
+                    "ko:K00700\t0.05479\t0.02043\t0.0186",
+                    "ko:K00705\t0.03314\t0.00852\t0.00994",
+                    "ko:K01187\t0.05479\t0.02043\t0.0186",
+                    "ko:K01200\t0.03314\t0.00852\t0.00994",
+                    "ko:K01236\t0.02165\t0.0119\t0.00866",
+                    "ko:K02438\t0.03314\t0.00852\t0.00994",
+                    "ko:K06044\t0.03314\t0.00852\t0.00994",
+                    "ko:K17734\t0.02165\t0.0119\t0.00866"
                 ],
                 "scaled": [
                     "gene\t2612\t2612_se\t2613",
@@ -96,7 +112,15 @@
                     "feature\t2612\t2612_se\t2613",
                     "total_reads\t80.0\t32.0\t23.0",
                     "filtered_reads\t60.0\t20.0\t20.0",
-                    "ko:K00700\t55.0\t20.0\t18.5"
+                    "category\t55.0\t20.0\t18.5",
+                    "ko:K00700\t55.0\t20.0\t18.5",
+                    "ko:K00705\t33.2716\t8.34437\t9.88909",
+                    "ko:K01187\t55.0\t20.0\t18.5",
+                    "ko:K01200\t33.2716\t8.34437\t9.88909",
+                    "ko:K01236\t21.7284\t11.65563\t8.61091",
+                    "ko:K02438\t33.2716\t8.34437\t9.88909",
+                    "ko:K06044\t33.2716\t8.34437\t9.88909",
+                    "ko:K17734\t21.7284\t11.65563\t8.61091"
                 ],
                 "rpkm": [
                     "gene\t2612\t2612_se\t2613",
@@ -105,14 +129,22 @@
                     "feature\t2612\t2612_se\t2613",
                     "total_reads\t80.0\t32.0\t23.0",
                     "filtered_reads\t60.0\t20.0\t20.0",
-                    "ko:K00700\t913149.35065\t1021374.45887\t930059.52381"
+                    "category\t913149.35065\t1021374.45887\t930059.52381",
+                    "ko:K00700\t913149.35065\t1021374.45887\t930059.52381",
+                    "ko:K00705\t552398.9899\t426136.36364\t497159.09091",
+                    "ko:K01187\t913149.35065\t1021374.45887\t930059.52381",
+                    "ko:K01200\t552398.9899\t426136.36364\t497159.09091",
+                    "ko:K01236\t360750.36075\t595238.09524\t432900.4329",
+                    "ko:K02438\t552398.9899\t426136.36364\t497159.09091",
+                    "ko:K06044\t552398.9899\t426136.36364\t497159.09091",
+                    "ko:K17734\t360750.36075\t595238.09524\t432900.4329"
                 ]
             }
         ],
-        "timestamp": "2026-10-27T18:39:02.793623",
+        "timestamp": "2026-10-30T15:19:30.378956",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "filenames": {
@@ -550,17 +582,12 @@
                 "2612_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.KEGG_ko.txt.gz contains 'total_reads': true",
                 "2612_se_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.KEGG_ko.txt.gz contains 'total_reads': true",
                 "2613_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.KEGG_ko.txt.gz contains 'total_reads': true"
-            ],
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.gene_counts.uniq_raw.txt.gz contains 'GMGC10.266_871_379.GLGB': true",
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.gene_counts.uniq_raw.txt.gz contains '2612': true",
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.gene_counts.uniq_raw.txt.gz contains '2613': true",
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.KEGG_ko.uniq_raw.txt.gz contains 'total_reads': true",
-            "GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.KEGG_ko.uniq_raw.txt.gz contains 'ko:K00700': true"
+            ]
         ],
-        "timestamp": "2026-10-27T16:25:45.167438",
+        "timestamp": "2026-10-30T15:19:30.398279",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     }
 }

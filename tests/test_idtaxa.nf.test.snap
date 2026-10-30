@@ -1,12 +1,32 @@
 {
+    "lineage_table": {
+        "content": [
+            [
+                "lineage\tamplicon_pe\tamplicon_se",
+                "d__Bacteria;p__Actinomycetota;c__Actinomycetes;o__Bifidobacteriales;f__Bifidobacteriaceae;g__Bifidobacterium\t105\t105",
+                "d__Bacteria;p__Bacillota;c__Bacilli;o__Lactobacillales;f__Streptococcaceae;g__Streptococcus\t105\t105",
+                "d__Bacteria;p__Bacillota;c__Clostridia;o__Eubacteriales;f__Clostridiaceae;g__Clostridium\t105\t105",
+                "d__Bacteria;p__Bacteroidota;c__Bacteroidia;o__Bacteroidales;f__Bacteroidaceae;g__Bacteroides\t105\t105",
+                "d__Bacteria;p__Pseudomonadota;c__Gammaproteobacteria;o__Enterobacterales;f__Enterobacteriaceae;g__Escherichia\t49\t49",
+                "d__Bacteria;p__Verrucomicrobiota;c__Verrucomicrobiia;o__Verrucomicrobiales;f__Akkermansiaceae;g__Akkermansia\t14\t14",
+                "unassigned\t0\t0",
+                "total_reads\t483\t483"
+            ]
+        ],
+        "timestamp": "2026-10-30T14:05:25.050582",
+        "meta": {
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
+        }
+    },
     "number_of_tasks": {
         "content": [
-            14
+            15
         ],
-        "timestamp": "2026-10-28T18:03:04.970801",
+        "timestamp": "2026-10-30T15:20:43.927986",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "software_versions": {
@@ -28,13 +48,14 @@
                     "decipher": "3.6.0"
                 },
                 "IDTAXA_MERGE": {
-                    "python": "3.9.5"
+                    "pandas": "2.2.1",
+                    "python": "3.12.3"
                 },
                 "PIMENTO_STD": {
                     "pimento": "1.3.3"
                 },
                 "READ_COUNTS": {
-                    "python": "3.9.5"
+                    "pandas": "2.2.1"
                 },
                 "VSEARCH_MERGEJOIN": {
                     "vsearch": "2.32.0"
@@ -44,10 +65,10 @@
                 }
             }
         ],
-        "timestamp": "2026-10-28T18:03:04.969861",
+        "timestamp": "2026-10-30T15:20:43.919035",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "genus_table_merged_plus_unmerged": {
@@ -125,10 +146,8 @@
                 "idtaxa/merge/test_16s/test_16s.order.tsv",
                 "idtaxa/merge/test_16s/test_16s.phylum.tsv",
                 "idtaxa/test_16s",
-                "idtaxa/test_16s/amplicon_pe_test_16s.idtaxa.classifications.tsv.gz",
                 "idtaxa/test_16s/amplicon_pe_test_16s.idtaxa.log",
                 "idtaxa/test_16s/amplicon_pe_test_16s.idtaxa.profile.tsv",
-                "idtaxa/test_16s/amplicon_se_test_16s.idtaxa.classifications.tsv.gz",
                 "idtaxa/test_16s/amplicon_se_test_16s.idtaxa.log",
                 "idtaxa/test_16s/amplicon_se_test_16s.idtaxa.profile.tsv",
                 "multiqc",
@@ -304,10 +323,10 @@
                 "vsearch/amplicon_pe.vsearch.log"
             ]
         ],
-        "timestamp": "2026-10-28T18:03:04.971502",
+        "timestamp": "2026-10-30T15:20:43.939838",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "read_counts": {

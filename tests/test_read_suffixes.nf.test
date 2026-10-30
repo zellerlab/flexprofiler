@@ -47,7 +47,7 @@ nextflow_pipeline {
             }
             def input_prefix      = "${baseDir}/assets/test-data/data/fastq/ERX5474937_ERR5766181_suffixed"
             // the reads of a mate renamed for motus4
-            def renamed_reads     = { mate -> "${params.outdir}/analysis_ready_fastqs/motus4/2613_suffixed_ERR5766181_read${mate}_renamed_reads.fastq.gz" }
+            def renamed_reads     = { mate -> "${params.outdir}/analysis_ready_fastqs/motus4/2613_suffixed_read${mate}_renamed_reads.fastq.gz" }
             // the merged table of each tool, with the name of its first column
             def merged            = [
                 motus4: [ file( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" ).readLines(), 'mOTU' ],

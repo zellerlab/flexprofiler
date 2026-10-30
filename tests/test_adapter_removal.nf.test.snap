@@ -285,6 +285,20 @@
             "nextflow": "26.04.2"
         }
     },
+    "adapter_stats_se_detection": {
+        "content": [
+            {
+                "reads": 12000,
+                "with_adapter": 0,
+                "wrong_length": 0
+            }
+        ],
+        "timestamp": "2026-10-30T13:54:05.306159",
+        "meta": {
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
+        }
+    },
     "read_counts": {
         "content": [
             [

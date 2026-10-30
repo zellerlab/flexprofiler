@@ -147,5 +147,17 @@
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
         }
+    },
+    "hostremoval_retained_fastqs": {
+        "content": [
+            "host_contaminated_ERR5766181.unmapped_1_repaired.fastq.gz:md5,35701d1ed90ddcdcc6ba284441d8f5e7",
+            "host_contaminated_ERR5766181.unmapped_2_repaired.fastq.gz:md5,4504338593ca6d20d80c54b09117c2d5",
+            "host_contaminated_se_ERR5766181.unmapped.fastq.gz:md5,4bd3e0074693c531419ef02191f9cb93"
+        ],
+        "timestamp": "2026-10-30T14:04:45.596121",
+        "meta": {
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
+        }
     }
 }

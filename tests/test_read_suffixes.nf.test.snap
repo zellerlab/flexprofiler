@@ -64,7 +64,7 @@
                     "bioawk": 1.0
                 },
                 "READ_COUNTS": {
-                    "python": "3.9.5"
+                    "pandas": "2.2.1"
                 },
                 "SAMTOOLS_INDEX": {
                     "samtools": 1.2
@@ -77,48 +77,64 @@
                 }
             }
         ],
-        "timestamp": "2026-10-28T10:48:00.769076",
+        "timestamp": "2026-10-30T15:58:19.300306",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "counts": {
         "content": [
-            [
-                "mOTU\t2613_suffixed_db_mOTU",
-                "mOTUv4.0_000924\t6",
-                "mOTUv4.0_014686\t7",
-                "mOTUv4.0_unassigned\t75"
-            ],
-            [
-                "#mOTU\t2613_suffixed_db_mOTU",
-                "ref_mOTU_v31_03626\t4",
-                "ref_mOTU_v31_03695\t7",
-                "unassigned\t0"
-            ],
-            [
-                "feature\t2613_suffixed",
-                "total_reads\t23.0",
-                "filtered_reads\t20.0",
-                "CBM48\t5.5",
-                "GH13\t9.0"
-            ],
-            [
-                "gene\t2613_suffixed",
-                "GMGC10.266_660_280.AMY\t10.5",
-                "GMGC10.266_871_379.GLGB\t8.0"
-            ]
+            {
+                "motus4": [
+                    "#tool_version=4.0.4\tdatabase_version=4.0\tmin_alignment_length=75\tmin_mgcs=3\tcount_mode=INSERT_SCALED\tvalue_type=counts",
+                    "mOTU\tTaxonomy\t2613_suffixed_db_mOTU",
+                    "mOTUv4.0_000924\td__Archaea;p__Methanobacteriota;c__Methanobacteria;o__Methanobacteriales;f__Methanobacteriaceae;g__Methanobrevibacter_A;s__Methanobrevibacter_A smithii\t6",
+                    "mOTUv4.0_001912\td__Bacteria;p__Actinomycetota;c__Coriobacteriia;o__Coriobacteriales;f__Atopobiaceae;g__Paratractidigestivibacter;s__Paratractidigestivibacter sp003150175\t10",
+                    "mOTUv4.0_014686\td__Bacteria;p__Actinomycetota;c__Coriobacteriia;o__Coriobacteriales;f__Coriobacteriaceae;g__Collinsella;s__Collinsella sp900768795\t7",
+                    "mOTUv4.0_014998\td__Bacteria;p__Bacillota_I;c__Bacilli_A;o__Erysipelotrichales;f__Erysipelotrichaceae;g__Absicoccus;s__Absicoccus sp000434355\t3",
+                    "mOTUv4.0_unassigned\td__;p___A;c__;o__;f__;g__;s__\t75"
+                ],
+                "motus3": [
+                    "# motus version 3.1.0 | merge 3.1.0 | info merged profiles: # git tag version 3.1.0 |  motus version 3.1.0 | map_tax 3.1.0 | gene database: nr3.1.0 | calc_mgc 3.1.0 -y insert.scaled_counts -l 75 | calc_motu 3.1.0 -k mOTU -C no_CAMI -g 3 -c | taxonomy: ref_mOTU_3.1.0 meta_mOTU_3.1.0 ",
+                    "# call: python /usr/local/bin/motus merge -db db_mOTU -i 2613_suffixed_db_mOTU.out -o motus3_db_mOTU_combined_reports.txt",
+                    "#mOTU\tconsensus_taxonomy\t2613_suffixed_db_mOTU",
+                    "ref_mOTU_v31_03379\tk__Archaea|p__Euryarchaeota|c__Halobacteria|o__Halobacteriales|f__Halococcaceae|g__Halococcus|s__Halococcus morrhuae\t18",
+                    "ref_mOTU_v31_03626\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella aerofaciens [Collinsella sp. CAG:166/Collinsella sp. 4_8_47FAA/Collinsella aerofaciens]\t4",
+                    "ref_mOTU_v31_03695\tk__Archaea|p__Euryarchaeota|c__Methanobacteria|o__Methanobacteriales|f__Methanobacteriaceae|g__Methanobrevibacter|s__Methanobrevibacter smithii [Methanobrevibacter smithii CAG:186/Methanobrevibacter sp. A54/Methanobrevibacter smithii]\t7",
+                    "ext_mOTU_v31_17631\tk__Bacteria|p__Actinobacteria|c__Coriobacteriia|o__Coriobacteriales|f__Coriobacteriaceae|g__Collinsella|s__Collinsella species incertae sedis\t9",
+                    "unassigned\tunassigned\t0"
+                ],
+                "cayman": [
+                    "feature\t2613_suffixed",
+                    "total_reads\t23.0",
+                    "filtered_reads\t20.0",
+                    "CBM34\t4.0",
+                    "CBM48\t5.5",
+                    "GH13\t9.0"
+                ],
+                "gqlib": [
+                    "gene\t2613_suffixed",
+                    "GMGC10.266_660_280.AMY\t10.5",
+                    "GMGC10.266_871_379.GLGB\t8.0"
+                ]
+            }
         ],
-        "timestamp": "2026-10-27T21:31:06.200737",
+        "timestamp": "2026-10-30T15:58:20.877472",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "filenames": {
         "content": [
             [
+                "analysis_ready_fastqs",
+                "analysis_ready_fastqs/2613_suffixed_ERR5766181.unmapped_1_repaired.fastq.gz",
+                "analysis_ready_fastqs/2613_suffixed_ERR5766181.unmapped_2_repaired.fastq.gz",
+                "analysis_ready_fastqs/motus4",
+                "analysis_ready_fastqs/motus4/2613_suffixed_read1_renamed_reads.fastq.gz",
+                "analysis_ready_fastqs/motus4/2613_suffixed_read2_renamed_reads.fastq.gz",
                 "bowtie2",
                 "bowtie2/align",
                 "bowtie2/align/2613_suffixed_ERR5766181.unmapped.repair.sh.log",
@@ -455,10 +471,10 @@
                 "samtools/stats/2613_suffixed_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-10-28T10:48:00.796502",
+        "timestamp": "2026-10-30T15:58:19.317363",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "read_counts": {

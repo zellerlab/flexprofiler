@@ -45,7 +45,7 @@
                     "motus4": "4.0.4"
                 },
                 "READ_COUNTS": {
-                    "python": "3.9.5"
+                    "pandas": "2.2.1"
                 },
                 "SAMTOOLS_INDEX": {
                     "samtools": 1.2
@@ -58,10 +58,10 @@
                 }
             }
         ],
-        "timestamp": "2026-10-28T10:30:02.102976",
+        "timestamp": "2026-10-30T15:51:38.603928",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "motus4": {
@@ -88,16 +88,19 @@
     "counts": {
         "content": [
             [
-                "mOTU\t2612_db_mOTU\t2612_se_db_mOTU\t2613_db_mOTU",
-                "mOTUv4.0_000924\t18\t3\t6",
-                "mOTUv4.0_014686\t15\t3\t7",
-                "mOTUv4.0_unassigned\t116\t32\t75"
+                "#tool_version=4.0.4\tdatabase_version=4.0\tmin_alignment_length=75\tmin_mgcs=3\tcount_mode=INSERT_SCALED\tvalue_type=counts",
+                "mOTU\tTaxonomy\t2612_db_mOTU\t2612_se_db_mOTU\t2613_db_mOTU",
+                "mOTUv4.0_000924\td__Archaea;p__Methanobacteriota;c__Methanobacteria;o__Methanobacteriales;f__Methanobacteriaceae;g__Methanobrevibacter_A;s__Methanobrevibacter_A smithii\t18\t3\t6",
+                "mOTUv4.0_001912\td__Bacteria;p__Actinomycetota;c__Coriobacteriia;o__Coriobacteriales;f__Atopobiaceae;g__Paratractidigestivibacter;s__Paratractidigestivibacter sp003150175\t13\t3\t10",
+                "mOTUv4.0_014686\td__Bacteria;p__Actinomycetota;c__Coriobacteriia;o__Coriobacteriales;f__Coriobacteriaceae;g__Collinsella;s__Collinsella sp900768795\t15\t3\t7",
+                "mOTUv4.0_014998\td__Bacteria;p__Bacillota_I;c__Bacilli_A;o__Erysipelotrichales;f__Erysipelotrichaceae;g__Absicoccus;s__Absicoccus sp000434355\t3\t1\t3",
+                "mOTUv4.0_unassigned\td__;p___A;c__;o__;f__;g__;s__\t116\t32\t75"
             ]
         ],
-        "timestamp": "2026-10-28T10:30:02.139134",
+        "timestamp": "2026-10-30T15:51:38.615593",
         "meta": {
-            "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nf-test": "0.9.4",
+            "nextflow": "26.04.3"
         }
     },
     "filenames": {

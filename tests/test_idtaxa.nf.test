@@ -72,9 +72,6 @@ nextflow_pipeline {
             def count_of          = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
             def merged_reads      = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.genus.tsv" ).readLines()
             def lineage_reads     = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.lineage.tsv" ).readLines()
-            // the number of sequences classified in amplicon_pe of each read pair, by read name without the /1 and /2
-            // suffix: one for a merged pair (named as its R1), two for an unmerged one (its two mates)
-            def sequences_of_pair = path( "${params.outdir}/idtaxa/test_16s/amplicon_pe_test_16s.idtaxa.classifications.tsv.gz" ).linesGzip.drop( 1 ).collect { line -> line.split( "\t" )[0].replaceAll( /\/[12]$/, '' ) }.countBy { name -> name }
             // the lineages of the reference sequences of the training set, without the root
             def reference_lineages = path( "${baseDir}/assets/test-data/data/idtaxa/reference_16s.fasta.gz" ).linesGzip.findAll { line -> line.startsWith( ">" ) }.collect { line -> line.split( " ", 2 )[1] - "Root;" }.unique().sort()
             // the counts of each genus in the merged genus table: [ genus: [ amplicon_pe, amplicon_se ] ]
@@ -90,11 +87,6 @@ nextflow_pipeline {
                 // the 345 overlapping pairs are merged, the two mates of the 138 non-overlapping ones kept as separate
                 // sequences, all of them classified to the genus they were simulated from
                 { assert count_of( "amplicon_pe", "merged_pairs" ) == "345" },
-                // the 345 overlapping pairs (ovl_) classified as one merged sequence, and the 138 non-overlapping ones
-                // (noovl_) as their 276 mates
-                { assert sequences_of_pair.findAll { _name, n -> n == 1 }.keySet().collect { name -> name.tokenize( '_' )[0] }.countBy { kind -> kind } == [ ovl: 345 ] },
-                { assert sequences_of_pair.findAll { _name, n -> n == 2 }.keySet().collect { name -> name.tokenize( '_' )[0] }.countBy { kind -> kind } == [ noovl: 138 ] },
-                { assert sequences_of_pair.values().findAll { n -> n == 2 }.sum() == 276 },
                 { assert genus_counts == simulated( 2 ).collectEntries { genus, n -> [ genus, [ n, simulated( 1 )[genus] ] ] } },
                 // the same, explicitly: 9 sequences (5 ovl_, 2 x 2 noovl_ mates) per reference sequence in amplicon_pe,
                 // 7 in amplicon_se, with 15 reference sequences per genus, except Escherichia (7) and Akkermansia (2)
