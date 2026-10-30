@@ -68,9 +68,10 @@ def spacer(rng):
 
 
 def write(path, records):
-    with gzip.open(path, "wt", compresslevel=9) as handle:
+    # no file name and timestamp in the header, so that the output is reproducible
+    with open(path, "wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, compresslevel=9, mtime=0) as handle:
         for name, seq in records:
-            handle.write(f"@{name}\n{seq}\n+\n{'I' * len(seq)}\n")
+            handle.write(f"@{name}\n{seq}\n+\n{'I' * len(seq)}\n".encode())
 
 
 def write_pairs(out_dir, prefix, pairs, se=True):

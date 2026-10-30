@@ -9,6 +9,7 @@ common gut bacteria from five phyla, two of them in the same phylum (Bacillota).
 805R primer sites are kept, as the reads of the tests are simulated from the V3-V4 region between them.
 """
 import gzip
+import io
 import re
 import sys
 import time
@@ -57,7 +58,8 @@ def parse_fasta(text):
 def main(out_path):
     fwd = re.compile(primer_regex(PRIMER_341F))
     rev = re.compile(primer_regex(revcomp(PRIMER_805R)))
-    with gzip.open(out_path, "wt") as out:
+    # no file name and timestamp in the gzip header, so that the output is reproducible
+    with open(out_path, "wb") as raw, io.TextIOWrapper(gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0)) as out:
         for genus, lineage in GENERA.items():
             ids = re.findall(
                 r"<Id>(\d+)</Id>",
