@@ -490,7 +490,7 @@
                 "run_idtaxa": {
                     "type": "boolean",
                     "description": "Turn on taxonomic classification of amplicon reads with IDTAXA. Requires database CSV file passed to --databases",
-                    "help_text": "IDTAXA (DECIPHER) classifies the AMPLICON samples (library_strategy column of the samplesheet) against a training set, the db_path of an idtaxa row of the database CSV (.RData, as distributed with DECIPHER). The pairs of paired-end reads are merged if they overlap, the others are handled as set by `--amplicon_pair_handling`. The confidence threshold is set with `--idtaxa_threshold`, the strand of the sequences (default both) with `ext.strand` in a custom config.",
+                    "help_text": "IDTAXA (DECIPHER) classifies the AMPLICON samples (library_strategy column of the samplesheet) against a training set, the db_path of an idtaxa row of the database CSV (.RData, as distributed with DECIPHER). The pairs of paired-end reads are merged if they overlap, the others are handled as set by `--amplicon_pair_handling`. The confidence threshold is set with `--idtaxa_threshold`, the strand of the sequences (both for the short reads, top for the long reads, oriented by the primer trimming) with `ext.strand` in a custom config.",
                     "fa_icon": "fas fa-toggle-on"
                 },
                 "idtaxa_db_names": {

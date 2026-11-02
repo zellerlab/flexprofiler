@@ -425,12 +425,12 @@ Single-end and long reads are classified as they are. The analysis-ready reads o
 
 The profiles of the samples are merged, for each training set, into a table of the whole lineages and one table per rank (domain, phylum, ..., genus), the sequences not assigned down to a rank being in its row `unassigned`. `--idtaxa_ranks` restricts the rank tables to some ranks, e.g. `--idtaxa_ranks genus`.
 
-The confidence threshold of IdTaxa is set with `--idtaxa_threshold` (default 40, as in vknight; DECIPHER suggests 60 for very high, 50 for high and 40 for moderate confidence). The strand of the sequences is left at the DECIPHER default (`both`), and is changed with `ext.strand` in a custom config; the vsearch and fastp options with `ext.args`:
+The confidence threshold of IdTaxa is set with `--idtaxa_threshold` (default 40, as in vknight; DECIPHER suggests 60 for very high, 50 for high and 40 for moderate confidence). IdTaxa classifies both strands of the short reads (`strand = 'both'`, the DECIPHER default), as they can be in either orientation, and only the top strand of the long reads, oriented as the gene by the primer trimming (by vsearch, or by cutadapt with the primers given; both strands without `--perform_amplicon_primertrimming`). The strand is changed with `ext.strand` in a custom config; the vsearch and fastp options with `ext.args`:
 
 ```groovy
 process {
     withName: IDTAXA_CLASSIFY {
-        ext.strand = 'top'
+        ext.strand = { meta.type == 'long' ? 'top' : 'both' }
     }
     withName: VSEARCH_MERGEJOIN {
         ext.args = '--fastq_allowmergestagger --fastq_minovlen 20'
@@ -438,7 +438,7 @@ process {
 }
 ```
 
-Keep the strand `both` for libraries with reads in both orientations.
+Keep the strand `both` for short-read libraries with reads in both orientations.
 
 ##### mOTUs v4
 
