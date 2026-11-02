@@ -23,6 +23,10 @@ The reads are error-free, simulated from the V3-V4 amplicon (341F-805R) of each 
   (short_); reads with a single base of quality Q2, passing the expected-errors filter (lowbase_); and reads of random
   sequence, not 16S (other_). Made with another random generator, so that the files
   above do not change.
+- amplicon_pacbio_kinnex.fastq.gz: PacBio reads of the full-length 16S amplicon with the primers of PacBio (also used
+  for Kinnex 16S, not in the PIMENTO standard library: the degenerate 27F, and a 1492R 3 bases shorter at its 5' end),
+  one per reference sequence in each orientation (fwd_, rev_), between the same primer sites as above. Made with
+  another random generator, so that the files above do not change.
 - orient_16s.fasta: the first Escherichia reference sequence, to orient the PacBio reads with (vsearch --orient).
 """
 import gzip
@@ -45,6 +49,11 @@ PRIMER_805R = "GACTACHVGGGTATCTAATCC"
 # the full-length 16S primers, for the PacBio reads
 PRIMER_27F = "AGAGTTTGATCMTGGCTCAG"
 PRIMER_1492R = "TACGGYTACCTTGTTACGACTT"
+# the full-length 16S primers of PacBio (PN 101-599-700), also used for Kinnex 16S: 1492R without the 3 bases at the 5'
+# end (the outer end of the amplicon) of the one above, so the region between the primers is the same
+PRIMER_27F_PACBIO = "AGRGTTYGATYMTGGCTCAG"
+PRIMER_1492R_PACBIO = "RGYTACCTTGTTACGACTT"
+N_KINNEX_FWD, N_KINNEX_REV = 1, 1  # PacBio reads per reference sequence with the PacBio primers, in each orientation
 # the Illumina adapters read after the insert, in R1 and R2
 ADAPTER_R1 = "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"
 ADAPTER_R2 = "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
@@ -134,6 +143,7 @@ def main(reference, out_dir):
     ]
     write_pairs(out_dir, "amplicon_mixed", mixed, se=False)
     write(out_dir / "amplicon_pacbio.fastq.gz", pacbio(reference))
+    write(out_dir / "amplicon_pacbio_kinnex.fastq.gz", pacbio_kinnex(reference))
     write_orient_reference(reference, out_dir / "orient_16s.fasta")
 
 
@@ -221,7 +231,7 @@ def pacbio(reference):
             add(f"short_{genus}", orient(amplicon(core[:800])))
     for _ in range(N_PACBIO_OTHER):
         add("other", "".join(rng.choice("ACGT") for _ in range(1500)))
-    # a single base of quality Q2 adds 0.63 expected errors, so these reads pass the expected-errors filter (maxEE 2),
+    # a single base of quality Q2 adds 0.63 expected errors, so these reads pass the expected-errors filter (maxEE 10),
     # but not the minimum base quality (minQ 3)
     for i, (genus, core) in enumerate(cores[:N_PACBIO_LOWBASE]):
         seq = resolve(PRIMER_27F + core, rng) + revcomp(resolve(PRIMER_1492R, rng))
@@ -230,6 +240,22 @@ def pacbio(reference):
         add(f"lowbase_{genus}", seq, HIFI_QUAL * middle + LOWEST_QUAL + HIFI_QUAL * (len(seq) - middle - 1))
     rng.shuffle(reads)
     return reads
+
+
+def pacbio_kinnex(reference):
+    """The PacBio reads of the full-length amplicon with the primers of PacBio, in either orientation (fwd_, rev_),
+    shuffled: [ name, sequence, qualities ]."""
+    rng = random.Random(SEED)
+    reads = []
+    for genus, core in full_length_cores(reference):
+        for kind, n in (("fwd", N_KINNEX_FWD), ("rev", N_KINNEX_REV)):
+            for _ in range(n):
+                seq = resolve(PRIMER_27F_PACBIO + core, rng) + revcomp(resolve(PRIMER_1492R_PACBIO, rng))
+                seq = seq if kind == "fwd" else revcomp(seq)
+                reads.append((f"{kind}_{genus}_{len(reads) + 1}", seq, HIFI_QUAL * len(seq)))
+    rng.shuffle(reads)
+    return reads
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

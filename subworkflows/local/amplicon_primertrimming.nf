@@ -43,8 +43,13 @@ workflow AMPLICON_PRIMERTRIMMING {
 
         // PIMENTO searches each mate of paired-end reads separately (meta.mate, single-end reads: 1): the primers found
         // for the two mates (normally the forward primer for R1 and the reverse one for R2) are the primers of the run
+        // The PacBio reads are searched with the primers of PacBio (--amplicon_pimento_primers_pacbio: the full-length
+        // 16S primers of PacBio, also used for Kinnex 16S) added to the PIMENTO standard library, the other reads with
+        // the standard library
+        def pacbio_primers = params.amplicon_pimento_primers_pacbio ? files(params.amplicon_pimento_primers_pacbio, checkIfExists: true) : []
         ch_mates = ch_reads_for_detection.flatMap { meta, input_reads ->
-            [input_reads].flatten().indexed(1).collect { mate, fastq -> [meta + [mate: mate], fastq] }
+            def extra_primers = meta.instrument_platform == 'PACBIO_SMRT' ? pacbio_primers : []
+            [input_reads].flatten().indexed(1).collect { mate, fastq -> [meta + [mate: mate], fastq, extra_primers] }
         }
         PIMENTO_STD(ch_mates)
         ch_versions = ch_versions.mix(PIMENTO_STD.out.versions.first())

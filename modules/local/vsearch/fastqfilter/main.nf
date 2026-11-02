@@ -20,7 +20,7 @@ process VSEARCH_FASTQFILTER {
     task.ext.when == null || task.ext.when
 
     script:
-    // the filters, e.g. --fastq_maxee 2 --fastq_maxns 0 (--fastq_qmax 93 for the PacBio HiFi base qualities)
+    // the filters, e.g. --fastq_maxee 10 --fastq_maxns 0 (--fastq_qmax 93 for the PacBio HiFi base qualities)
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """

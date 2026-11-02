@@ -65,7 +65,7 @@ nextflow_pipeline {
                 { assert tasks_of( "CUTADAPT_LINKED" ) == [ "pacbio" ] },
                 { assert workflow.trace.tasks().count { task -> task.name =~ /FASTP.*\(pacbio\)|CUTADAPT_(PRIMERS|READTHROUGH).*\(pacbio\)/ } == 0 },
                 { assert workflow.trace.tasks().count { task -> task.name =~ /HOSTREMOVAL|MOTUS|CAYMAN|GQLIB|BWA/ } == 0 },
-                // the QC removes the reads with more than 2 expected errors or an N (vsearch: 18 lowq_ + 17 n_), and
+                // the QC removes the reads with more than 10 expected errors or an N (vsearch: 18 lowq_ + 17 n_), and
                 // those with a base below Q3 (BBDuk: 10 lowbase_, passing the expected-errors filter), the orientation
                 // the reads not 16S
                 // (but some, oriented by chance, removed after by the primers), and the primer trimming the reads
@@ -144,6 +144,51 @@ nextflow_pipeline {
                 { assert ready_pacbio == expected_pacbio },
                 { assert genus_counts( "pacbio" ) == [ Bifidobacterium: 75, Streptococcus: 75, Clostridium: 75, Bacteroides: 75, Escherichia: 35, Akkermansia: 10 ] },
                 { assert snapshot ( read_counts ).match( "read_counts_given_primers" ) },
+            )
+        }
+    }
+
+    // PacBio reads with the full-length 16S primers of PacBio (also used for Kinnex 16S): the degenerate 27F and a 1492R
+    // 3 bases shorter than 1492modR. Not in the PIMENTO standard library, with which PIMENTO would give 27F and
+    // 1492modR instead, and cutadapt, requiring the 22 bases of 1492modR, would discard nearly all the reads: they are
+    // added to the library for the PacBio runs (--amplicon_pimento_primers_pacbio)
+    test("test_pacbio_kinnex") {
+        when {
+            params {
+                input                      = "${baseDir}/assets/test-data/samplesheet_pacbio_kinnex.csv"
+                outdir                     = "${outputDir}"
+                amplicon_orient_reference  = "${baseDir}/assets/test-data/data/fastq/amplicon/orient_16s.fasta"
+                save_analysis_ready_fastqs = true
+            }
+        }
+
+        then {
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def count_of          = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
+            def primers           = path( "${params.outdir}/amplicon_primers/primers.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def genus_table       = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.genus.tsv" ).readLines()
+            def genus_header      = genus_table[0].split( "\t" ) as List
+            def genus_counts      = { sample -> genus_table.findAll { line -> line.contains( 'g__' ) }.collectEntries { line -> def fields = line.split( "\t" ); [ ( fields[0].tokenize( ';' ).last() - 'g__' ), fields[genus_header.indexOf( sample )].toInteger() ] } }
+            def reads             = { file -> path( file.toString() ).linesGzip.collate( 4 ).collectEntries { record -> [ record[0].substring( 1 ).split( /\s/ )[0], record[1] ] } }
+            def input_kinnex      = reads( "${baseDir}/assets/test-data/data/fastq/amplicon/amplicon_pacbio_kinnex.fastq.gz" )
+            def ready_kinnex      = reads( "${params.outdir}/analysis_ready_fastqs/kinnex_pacbio_kinnex.fastq.gz" )
+            def kind              = { name -> name.tokenize( '_' )[0] }
+            def revcomp           = { seq -> seq.reverse().tr( 'ACGT', 'TGCA' ) }
+            // the region between the primers (27F: 20 bases, PacBio 1492R: 19 bases), in the orientation of the gene
+            def expected_kinnex   = input_kinnex.collectEntries { name, seq -> [ name, ( kind( name ) == 'fwd' ? seq : revcomp( seq ) )[20..-20] ] }
+            assertAll(
+                { assert workflow.success },
+                { assert input_kinnex.keySet().countBy( kind ) == [ fwd: 69, rev: 69 ] },
+                // the PacBio primers, in their region added to the library
+                { assert primers.collect { row -> row[0..4] } == [
+                    [ "sample", "run_accession", "mate", "region", "primer" ],
+                    [ "kinnex", "pacbio_kinnex", "1", "V1-V9_PacBio", "PacBio_27F" ],
+                    [ "kinnex", "pacbio_kinnex", "1", "V1-V9_PacBio", "PacBio_1492R" ],
+                ] },
+                // all the reads trimmed of both primers, in the orientation of the gene
+                { assert count_of( "kinnex", "primer_trimmed_reads" ) == "138" },
+                { assert ready_kinnex == expected_kinnex },
+                { assert genus_counts( "kinnex" ) == [ Bifidobacterium: 30, Streptococcus: 30, Clostridium: 30, Bacteroides: 30, Escherichia: 14, Akkermansia: 4 ] },
             )
         }
     }

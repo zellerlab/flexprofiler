@@ -8,8 +8,9 @@ process PIMENTO_STD {
         : 'biocontainers/mi-pimento:1.3.3--pyhdfd78af_0'}"
 
     input:
-    // one mate of paired-end reads, or single-end reads (searched with --merged, set in ext.args)
-    tuple val(meta), path(reads)
+    // one mate of paired-end reads, or single-end reads (searched with --merged, set in ext.args), and FASTA files of
+    // primers to add to the PIMENTO standard library (one region per file, named as the file), [] for none
+    tuple val(meta), path(reads), path(extra_primers, stageAs: 'extra_primers/*')
 
     output:
     // empty if no primer was found
@@ -23,8 +24,16 @@ process PIMENTO_STD {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
+    // the standard library of PIMENTO, copied from its installation, with the extra primers
+    def library_setup = extra_primers ? """
+    mkdir primer_library
+    cp "\$(python -c 'import os, pimento.standard_primers as library; print(os.path.dirname(library.__file__))')"/*.fasta primer_library/
+    cp extra_primers/* primer_library/
+    """ : ''
+    def library = extra_primers ? '-p primer_library' : ''
     """
-    pimento std -i ${reads} -o ${prefix} ${args}
+    ${library_setup}
+    pimento std -i ${reads} -o ${prefix} ${library} ${args}
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

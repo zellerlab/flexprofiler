@@ -28,8 +28,9 @@ workflow LONGREAD_PREPROCESSING {
     }
 
     // PacBio HiFi reads need neither adapter nor quality trimming, but, as in the best practice for full-length 16S
-    // (filterAndTrim of DADA2 in Callahan et al. 2019), the reads with more than 2 expected errors or with Ns are removed
-    // (vsearch), and then those with a base of quality below 3 (BBDuk, as vsearch has no such filter) (ext.args)
+    // (filterAndTrim of DADA2 in Callahan et al. 2019), the reads with more than 10 expected errors (relaxed from 2, see
+    // conf/modules.config) or with Ns are removed (vsearch), and then those with a base of quality below 3 (BBDuk, as
+    // vsearch has no such filter) (ext.args)
     VSEARCH_FASTQFILTER(ch_reads_by_platform.pacbio)
     ch_versions = ch_versions.mix(VSEARCH_FASTQFILTER.out.versions.first())
     ch_read_count_logs = ch_read_count_logs.mix(VSEARCH_FASTQFILTER.out.log.map { meta, log_file -> [meta + [tool: 'vsearch_fastqfilter'], log_file] })
