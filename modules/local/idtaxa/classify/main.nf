@@ -39,18 +39,20 @@ process IDTAXA_CLASSIFY {
     # IdTaxa needs at least one sequence, and sapply below would return an empty list for none
     stopifnot("no sequences in ${reads}" = length(seqs) > 0)
     # the progress bar of IdTaxa (verbose) is unreadable in a log file: the setTxtProgressBar that DECIPHER imports is
-    # replaced by one that draws nothing and logs the progress (with the time) about every 1% instead, and at the end.
-    # It is called at each step i of the loop of IdTaxa (DECIPHER 3.6.0) over I, read from its frame: the unique sequences
-    # (it dereplicates them), then the reverse complements of those classified on both strands
+    # replaced by one that draws nothing and logs the progress (with the time) at each whole percent instead. It is called
+    # at (almost) each step i of the loop of IdTaxa (DECIPHER 3.6.0) over I, read from its frame: the unique sequences (it
+    # dereplicates them), then the reverse complements of those classified on both strands; value is i/length(I).
+    # The next percent to log is kept in an environment, as it is modified by reference across the calls
     imports <- parent.env(asNamespace("DECIPHER"))
+    progress <- new.env()
+    progress[["percent"]] <- 0
     unlockBinding("setTxtProgressBar", imports)
     assign("setTxtProgressBar", function(pb, value, ...) {
-        i <- parent.frame()[["i"]]
-        n <- length(parent.frame()[["I"]])
-        if (i %% ceiling(n / 100) == 0 || i == n) {
+        if (100 * value >= progress[["percent"]]) {
+            progress[["percent"]] <- floor(100 * value) + 1
             message(
-                format(Sys.time(), "%F %T"), " IdTaxa: ", floor(100 * i / n), "% done (", i, "/", n,
-                " unique sequences and reverse complements)"
+                format(Sys.time(), "%F %T"), " IdTaxa: ", floor(100 * value), "% done (", parent.frame()[["i"]], "/",
+                length(parent.frame()[["I"]]), " unique sequences and reverse complements)"
             )
         }
     }, envir = imports)
