@@ -376,16 +376,16 @@ For advice as to which tool to run in your context, please see the documentation
 
 IDTAXA (DECIPHER) classifies 16S amplicon reads, the samples with `AMPLICON` in the `library_strategy` column of the samplesheet, against a training set. Turn it on with `--run_idtaxa` and an `idtaxa` row in the database CSV, with `db_path` a training set as distributed with DECIPHER (`.RData`).
 
-The database CSV can list several training sets, e.g. the GTDB release matching the taxonomy of the mOTUs version used for the WGS samples (R220 for mOTUs 4.0, used by `--run_motus4`; mOTUs 3 uses the NCBI taxonomy), a newer GTDB release, or SILVA. By default all the `idtaxa` rows are used. To use only some of them, list their `db_name` with `--idtaxa_db_names`, e.g. `--idtaxa_db_names gtdb_r220` or `--idtaxa_db_names gtdb_r220,silva_r138_2`. This way the paths are set once in the database CSV:
+The database CSV can list several training sets, e.g. the GTDB release matching the taxonomy of the mOTUs version used for the WGS samples (R207 for mOTUs 3.x, with its GTDB metadata of 3.0.2 and 3.1.0; R220 for mOTUs 4.0, used by `--run_motus4`; R226 for mOTUs 4.1), a newer GTDB release, or SILVA. By default all the `idtaxa` rows are used. To use only some of them, list their `db_name` with `--idtaxa_db_names`, e.g. `--idtaxa_db_names gtdb_r220_motus4.0` or `--idtaxa_db_names gtdb_r220_motus4.0,silva_r138_2`. This way the paths are set once in the database CSV:
 
 ```csv title="databases.csv"
 tool,db_name,db_params,db_path
-idtaxa,gtdb_r220,,/path/to/GTDB_r220.RData
+idtaxa,gtdb_r220_motus4.0,,/path/to/GTDB_r220.RData
 idtaxa,gtdb_r232,,/path/to/GTDB_r232-mod.RData
 idtaxa,silva_r138_2,,/path/to/SILVA_SSU_r138_2-mod.RData
 ```
 
-The `db_name` also names the output files and directories, so it is worth stating the release in it.
+The `db_name` also names the output files and directories, so it is worth stating the release in it, and the mOTUs version sharing its taxonomy (e.g. `gtdb_r220_motus4.0`).
 
 The amplicon reads are first preprocessed as the other reads of their read type (short reads: `--perform_shortread_qc` etc.), then by the amplicon preprocessing: the primers of each amplicon run are found with PIMENTO and trimmed with cutadapt (`--perform_amplicon_primertrimming`, on by default), and the read pairs are made into single sequences (`--amplicon_pair_handling`, see below). The amplicon reads are not host-removed.
 
