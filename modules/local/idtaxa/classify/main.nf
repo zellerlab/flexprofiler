@@ -38,28 +38,22 @@ process IDTAXA_CLASSIFY {
     seqs <- readDNAStringSet("${reads}", format = "fastq")
     # IdTaxa needs at least one sequence, and sapply below would return an empty list for none
     stopifnot("no sequences in ${reads}" = length(seqs) > 0)
-    # the progress bar of IdTaxa (verbose) is unreadable in a log file: the progress bar functions that DECIPHER imports are
-    # replaced by ones that draw nothing and log the percentage done (with the time) at each whole percent instead
-    local({
-        imports <- parent.env(asNamespace("DECIPHER"))
-        last <- -1
-        unlockBinding("txtProgressBar", imports)
-        unlockBinding("setTxtProgressBar", imports)
-        assign("txtProgressBar", function(...) utils::txtProgressBar(..., file = file(nullfile(), "w")), envir = imports)
-        assign("setTxtProgressBar", function(pb, value, ...) {
-            percent <- floor(100 * value)
-            if (percent > last) {
-                last <<- percent
-                # IdTaxa counts its progress in unique sequences (it dereplicates them), so the number of sequences is
-                # an estimate
-                message(
-                    format(Sys.time(), "%F %T"), " IdTaxa: ", percent, "% classified (~", round(value * length(seqs)),
-                    "/", length(seqs), " sequences)"
-                )
-            }
-            utils::setTxtProgressBar(pb, value, ...)
-        }, envir = imports)
-    })
+    # the progress bar of IdTaxa (verbose) is unreadable in a log file: the setTxtProgressBar that DECIPHER imports is
+    # replaced by one that draws nothing and logs the progress (with the time) about every 1% instead, and at the end.
+    # It is called at each step i of the loop of IdTaxa (DECIPHER 3.6.0) over I, read from its frame: the unique sequences
+    # (it dereplicates them), then the reverse complements of those classified on both strands
+    imports <- parent.env(asNamespace("DECIPHER"))
+    unlockBinding("setTxtProgressBar", imports)
+    assign("setTxtProgressBar", function(pb, value, ...) {
+        i <- parent.frame()[["i"]]
+        n <- length(parent.frame()[["I"]])
+        if (i %% ceiling(n / 100) == 0 || i == n) {
+            message(
+                format(Sys.time(), "%F %T"), " IdTaxa: ", floor(100 * i / n), "% done (", i, "/", n,
+                " unique sequences and reverse complements)"
+            )
+        }
+    }, envir = imports)
     ids <- IdTaxa(seqs, training_set, strand = "${strand}", threshold = ${threshold}, processors = ${task.cpus}, verbose = TRUE)
 
     # the lineage of each sequence and its ranks (";"-separated, tab-separated from each other), without the root and the
