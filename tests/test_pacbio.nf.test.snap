@@ -9,6 +9,50 @@
             "nextflow": "26.04.2"
         }
     },
+    "read_counts_given_primers": {
+        "content": [
+            [
+                [
+                    "sample",
+                    "run_accession",
+                    "raw_reads",
+                    "qc_reads",
+                    "primer_trimmed_reads",
+                    "readthrough_trimmed_reads",
+                    "merged_pairs",
+                    "joined_pairs",
+                    "idtaxa_test_16s_pairs"
+                ],
+                [
+                    "illumina",
+                    "clean_pe",
+                    "966",
+                    "966",
+                    "14",
+                    "15",
+                    "345",
+                    "138",
+                    "483"
+                ],
+                [
+                    "pacbio",
+                    "pacbio_amplicon",
+                    "434",
+                    "389",
+                    "345",
+                    "NA",
+                    "NA",
+                    "NA",
+                    "345"
+                ]
+            ]
+        ],
+        "timestamp": "2026-11-02T18:57:03.111586188",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
     "software_versions": {
         "content": [
             {
@@ -55,6 +99,16 @@
             }
         ],
         "timestamp": "2026-11-02T18:52:11.12291556",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.04.2"
+        }
+    },
+    "number_of_tasks_given_primers": {
+        "content": [
+            15
+        ],
+        "timestamp": "2026-11-02T18:57:03.074835817",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.04.2"
