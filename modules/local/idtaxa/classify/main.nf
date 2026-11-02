@@ -38,6 +38,28 @@ process IDTAXA_CLASSIFY {
     seqs <- readDNAStringSet("${reads}", format = "fastq")
     # IdTaxa needs at least one sequence, and sapply below would return an empty list for none
     stopifnot("no sequences in ${reads}" = length(seqs) > 0)
+    # the progress bar of IdTaxa (verbose) is unreadable in a log file: the progress bar functions that DECIPHER imports are
+    # replaced by ones that draw nothing and log the percentage done (with the time) at each whole percent instead
+    local({
+        imports <- parent.env(asNamespace("DECIPHER"))
+        last <- -1
+        unlockBinding("txtProgressBar", imports)
+        unlockBinding("setTxtProgressBar", imports)
+        assign("txtProgressBar", function(...) utils::txtProgressBar(..., file = file(nullfile(), "w")), envir = imports)
+        assign("setTxtProgressBar", function(pb, value, ...) {
+            percent <- floor(100 * value)
+            if (percent > last) {
+                last <<- percent
+                # IdTaxa counts its progress in unique sequences (it dereplicates them), so the number of sequences is
+                # an estimate
+                message(
+                    format(Sys.time(), "%F %T"), " IdTaxa: ", percent, "% classified (~", round(value * length(seqs)),
+                    "/", length(seqs), " sequences)"
+                )
+            }
+            utils::setTxtProgressBar(pb, value, ...)
+        }, envir = imports)
+    })
     ids <- IdTaxa(seqs, training_set, strand = "${strand}", threshold = ${threshold}, processors = ${task.cpus}, verbose = TRUE)
 
     # the lineage of each sequence and its ranks (";"-separated, tab-separated from each other), without the root and the
