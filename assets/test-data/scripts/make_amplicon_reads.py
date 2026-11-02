@@ -12,6 +12,18 @@ The reads are error-free, simulated from the V3-V4 amplicon (341F-805R) of each 
   reverse complement of the other primer and the adapter (rt_); amplicon_primers_se.fastq.gz: their R1.
 - amplicon_mixed_{1,2}.fastq.gz: as amplicon_primers, with a quarter of the pairs flipped (flip_: R1 starting with 805R
   and R2 with 341F), as in libraries ligated in both orientations.
+- amplicon_pacbio.fastq.gz: PacBio (HiFi, base qualities Q93) reads of the full-length 16S amplicon (27F-1492R), from
+  27F to the reverse complement of 1492R (fwd_), or, as PacBio reads are sequenced from either end of the amplicon, its
+  reverse complement, from 1492R to the reverse complement of 27F (rev_). Most reference sequences are cut inside or
+  before the primer sites, so the amplicon is the primers around the reference between the primer sites (found with up
+  to 10% mismatches, as by cutadapt, also partial at the ends of the reference), or, without a site, up to the end of
+  the reference (their ambiguous bases resolved at random). Besides, one read per reference sequence, in either
+  orientation, to be removed by the preprocessing, in turn: with 100 bases of quality Q5 (lowq_), with an N (n_), cut
+  200 bases before its end, so without the primer at its end (trunc_), or with only 800 bases between the primers
+  (short_); reads with a single base of quality Q2, passing the expected-errors filter (lowbase_); and reads of random
+  sequence, not 16S (other_). Made with another random generator, so that the files
+  above do not change.
+- orient_16s.fasta: the first Escherichia reference sequence, to orient the PacBio reads with (vsearch --orient).
 """
 import gzip
 import pathlib
@@ -21,11 +33,18 @@ import sys
 
 SEED = 42
 N_OVL, N_NOOVL, N_PRIMERS, N_SPACER, N_RT = 5, 2, 5, 2, 1  # pairs per reference sequence
+N_PACBIO_FWD, N_PACBIO_REV = 3, 2  # PacBio reads per reference sequence, in each orientation
+N_PACBIO_OTHER = 10  # PacBio reads of random sequence
+N_PACBIO_LOWBASE = 10  # PacBio reads with a single base of quality Q2, of the first reference sequences
+HIFI_QUAL, LOW_QUAL, LOWEST_QUAL = "~", "&", "#"  # Q93, the highest quality of the PacBio HiFi reads, Q5 and Q2
 LONG, SHORT = 250, 150
 RT_INSERT = 120  # region length of the read-through pairs
 IUPAC = {"N": "ACGT", "W": "AT", "H": "ACT", "V": "ACG", "R": "AG", "Y": "CT", "M": "AC", "K": "GT", "S": "CG", "B": "CGT", "D": "AGT"}
 PRIMER_341F = "CCTACGGGNGGCWGCAG"
 PRIMER_805R = "GACTACHVGGGTATCTAATCC"
+# the full-length 16S primers, for the PacBio reads
+PRIMER_27F = "AGAGTTTGATCMTGGCTCAG"
+PRIMER_1492R = "TACGGYTACCTTGTTACGACTT"
 # the Illumina adapters read after the insert, in R1 and R2
 ADAPTER_R1 = "AGATCGGAAGAGCACACGTCTGAACTCCAGTCA"
 ADAPTER_R2 = "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT"
@@ -68,10 +87,11 @@ def spacer(rng):
 
 
 def write(path, records):
+    """Write [ name, sequence ] records, of quality Q40 (I), or [ name, sequence, qualities ]."""
     # no file name and timestamp in the header, so that the output is reproducible
     with open(path, "wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, compresslevel=9, mtime=0) as handle:
-        for name, seq in records:
-            handle.write(f"@{name}\n{seq}\n+\n{'I' * len(seq)}\n".encode())
+        for name, seq, *qual in records:
+            handle.write(f"@{name}\n{seq}\n+\n{qual[0] if qual else 'I' * len(seq)}\n".encode())
 
 
 def write_pairs(out_dir, prefix, pairs, se=True):
@@ -113,7 +133,103 @@ def main(reference, out_dir):
         for i, (name, r1, r2) in enumerate(primers)
     ]
     write_pairs(out_dir, "amplicon_mixed", mixed, se=False)
+    write(out_dir / "amplicon_pacbio.fastq.gz", pacbio(reference))
+    write_orient_reference(reference, out_dir / "orient_16s.fasta")
 
+
+def write_orient_reference(reference, path):
+    """The first Escherichia reference sequence, in the orientation of the gene, to orient the reads with."""
+    header, seq = next((header, seq) for header, seq in read_fasta(reference) if header.endswith(";g__Escherichia"))
+    with open(path, "w") as handle:
+        handle.write(f">{header}\n" + "".join(f"{seq[i:i + 80]}\n" for i in range(0, len(seq), 80)))
+
+
+def compatible(a, b):
+    """Whether two bases, with IUPAC codes, can be the same base."""
+    return bool(set(IUPAC.get(a, a)) & set(IUPAC.get(b, b)))
+
+
+def primer_site(primer, seq, max_start):
+    """The (start, end) in seq of the best site of primer starting before max_start, with at most 10% mismatches (as
+    cutadapt), also partial at the start of seq (start < 0, at least 4 bases), or None: the first with the fewest
+    mismatches."""
+    best = None
+    for start in range(-(len(primer) - 4), max_start):
+        pairs = [(a, seq[start + i]) for i, a in enumerate(primer) if 0 <= start + i < len(seq)]
+        mismatches = sum(not compatible(a, b) for a, b in pairs)
+        if mismatches <= len(pairs) // 10 and (best is None or mismatches < best[0]):
+            best = (mismatches, start)
+    return None if best is None else (best[1], best[1] + len(primer))
+
+
+def full_length_cores(path):
+    """The part of each reference between the full-length primers (genus, core), see the module docstring. The primer
+    sites are searched as by cutadapt, with mismatches and partial at the ends of the reference, so that the primers
+    trimmed from the reads are those added."""
+    window = 100
+    for header, seq in read_fasta(path):
+        genus = header.split(";g__")[1]
+        fwd = primer_site(PRIMER_27F, seq, window)
+        start = max(fwd[1], 0) if fwd else 0
+        # the reverse primer, searched in the reverse complement of the end of the reference
+        rev = primer_site(PRIMER_1492R, revcomp(seq[start:]), window)
+        end = len(seq) - max(rev[1], 0) if rev else len(seq)
+        yield genus, seq[start:end]
+
+
+def resolve(primer, rng):
+    """A sequence with its ambiguous bases resolved at random: a primer as one of a degenerate primer mix, a reference
+    sequence as the read of one of the molecules it stands for."""
+    return "".join(rng.choice(IUPAC[base]) if base in IUPAC else base for base in primer)
+
+
+def pacbio(reference):
+    """The PacBio reads of the full-length amplicon, in either orientation (fwd_, rev_), and those to be removed by the
+    preprocessing (lowq_, n_, trunc_, short_, other_, lowbase_), shuffled: [ name, sequence, qualities ]."""
+    rng = random.Random(SEED)
+    reads = []
+    counter = 0
+
+    def add(kind, seq, qual=None):
+        nonlocal counter
+        counter += 1
+        reads.append((f"{kind}_{counter}", seq, qual or HIFI_QUAL * len(seq)))
+
+    cores = list(full_length_cores(reference))
+    for i, (genus, core) in enumerate(cores):
+        def amplicon(core=core):
+            return resolve(PRIMER_27F + core, rng) + revcomp(resolve(PRIMER_1492R, rng))
+
+        for kind, n in (("fwd", N_PACBIO_FWD), ("rev", N_PACBIO_REV)):
+            for _ in range(n):
+                seq = amplicon()
+                add(f"{kind}_{genus}", seq if kind == "fwd" else revcomp(seq))
+        # one read to be removed, in either orientation
+        orient = (lambda seq: seq) if i % 2 == 0 else revcomp
+        kind = ("lowq", "n", "trunc", "short")[i % 4]
+        if kind == "lowq":
+            seq = orient(amplicon())
+            middle = len(seq) // 2
+            add(f"lowq_{genus}", seq, HIFI_QUAL * middle + LOW_QUAL * 100 + HIFI_QUAL * (len(seq) - middle - 100))
+        elif kind == "n":
+            seq = orient(amplicon())
+            middle = len(seq) // 2
+            add(f"n_{genus}", seq[:middle] + "N" + seq[middle + 1:])
+        elif kind == "trunc":
+            add(f"trunc_{genus}", orient(amplicon())[:-200])
+        else:
+            add(f"short_{genus}", orient(amplicon(core[:800])))
+    for _ in range(N_PACBIO_OTHER):
+        add("other", "".join(rng.choice("ACGT") for _ in range(1500)))
+    # a single base of quality Q2 adds 0.63 expected errors, so these reads pass the expected-errors filter (maxEE 2),
+    # but not the minimum base quality (minQ 3)
+    for i, (genus, core) in enumerate(cores[:N_PACBIO_LOWBASE]):
+        seq = resolve(PRIMER_27F + core, rng) + revcomp(resolve(PRIMER_1492R, rng))
+        seq = seq if i % 2 == 0 else revcomp(seq)
+        middle = len(seq) // 2
+        add(f"lowbase_{genus}", seq, HIFI_QUAL * middle + LOWEST_QUAL + HIFI_QUAL * (len(seq) - middle - 1))
+    rng.shuffle(reads)
+    return reads
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

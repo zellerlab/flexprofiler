@@ -63,7 +63,7 @@ nextflow_pipeline {
         when {
             params {
                 outdir               = "${outputDir}"
-                idtaxa_pair_handling = "merged_plus_unmerged"
+                amplicon_pair_handling = "merged_plus_unmerged"
             }
         }
 

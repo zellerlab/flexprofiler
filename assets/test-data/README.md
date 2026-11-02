@@ -119,7 +119,7 @@ python3 scripts/make_adapter_reads.py data/hostremoval/NC_012920.1.fna.gz data/f
 
 ### 16S amplicon reads and IDtaxa training set
 
-The amplicon tests (`tests/test_primer_removal.nf.test`, `tests/test_idtaxa.nf.test`) use 16S V3-V4 reads simulated from a small set of 16S reference sequences, and an IDtaxa training set trained on the same sequences, so that the genus of each read is known.
+The amplicon tests (`tests/test_primer_removal.nf.test`, `tests/test_idtaxa.nf.test`, `tests/test_pacbio.nf.test`) use 16S V3-V4 reads (and full-length PacBio reads) simulated from a small set of 16S reference sequences, and an IDtaxa training set trained on the same sequences, so that the genus of each read is known.
 
 #### 16S reference sequences
 
@@ -143,7 +143,10 @@ python3 scripts/make_amplicon_reads.py data/idtaxa/reference_16s.fasta.gz data/f
 - `amplicon_primers_{1,2}.fastq.gz`: 2x250 pairs of the whole amplicon, starting with 341F (R1) and 805R (R2), per reference sequence 5 starting with the primer (`pr_`), 2 after a 1-7 base spacer (`spacer_`), and 1 with a 120 bp region, reading through the end of the amplicon into the reverse complement of the other primer and the adapter (`rt_`). `amplicon_primers_se.fastq.gz` has their R1.
 - `amplicon_mixed_{1,2}.fastq.gz`: as `amplicon_primers`, with a quarter of the pairs flipped (`flip_`: R1 starting with 805R and R2 with 341F), as in libraries ligated in both orientations.
 
-The last two are used in `samplesheet_primers.csv` (primer removal test), with `amplicon_clean` as a sample without primers.
+- `amplicon_pacbio.fastq.gz`: PacBio (HiFi, base qualities Q93) reads of the full-length 16S amplicon (27F `AGAGTTTGATCMTGGCTCAG` - 1492R `TACGGYTACCTTGTTACGACTT`), per reference sequence 3 from 27F to the reverse complement of 1492R (`fwd_`) and 2 of its reverse complement, from 1492R to the reverse complement of 27F (`rev_`), as PacBio reads are sequenced from either end of the amplicon. Most reference sequences are cut inside or before the primer sites (only 13 of 69 have both), so each amplicon is made of the two primers around the reference between the primer sites, found with up to 10% mismatches as by cutadapt (also partial at the ends of the reference), or, without a site, up to the end of the reference. The ambiguous bases of the primers and of the reference are resolved at random in each read. Besides, one read per reference sequence, in either orientation, to be removed by the preprocessing, in turn: with 100 bases of quality Q5 (`lowq_`, 18), with an N (`n_`, 17), cut 200 bases before its end, so without the primer at its end (`trunc_`, 17), or with only 800 bases between the primers (`short_`, 17); 10 reads with a single base of quality Q2 (`lowbase_`, passing the expected-errors filter but not the minimum base quality); and 10 reads of random sequence, not 16S (`other_`). The reads are made with another random generator than the files above, which are then unchanged.
+- `orient_16s.fasta`: the first Escherichia reference sequence, to orient the PacBio reads with (`--amplicon_orient_reference`).
+
+`amplicon_primers` and `amplicon_mixed` are used in `samplesheet_primers.csv` (primer removal test), with `amplicon_clean` as a sample without primers. `amplicon_pacbio` is used in `samplesheet_pacbio.csv` (PacBio test, `tests/test_pacbio.nf.test`, with `orient_16s.fasta`), with `amplicon_clean` as Illumina paired-end reads in the same run.
 
 #### IDtaxa training set
 

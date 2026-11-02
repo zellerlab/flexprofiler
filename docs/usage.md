@@ -7,7 +7,7 @@ In addition to multiple classification and profiling tools, at the same time it 
 
 > [!NOTE]
 > Long read and FASTA input is accepted in pre-processing but not used for profiling at the moment.
-> Only short-read ILLUMINA files can be profiled at present.
+> Only short-read ILLUMINA files, and PACBIO_SMRT files of AMPLICON runs, can be profiled at present.
 > There are remaining references in this documentation about long reads and FASTA but these are not yet implemented.
 > Please reach out to Saul if you would need this functionality.
 
@@ -387,23 +387,41 @@ idtaxa,silva_r138_2,,/path/to/SILVA_SSU_r138_2-mod.RData
 
 The `db_name` also names the output files and directories, so it is worth stating the release in it.
 
-Before IDTAXA, the primers of each amplicon run are found with PIMENTO and trimmed with cutadapt (`--perform_amplicon_primertrimming`, on by default).
+The amplicon reads are first preprocessed as the other reads of their read type (short reads: `--perform_shortread_qc` etc.), then by the amplicon preprocessing: the primers of each amplicon run are found with PIMENTO and trimmed with cutadapt (`--perform_amplicon_primertrimming`, on by default), and the read pairs are made into single sequences (`--amplicon_pair_handling`, see below). The amplicon reads are not host-removed.
+
+PacBio amplicon reads (`PACBIO_SMRT`, e.g. full-length 16S, as FASTQ of HiFi reads) are preprocessed following the best practice for full-length 16S (Callahan et al. 2019, https://doi.org/10.1093/nar/gkz569, and PacBio's pb-16S-nf):
+
+- With `--perform_longread_qc`, the reads with more than 2 expected errors or with Ns are removed with vsearch (`--fastq_maxee 2 --fastq_maxns 0`), then those with a base of quality below 3 with BBDuk (`mbq=3`), as by `filterAndTrim(maxEE = 2, maxN = 0, minQ = 3)` in Callahan et al. 2019 (HiFi reads need neither adapter nor quality trimming).
+- PacBio reads are sequenced from either end of the amplicon, so, to find their primers with PIMENTO, they are first oriented with `vsearch --orient` against reference sequences of their gene, in its orientation (`--amplicon_orient_reference`, required for long-read AMPLICON runs unless the primers are given). A few diverse sequences are enough, as only the strand is found (e.g. a 16S of a few bacterial phyla and an archaeon, or a 16S database such as GTDB `ssu_all`); the reads that cannot be oriented (not of the gene of the reference) are dropped. The oriented reads are then searched as single-end reads (`--merged`).
+- The primers can instead be given, for all the AMPLICON runs, with `--amplicon_primer_fwd` and `--amplicon_primer_rev` (e.g. PacBio's full-length 16S primers: `--amplicon_primer_fwd AGRGTTYGATYMTGGCTCAG --amplicon_primer_rev RGYTACCTTGTTACGACTT`): PIMENTO and the orientation are skipped.
+- The primers are trimmed as a pair, both required in full (cutadapt linked adapter): the reads without both primers (truncated or chimeric) are discarded. The reads are written in the orientation of the forward primer (`--revcomp`), and only those of 1000-1600 bp after trimming are kept (full-length 16S). For shorter amplicons change the length window, keeping the primers argument:
+
+```groovy
+process {
+    withName: CUTADAPT_LINKED {
+        ext.args = { "-g '${meta.primer_linked}' --revcomp --discard-untrimmed -m 200 -M 600" }
+    }
+}
+```
+
+The read counts give the reads after each step (`raw_reads`, `qc_reads`, `oriented_reads`, `primer_trimmed_reads`).
 
 :::warning
 The primer detection has some limitations, so check `amplicon_primers/primers.tsv` and the read counts (`primer_trimmed_reads`, `readthrough_trimmed_reads`):
 
-- PIMENTO reports a primer only if it is at the start of more than 60% of the reads of a mate (`-m 0.60`). In libraries ligated in both orientations, with 40-60% of the pairs flipped (e.g. 50/50), neither primer passes in either mate: no primer is found and the run is not trimmed, as a run without primers. The threshold can be lowered with `ext.args` (e.g. `withName: PIMENTO_STD { ext.args = '-m 0.4' }`, adding `--merged` for single-end reads), at the risk of finding primers that are not there.
+- PIMENTO reports a primer only if it is at the start of more than 60% of the reads of a mate (`-m 0.60`). In short-read libraries ligated in both orientations, with 40-60% of the pairs flipped (e.g. 50/50), neither primer passes in either mate: no primer is found and the run is not trimmed, as a run without primers. The threshold can be lowered with `ext.args` (e.g. `withName: PIMENTO_STD { ext.args = { meta.single_end ? '--merged -m 0.4' : '-m 0.4' } }`), at the risk of finding primers that are not there, or the primers can be given (`--amplicon_primer_fwd`, `--amplicon_primer_rev`).
 - Single-end reads are searched with `--merged`, as if they spanned the whole amplicon: the forward primers at the start of the reads, the reverse primers at their end. In single-end reads shorter than the amplicon only the forward primer is found, so the reads running past the end of the amplicon keep the reverse complement of the reverse primer, and the adapter after it (removed by fastp only if it detects it, in files of at least 10000 reads). Single-end reads starting with the reverse primer (sequenced in the other orientation) are not recognised either.
 - The reverse primer of a library cannot be deduced from the forward primer: the PIMENTO standard library has several reverse primers per region (V3-V4: 805R, 806R, 806BR, 785R, 798R), some of them binding inside the amplicon of the others.
 
 :::
 
-IDTAXA classifies single sequences, so the pairs of paired-end reads are first merged if their mates overlap. The other pairs are handled as set by `--idtaxa_pair_handling`:
+IDTAXA classifies single sequences, so at the end of the amplicon preprocessing (after primer trimming, before run merging) the pairs of paired-end reads are merged if their mates overlap. The other pairs are handled as set by `--amplicon_pair_handling`:
 
 - `merged_plus_joined` (default): vsearch merges the overlapping pairs and joins the others with a padding of Ns (R1, `NNNNNNNN`, reverse complement of R2). Each pair is classified once, as one sequence.
 - `merged_plus_unmerged`: fastp merges the overlapping pairs and keeps both mates of the others as separate sequences, so these pairs count twice in the profile.
+- `none`: the pairs are kept as they are, e.g. to save the trimmed pairs with `--save_analysis_ready_fastqs` for another tool. IDTAXA cannot be run then.
 
-Single-end reads are classified as they are. Only the reads given to IDTAXA change, not the analysis-ready reads.
+Single-end and long reads are classified as they are. The analysis-ready reads of the amplicon runs are those after pair handling.
 
 The profiles of the samples are merged, for each training set, into a table of the whole lineages and one table per rank (domain, phylum, ..., genus), the sequences not assigned down to a rank being in its row `unassigned`. `--idtaxa_ranks` restricts the rank tables to some ranks, e.g. `--idtaxa_ranks genus`.
 

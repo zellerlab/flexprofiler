@@ -352,6 +352,33 @@ This directory will be present and contain the unmapped reads from the `.fastq` 
 For short-read unmapped reads, see [bowtie2](#bowtie2).
 :::
 
+### Amplicon primers
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `amplicon_primers/`
+  - `primers.tsv`: the primers found by PIMENTO, one row per run and mate, with the region of the primer library and the proportion of the reads with the primer (not written if the primers are given with `--amplicon_primer_fwd` and `--amplicon_primer_rev`).
+  - `pimento/`: the outputs of PIMENTO (`<sample>_<run>_<mate>_std_primers.fasta`, `<sample>_<run>_<mate>_std_primer_out.txt`).
+  - `vsearch_orient/<sample>_<run>.vsearch_orient.log`: the orientation of the long reads (vsearch), with the reads oriented and not oriented.
+  - `cutadapt/`: the cutadapt logs, of the primers (`*_primers.cutadapt.log`) and read-through (`*_readthrough.cutadapt.log`) trimming of the short reads, and of the linked primer trimming of the long reads (`*_linked.cutadapt.log`).
+
+</details>
+
+### PacBio QC
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `vsearch_fastqfilter/`
+  - `<sample>_<run>.vsearch_fastqfilter.log`: the PacBio reads kept and discarded by the expected-errors and N filter (`--perform_longread_qc`).
+  - `<sample>_<run>.filtered.fastq.gz`: the filtered reads, with `--save_preprocessed_reads`.
+- `bbduk_pacbio/`
+  - `<sample>_<run>_bbduk.bbduk.log`: the PacBio reads kept and discarded by the minimum base quality filter, after vsearch.
+  - `<sample>_<run>_bbduk.fastq.gz`: the filtered reads, with `--save_preprocessed_reads`.
+
+</details>
+
 ### Analysis Ready Reads
 
 :::info
@@ -368,6 +395,8 @@ This optional results directory will only be present in the pipeline results whe
 </details>
 
 The results directory will contain the 'final' processed reads used as input for classification/profiling. It will _only_ include the output of the _last_ step of any combinations of preprocessing steps that may have been specified in the run configuration. For example, if you perform the read QC and host-removal preprocessing steps, the final reads that are sent to classification/profiling are the host-removed FASTQ files - those will be the ones present in this directory.
+
+The reads of the `AMPLICON` runs are those at the end of the amplicon preprocessing (primer trimming and pair handling), named `<sample_id>_<run_accession>.fastq.gz`, or `<sample_id>_<run_accession>_{1,2}.fastq.gz` for the pairs kept with `--amplicon_pair_handling none`; with `--perform_runmerging`, those of the samples with more than one run are the merged reads.
 
 :::warning
 If you turn off all preprocessing steps, then no results will be present in this directory. This happens independently for short- and long-reads. I.e. you will only have FASTQ files for short reads in this directory if you skip all long-read preprocessing.

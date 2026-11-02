@@ -4,6 +4,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## Unreleased
+
+### Added
+- PacBio (`PACBIO_SMRT`) FASTQ input for the `AMPLICON` runs, adapted from the best practice for full-length 16S (Callahan et al. 2019, PacBio pb-16S-nf): quality filters with vsearch (`--fastq_maxee 2 --fastq_maxns 0`) and BBDuk (`mbq=3`), with `--perform_longread_qc`, orientation with `vsearch --orient` against `--amplicon_orient_reference` before PIMENTO, and primer trimming as a pair, both primers required (cutadapt linked adapter, the reads without both primers discarded), in the orientation of the forward primer, with a length window of 1000-1600 bp
+- `--amplicon_primer_fwd` and `--amplicon_primer_rev`, to give the primers of the `AMPLICON` runs instead of finding them with PIMENTO
+- The read counts of the long amplicon reads: `raw_reads` (vsearch) and `qc_reads` (BBDuk), `oriented_reads`, and `primer_trimmed_reads` (with both primers, in the length window)
+- `--amplicon_pair_handling none`, to keep the read pairs of the amplicon reads (IDTAXA cannot be run then)
+- PacBio amplicon reads in the test data, and a test of them (`tests/test_pacbio.nf.test`)
+
+### Changed
+- The preprocessing is split in two stages: of the read type (`SHORTREAD_PREPROCESSING`: QC and complexity filtering; `LONGREAD_PREPROCESSING`: Nanopore QC), then of the library strategy (`WGS_PREPROCESSING`: Nonpareil and host removal; `AMPLICON_PREPROCESSING`: primer trimming and pair handling), then run merging (`RUN_MERGING`); the read counts and the MultiQC report (with the software versions) are made in their own subworkflows (`READ_COUNTING`, `MULTIQC_REPORTING`), from the read count logs emitted by each subworkflow
+- The primers of the amplicon reads are trimmed after the read QC (fastp), instead of before
+- `--idtaxa_pair_handling` is renamed `--amplicon_pair_handling`, and the read pairs are handled in the amplicon preprocessing, before run merging, for all the amplicon profilers: the analysis-ready reads of the `AMPLICON` runs are the merged (or joined) pairs. `FASTP_IDTAXA_MERGE` is renamed `FASTP_AMPLICON_MERGE` (output in `fastp_amplicon_merge/`), and the vsearch and fastp merge outputs are named per run
+- The analysis-ready reads of the `AMPLICON` runs are named `<sample_id>_<run_accession>[_{1,2}].fastq.gz`
+- Nonpareil is run on the reads after complexity filtering, instead of before
+- The read counts columns are in the order of the steps: `raw_reads`, `qc_reads`, then `primer_trimmed_reads` and `readthrough_trimmed_reads`
+
+### Fixed
+- The reverse primer found by PIMENTO in single-end reads (`--merged`), alone or in a pair, was complemented before trimming, so that cutadapt never found it: PIMENTO writes it complemented only for the paired-end mates
+
 ## v0.0.5 [30-10-2026]
 
 ### Added

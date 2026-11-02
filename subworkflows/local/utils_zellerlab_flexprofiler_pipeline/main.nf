@@ -101,6 +101,7 @@ workflow PIPELINE_INITIALISATION {
     if (params.perform_runmerging) {
         validateRunMerging(samplesheet_rows)
     }
+    validateAmpliconPrimers(samplesheet_rows)
     // Samples with more than one run are published as analysis-ready reads only after run merging. The runs of a
     // sample are merged separately for each library strategy, so they are counted per sample and strategy
     def runs_per_sample = samplesheet_rows.countBy { row -> [row[0].id, row[0].library_strategy] }
@@ -123,6 +124,10 @@ workflow PIPELINE_INITIALISATION {
     //
 
     // Preprocessing
+    if (params.run_idtaxa && params.amplicon_pair_handling == 'none') {
+        error("[zellerlab/flexprofiler] ERROR: IDTAXA classifies single sequences, so --run_idtaxa needs the read pairs of the amplicon reads made into single sequences: please set --amplicon_pair_handling to merged_plus_joined or merged_plus_unmerged")
+    }
+
     if (params.shortread_qc_includeunmerged && !params.shortread_qc_mergepairs) {
         error("ERROR: [zellerlab/flexprofiler] cannot include unmerged reads when merging is not turned on. Please specify --shortread_qc_mergepairs")
     }
@@ -227,11 +232,13 @@ workflow PIPELINE_COMPLETION {
 //
 def validateRunMerging(rows) {
     // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
-    // With pair merging, paired-end reads become single-end before run merging, so endedness can differ
-    def check_endedness = !(params.perform_shortread_qc && params.shortread_qc_mergepairs)
+    // With pair merging, paired-end reads become single-end before run merging, so endedness can differ: with
+    // --shortread_qc_mergepairs, and for amplicon reads unless --amplicon_pair_handling is none
+    def pairs_merged = params.perform_shortread_qc && params.shortread_qc_mergepairs
     // the WGS and AMPLICON runs of a sample are merged separately
     rows.groupBy { row -> [row[0].id, row[0].library_strategy] }.each { sample_strategy, sample_rows ->
         def (sample, strategy) = sample_strategy
+        def check_endedness = !pairs_merged && (strategy != 'AMPLICON' || params.amplicon_pair_handling == 'none')
         def datatypes = sample_rows.collect { row ->
             def datatype = [row[2], row[5] ? 'FASTA' : 'FASTQ']
             if (check_endedness) {
@@ -242,11 +249,30 @@ def validateRunMerging(rows) {
         if (datatypes.size() > 1) {
             error(
                 "Please check input samplesheet -> with --perform_runmerging, all runs of a sample must have the same " +
-                "instrument platform, file type (FASTQ/FASTA) and, unless pairs are merged with --shortread_qc_mergepairs, " +
+                "instrument platform, file type (FASTQ/FASTA) and, unless pairs are merged (--shortread_qc_mergepairs, or for AMPLICON runs --amplicon_pair_handling), " +
                 "endedness (single/paired-end).\n" +
                 "Sample '${sample}' (${strategy}) has: ${datatypes.collect { datatype -> datatype.join(' ') }.join('; ')}"
             )
         }
+    }
+}
+
+//
+// Validate the primer parameters: the primers are given both or none, and without them the long-read AMPLICON runs
+// need the reference to orient the reads with
+//
+def validateAmpliconPrimers(rows) {
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
+    if (!params.amplicon_primer_fwd != !params.amplicon_primer_rev) {
+        error("Please check the primer parameters -> --amplicon_primer_fwd and --amplicon_primer_rev must be given together.")
+    }
+    def long_amplicon = rows.any { row -> row[0].library_strategy == 'AMPLICON' && row[2] in ['PACBIO_SMRT', 'OXFORD_NANOPORE'] }
+    if (params.perform_amplicon_primertrimming && long_amplicon && !params.amplicon_primer_fwd && !params.amplicon_orient_reference) {
+        error(
+            "Please check the primer parameters -> the long reads of the AMPLICON runs are oriented before finding their " +
+            "primers with PIMENTO: give the reference sequences of their gene (e.g. 16S) with --amplicon_orient_reference, " +
+            "or give the primers with --amplicon_primer_fwd and --amplicon_primer_rev."
+        )
     }
 }
 
@@ -318,6 +344,7 @@ def toolCitationText() {
         params.longread_adapterremoval_tool == "porechop" ? "Porechop (Wick et al. 2017)," : "",
         params.longread_filter_tool == "filtlong" ? "Filtlong (Wick 2021)." : "",
         params.longread_filter_tool == "nanoq" ? "Nanoq (Steinig and Coin 2022)." : "",
+        "PacBio reads were filtered with VSEARCH (Rognes et al. 2016) and BBDuk (Bushnell 2022).",
     ].join(' ').trim()
 
     def text_shortreadcomplexity = [
@@ -336,11 +363,11 @@ def toolCitationText() {
     ].join(' ').trim()
 
     def text_amplicon_primertrimming = [
-        "The primers of amplicon reads were detected with PIMENTO (Atallah et al. 2026) and trimmed with cutadapt (Martin 2011)."
+        params.amplicon_primer_fwd ? "The primers of amplicon reads were trimmed with cutadapt (Martin 2011)." : "The primers of amplicon reads were detected with PIMENTO (Atallah et al. 2026), the long reads after their orientation with VSEARCH (Rognes et al. 2016), and trimmed with cutadapt (Martin 2011)."
     ].join(' ').trim()
 
     def text_amplicon_pairmerging = [
-        "The read pairs of amplicon reads were merged with VSEARCH (Rognes et al. 2016) for IDTAXA."
+        "The read pairs of amplicon reads were merged with VSEARCH (Rognes et al. 2016)."
     ].join(' ').trim()
 
 
@@ -371,7 +398,7 @@ def toolCitationText() {
         params.perform_shortread_hostremoval ? text_shortreadhostremoval : "",
         params.perform_longread_hostremoval ? text_longreadhostremoval : "",
         params.perform_amplicon_primertrimming ? text_amplicon_primertrimming : "",
-        params.run_idtaxa && params.idtaxa_pair_handling == 'merged_plus_joined' ? text_amplicon_pairmerging : "",
+        params.amplicon_pair_handling == 'merged_plus_joined' ? text_amplicon_pairmerging : "",
         [
             params.run_motus4,
             params.run_cayman,
@@ -408,6 +435,8 @@ def toolBibliographyText() {
         params.longread_adapterremoval_tool == "porechop" ? "<li>Wick, R. R., Judd, L. M., Gorrie, C. L., & Holt, K. E. (2017). Completing bacterial genome assemblies with multiplex MinION sequencing. Microbial Genomics, 3(10), e000132. <a href=\"https://doi.org/10.1099/mgen.0.000132\">10.1099/mgen.0.000132</a></li>" : "",
         params.longread_filter_tool == "filtlong" ? "<li>Wick R. (2021) Filtlong, URL:  <a href=\"https://github.com/rrwick/Filtlong\">https://github.com/rrwick/Filtlong</a></li>" : "",
         params.longread_filter_tool == "nanoq" ? "<li>Steinig, E., & Coin, L. (2022). Nanoq: ultra-fast quality control for nanopore reads. Journal of Open Source Software, 7(69). <a href=\"https://doi.org/10.21105/joss.02991\">10.21105/joss.02991</a></li>" : "",
+        // the PacBio reads (VSEARCH is cited with the amplicon pair merging)
+        "<li>Bushnell B. (2022) BBMap, URL:  <a href=\"http://sourceforge.net/projects/bbmap/\">http://sourceforge.net/projects/bbmap/</a></li>",
     ].join(' ').trim()
 
     def text_shortreadcomplexity = [
@@ -420,7 +449,7 @@ def toolBibliographyText() {
     ].join(' ').trim()
 
     def text_amplicon_primertrimming = [
-        "<li>Atallah, C., Richardson, L., Beracochea, M., & Finn, R. D. (2026). PIMENTO: a primer inference toolkit to facilitate large-scale calling of amplicon sequence variants. GigaScience, 15. <a href=\"https://doi.org/10.1093/gigascience/giag083\">10.1093/gigascience/giag083</a></li>",
+        params.amplicon_primer_fwd ? "" : "<li>Atallah, C., Richardson, L., Beracochea, M., & Finn, R. D. (2026). PIMENTO: a primer inference toolkit to facilitate large-scale calling of amplicon sequence variants. GigaScience, 15. <a href=\"https://doi.org/10.1093/gigascience/giag083\">10.1093/gigascience/giag083</a></li>",
         "<li>Martin, M. (2011). Cutadapt removes adapter sequences from high-throughput sequencing reads. EMBnet.journal, 17(1), 10–12. <a href=\"https://doi.org/10.14806/ej.17.1.200\">10.14806/ej.17.1.200</a></li>"
     ].join(' ').trim()
 
@@ -463,7 +492,8 @@ def toolBibliographyText() {
         params.perform_shortread_hostremoval ? text_shortreadhostremoval : "",
         params.perform_longread_hostremoval ? text_longreadhostremoval : "",
         params.perform_amplicon_primertrimming ? text_amplicon_primertrimming : "",
-        params.run_idtaxa && params.idtaxa_pair_handling == 'merged_plus_joined' ? text_amplicon_pairmerging : "",
+        // VSEARCH: pair merging, orientation of the long amplicon reads, and QC of the PacBio reads
+        params.amplicon_pair_handling == 'merged_plus_joined' || (params.perform_amplicon_primertrimming && !params.amplicon_primer_fwd) || params.perform_longread_qc ? text_amplicon_pairmerging : "",
         text_extras,
         text_classification,
         //params.run_krona ? text_visualisation : "",

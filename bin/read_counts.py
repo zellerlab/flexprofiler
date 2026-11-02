@@ -6,7 +6,8 @@ usage: read_counts.py <manifest.tsv> <inputs_dir> <out.tsv> <out_mqc.tsv>
 The manifest has a header and one row per input file, with the columns file (its name in <inputs_dir>), sample,
 run_accession, kind and db_name. The run_accession is that of the run, or, with run merging, the merged run of a multi-
 run sample (merged_<library_strategy>). The kinds are fastp, bowtie2, bbmap_repair, motus4, motus3, cayman and gqlib,
-and for amplicons cutadapt_primers, cutadapt_readthrough, vsearch or fastp_merge, and idtaxa. The counts of the files of
+and for amplicons cutadapt_primers, cutadapt_readthrough, vsearch or fastp_merge, and idtaxa, and for long amplicon reads
+vsearch_fastqfilter and bbduk_pacbio (PacBio QC), vsearch_orient and cutadapt_linked. The counts of the files of
 a sample and run (e.g. of the runs merged into it) are summed. A column is written only if some file has its count.
 """
 import json
@@ -20,10 +21,11 @@ import pandas as pd
 PROFILERS = ["motus4", "motus3", "cayman", "gqlib", "idtaxa"]
 # the columns of the preprocessing steps, in their order
 PREPROCESSING_COLUMNS = [
-    "primer_trimmed_reads",
-    "readthrough_trimmed_reads",
     "raw_reads",
     "qc_reads",
+    "oriented_reads",
+    "primer_trimmed_reads",
+    "readthrough_trimmed_reads",
     "hostremoval_retained_pairs",
     "merged_pairs",
     "joined_pairs",
@@ -70,6 +72,29 @@ def parse_cutadapt(text, kind, db):
     return {column: reads}
 
 
+def parse_cutadapt_linked(text, kind, db):
+    # long reads with both primers (linked adapter, the others discarded) and in the length window: the reads written
+    text = text.replace(",", "")
+    return {"primer_trimmed_reads": search_int(r"^Reads written \(passing filters\):\s+(\d+)", text)}
+
+
+def parse_vsearch_fastqfilter(text, kind, db):
+    # PacBio reads, before the quality filters (vsearch, then BBDuk, which gives the reads after them)
+    kept = search_int(r"^(\d+) sequences kept", text)
+    discarded = search_int(r"(\d+) sequences discarded", text)
+    return {"raw_reads": None if kept is None or discarded is None else kept + discarded}
+
+
+def parse_bbduk_pacbio(text, kind, db):
+    # PacBio reads, after the quality filters (vsearch, then BBDuk)
+    return {"qc_reads": search_int(r"^Result:\s+(\d+) reads", text)}
+
+
+def parse_vsearch_orient(text, kind, db):
+    # long reads oriented as the reference (the others are dropped)
+    return {"oriented_reads": search_int(r"^All oriented sequences:\s+(\d+)", text)}
+
+
 def parse_vsearch(text, kind, db):
     # read pairs, merged or joined into one sequence
     return {
@@ -113,6 +138,10 @@ PARSERS = {
     "bbmap_repair": parse_bbmap_repair,
     "cutadapt_primers": parse_cutadapt,
     "cutadapt_readthrough": parse_cutadapt,
+    "cutadapt_linked": parse_cutadapt_linked,
+    "vsearch_fastqfilter": parse_vsearch_fastqfilter,
+    "bbduk_pacbio": parse_bbduk_pacbio,
+    "vsearch_orient": parse_vsearch_orient,
     "vsearch": parse_vsearch,
     "fastp_merge": parse_fastp_merge,
     "motus4": parse_motus4,
@@ -126,14 +155,16 @@ PARSERS = {
 DESCRIPTIONS = {
     "primer_trimmed_reads": (
         "Primer-trimmed reads",
-        "Amplicon reads with a primer found by PIMENTO trimmed at their start (cutadapt), each mate counted",
+        "Amplicon reads with a primer (found by PIMENTO or given) trimmed at their start (cutadapt), each mate counted;"
+        " long reads: with both primers trimmed, and in the length window",
     ),
     "readthrough_trimmed_reads": (
         "Read-through-trimmed reads",
         "Amplicon reads with the opposite primer trimmed at their end (cutadapt), each mate counted",
     ),
-    "raw_reads": ("Raw reads", "Reads before QC (fastp), each mate counted"),
-    "qc_reads": ("QC reads", "Reads after QC (fastp), each mate counted"),
+    "raw_reads": ("Raw reads", "Reads before QC (fastp, or vsearch for PacBio reads), each mate counted"),
+    "qc_reads": ("QC reads", "Reads after QC (fastp, or vsearch and BBDuk for PacBio reads), each mate counted"),
+    "oriented_reads": ("Oriented reads", "Long amplicon reads oriented as the reference sequences (vsearch), the others dropped"),
     "hostremoval_retained_pairs": (
         "Host removal retained pairs",
         "Read pairs with neither mate aligned to the host genome (single-end: reads not aligned), given to the"
@@ -143,10 +174,10 @@ DESCRIPTIONS = {
     "motus3": ("mOTUs v3 {db} pairs", "Read pairs aligned to the mOTUs v3 database {db} and passing the mOTUs filters"),
     "cayman": ("cayman {db} pairs", "Read pairs aligned to the gene catalogue {db} and passing the cayman filters"),
     "gqlib": ("gqlib {db} pairs", "Read pairs aligned to the gene catalogue {db} and passing the gqlib filters"),
-    "merged_pairs": ("Merged pairs", "Amplicon read pairs merged into one sequence (vsearch or fastp), for IDTAXA"),
+    "merged_pairs": ("Merged pairs", "Amplicon read pairs merged into one sequence (vsearch or fastp)"),
     "joined_pairs": (
         "Joined pairs",
-        "Amplicon read pairs not merged, joined with a padding of Ns into one sequence (vsearch), for IDTAXA",
+        "Amplicon read pairs not merged, joined with a padding of Ns into one sequence (vsearch)",
     ),
     "idtaxa": (
         "IDTAXA {db} sequences",

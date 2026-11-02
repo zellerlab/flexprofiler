@@ -1,0 +1,150 @@
+nextflow_pipeline {
+    name "Test PacBio amplicon reads"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_pacbio"
+    profile "test_idtaxa"
+
+    // PacBio HiFi reads of the full-length 16S amplicon, with the 27F/1492R primers, in either orientation (fwd_: from
+    // 27F, rev_: from 1492R), and reads to be removed by the preprocessing: with low-quality bases (lowq_), with an N
+    // (n_), with a single base of quality Q2 (lowbase_), without the primer at their end (trunc_), too short (short_),
+    // not 16S (other_); and, in the same run,
+    // Illumina paired-end V3-V4 reads without primers (see assets/test-data/README.md)
+
+    test("test_pacbio") {
+        when {
+            params {
+                input                      = "${baseDir}/assets/test-data/samplesheet_pacbio.csv"
+                outdir                     = "${outputDir}"
+                perform_longread_qc        = true
+                // the PacBio reads are oriented as a single 16S sequence (Escherichia) before PIMENTO
+                amplicon_orient_reference  = "${baseDir}/assets/test-data/data/fastq/amplicon/orient_16s.fasta"
+                save_analysis_ready_fastqs = true
+            }
+        }
+
+        then {
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def count_of          = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
+            def primers           = path( "${params.outdir}/amplicon_primers/primers.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def genus_table       = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.genus.tsv" ).readLines()
+            def genus_header      = genus_table[0].split( "\t" ) as List
+            // the counts of each genus of a sample in the merged genus table: [ genus: count ]
+            def genus_counts      = { sample -> genus_table.findAll { line -> line.contains( 'g__' ) }.collectEntries { line -> def fields = line.split( "\t" ); [ ( fields[0].tokenize( ';' ).last() - 'g__' ), fields[genus_header.indexOf( sample )].toInteger() ] } }
+            // the reads of a fastq: [ name: sequence ]
+            def reads             = { file -> path( file.toString() ).linesGzip.collate( 4 ).collectEntries { record -> [ record[0].substring( 1 ).split( /\s/ )[0], record[1] ] } }
+            def input_pacbio      = reads( "${baseDir}/assets/test-data/data/fastq/amplicon/amplicon_pacbio.fastq.gz" )
+            def ready_pacbio      = reads( "${params.outdir}/analysis_ready_fastqs/pacbio_pacbio_amplicon.fastq.gz" )
+            def kind              = { name -> name.tokenize( '_' )[0] }
+            def revcomp           = { seq -> seq.reverse().tr( 'ACGT', 'TGCA' ) }
+            // the region between the primers (27F: 20 bases, 1492R: 22 bases) of the fwd_ and rev_ reads, in the
+            // orientation of the gene
+            def expected_pacbio   = input_pacbio.findAll { name, _seq -> kind( name ) in [ 'fwd', 'rev' ] }.collectEntries { name, seq -> [ name, ( kind( name ) == 'fwd' ? seq : revcomp( seq ) )[20..-23] ] }
+            // the PacBio reads simulated from each genus, from their names (<orientation>_<genus>_<i>)
+            def simulated_pacbio  = expected_pacbio.keySet().countBy { name -> name.tokenize( '_' )[1] }
+            // the primers 27F and 1492R (1492modR), with the IUPAC codes of their sequences, and their reverse complements
+            def primer_regex      = ~/AGAGTTTGATC[AC]TGGCTCAG|TACGG[CT]TACCTTGTTA[CT]GACTT/
+            def rc_primer_regex   = ~/CTGAGCCA[GT]GATCAAACTCT|AAGTC[AG]TAACAAGGTA[AG]CCGTA/
+            def tasks_of          = { process -> workflow.trace.tasks().findAll { task -> task.name.contains( ":${process} (" ) }.collect { task -> task.name.replaceAll( /.*\(|\)$/, '' ) }.unique().sort() }
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                // the input reads, so that the checks below are not passed without preprocessing them
+                { assert input_pacbio.keySet().countBy( kind ) == [ fwd: 207, rev: 138, lowq: 18, n: 17, trunc: 17, short: 17, other: 10, lowbase: 10 ] },
+                { assert input_pacbio.findAll { name, _seq -> kind( name ) in [ 'fwd', 'rev' ] }.every { _name, seq -> seq.take( 30 ) =~ primer_regex && seq =~ rc_primer_regex } },
+                // the PacBio reads are QCed with vsearch and BBDuk (not fastp, for the short reads), oriented, and
+                // trimmed with both primers required; they are not host-removed or given to the shotgun profilers, as
+                // amplicon reads
+                { assert tasks_of( "VSEARCH_FASTQFILTER" ) == [ "pacbio" ] },
+                { assert tasks_of( "BBDUK_PACBIO" ) == [ "pacbio" ] },
+                { assert tasks_of( "VSEARCH_ORIENT" ) == [ "pacbio" ] },
+                { assert tasks_of( "CUTADAPT_LINKED" ) == [ "pacbio" ] },
+                { assert workflow.trace.tasks().count { task -> task.name =~ /FASTP.*\(pacbio\)|CUTADAPT_(PRIMERS|READTHROUGH).*\(pacbio\)/ } == 0 },
+                { assert workflow.trace.tasks().count { task -> task.name =~ /HOSTREMOVAL|MOTUS|CAYMAN|GQLIB|BWA/ } == 0 },
+                // the QC removes the reads with more than 2 expected errors or an N (vsearch: 18 lowq_ + 17 n_), and
+                // those with a base below Q3 (BBDuk: 10 lowbase_, passing the expected-errors filter), the orientation
+                // the reads not 16S
+                // (but some, oriented by chance, removed after by the primers), and the primer trimming the reads
+                // without both primers (17 trunc_, and the other_ oriented by chance) and those out of the length
+                // window (17 short_)
+                { assert count_of( "pacbio", "raw_reads" ) == "434" },
+                { assert count_of( "pacbio", "qc_reads" ) == "389" },
+                { assert count_of( "pacbio", "oriented_reads" ).toInteger() in 379..389 },
+                { assert count_of( "pacbio", "primer_trimmed_reads" ) == "345" },
+                // on the oriented reads PIMENTO finds the full-length pair, in --merged mode, as for single-end reads:
+                // 27F at the start of the reads, 1492modR (the degenerate form of 1492R, of the same length) at their
+                // end. The Illumina reads have no primer
+                { assert primers.collect { row -> row[0..4] } == [
+                    [ "sample", "run_accession", "mate", "region", "primer" ],
+                    [ "illumina", "clean_pe", "1", "", "" ],
+                    [ "illumina", "clean_pe", "2", "", "" ],
+                    [ "pacbio", "pacbio_amplicon", "1", "V1-V9", "27F" ],
+                    [ "pacbio", "pacbio_amplicon", "1", "V1-V9", "1492modR" ],
+                ] },
+                { assert primers.findAll { row -> row[0] == "pacbio" }.every { row -> row[5].toDouble() > 0.9 } },
+                // only the fwd_ and rev_ reads are left, trimmed of both primers and in the orientation of the gene
+                { assert ready_pacbio == expected_pacbio },
+                { assert ready_pacbio.count { _name, seq -> seq =~ primer_regex || seq =~ rc_primer_regex } == 0 },
+                // the Illumina pairs are merged (or joined) into single sequences, the analysis-ready reads
+                { assert path( "${params.outdir}/analysis_ready_fastqs/illumina_clean_pe.fastq.gz" ).linesGzip.size() == 483 * 4 },
+                { assert count_of( "illumina", "merged_pairs" ) == "345" },
+                { assert count_of( "illumina", "joined_pairs" ) == "138" },
+                // all the PacBio reads left are classified to the genus they were simulated from: 5 per reference
+                // sequence, 15 reference sequences per genus, except Escherichia (7) and Akkermansia (2)
+                { assert genus_counts( "pacbio" ) == simulated_pacbio },
+                { assert genus_counts( "pacbio" ) == [ Bifidobacterium: 75, Streptococcus: 75, Clostridium: 75, Bacteroides: 75, Escherichia: 35, Akkermansia: 10 ] },
+                // the Illumina reads as in the IDTAXA test
+                { assert genus_counts( "illumina" ) == [ Bifidobacterium: 105, Streptococcus: 105, Clostridium: 105, Bacteroides: 105, Escherichia: 49, Akkermansia: 14 ] },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+                { assert snapshot ( genus_table ).match( "genus_table" ) },
+            )
+        }
+    }
+
+    test("test_pacbio_given_primers") {
+        when {
+            params {
+                input                      = "${baseDir}/assets/test-data/samplesheet_pacbio.csv"
+                outdir                     = "${outputDir}"
+                perform_longread_qc        = true
+                // the PacBio full-length 16S primers, instead of PIMENTO: no orientation reference needed
+                amplicon_primer_fwd        = "AGRGTTYGATYMTGGCTCAG"
+                amplicon_primer_rev        = "RGYTACCTTGTTACGACTT"
+                save_analysis_ready_fastqs = true
+            }
+        }
+
+        then {
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def count_of          = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
+            def genus_table       = path( "${params.outdir}/idtaxa/merge/test_16s/test_16s.genus.tsv" ).readLines()
+            def genus_header      = genus_table[0].split( "\t" ) as List
+            def genus_counts      = { sample -> genus_table.findAll { line -> line.contains( 'g__' ) }.collectEntries { line -> def fields = line.split( "\t" ); [ ( fields[0].tokenize( ';' ).last() - 'g__' ), fields[genus_header.indexOf( sample )].toInteger() ] } }
+            def reads             = { file -> path( file.toString() ).linesGzip.collate( 4 ).collectEntries { record -> [ record[0].substring( 1 ).split( /\s/ )[0], record[1] ] } }
+            def input_pacbio      = reads( "${baseDir}/assets/test-data/data/fastq/amplicon/amplicon_pacbio.fastq.gz" )
+            def ready_pacbio      = reads( "${params.outdir}/analysis_ready_fastqs/pacbio_pacbio_amplicon.fastq.gz" )
+            def kind              = { name -> name.tokenize( '_' )[0] }
+            def revcomp           = { seq -> seq.reverse().tr( 'ACGT', 'TGCA' ) }
+            def expected_pacbio   = input_pacbio.findAll { name, _seq -> kind( name ) in [ 'fwd', 'rev' ] }.collectEntries { name, seq -> [ name, ( kind( name ) == 'fwd' ? seq : revcomp( seq ) )[20..-23] ] }
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks_given_primers" ) },
+                // no primer detection, so no orientation before it: cutadapt orients the reads (--revcomp)
+                { assert workflow.trace.tasks().count { task -> task.name =~ /PIMENTO|VSEARCH_ORIENT/ } == 0 },
+                { assert !path( "${params.outdir}/amplicon_primers/primers.tsv" ).exists() },
+                // the same reads left as with the primers found by PIMENTO, trimmed of both primers and in the
+                // orientation of the forward primer: the given 1492R (19 bases) is shorter than 1492modR, but cutadapt
+                // removes the bases after it too
+                { assert count_of( "pacbio", "qc_reads" ) == "389" },
+                { assert count_of( "pacbio", "primer_trimmed_reads" ) == "345" },
+                { assert ready_pacbio == expected_pacbio },
+                { assert genus_counts( "pacbio" ) == [ Bifidobacterium: 75, Streptococcus: 75, Clostridium: 75, Bacteroides: 75, Escherichia: 35, Akkermansia: 10 ] },
+                { assert snapshot ( read_counts ).match( "read_counts_given_primers" ) },
+            )
+        }
+    }
+}

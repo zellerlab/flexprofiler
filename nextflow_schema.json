@@ -112,7 +112,38 @@
                     "default": true,
                     "fa_icon": "fas fa-toggle-on",
                     "description": "Find and trim the primers of amplicon reads (library_strategy AMPLICON), with PIMENTO and cutadapt",
-                    "help_text": "For each AMPLICON run, the primers are searched with PIMENTO (`pimento std`) against its standard primer library, separately for the two mates of paired-end reads. If primers are found, they are trimmed with cutadapt before the other preprocessing steps: all the primers found are searched at the start of both mates (also trimming pairs sequenced in the other orientation), then their reverse complements at the end of the reads (reads running past the end of the amplicon). Runs without primers are not trimmed. The PIMENTO and cutadapt options can be changed with `ext.args` in a custom config (see the usage documentation)."
+                    "help_text": "For each AMPLICON run, the primers are searched with PIMENTO (`pimento std`) against its standard primer library, separately for the two mates of paired-end reads. Long reads (PacBio), sequenced from either end of the amplicon, are first oriented with vsearch against `--amplicon_orient_reference`, and then searched as single-end reads. The primers can also be given (`--amplicon_primer_fwd`, `--amplicon_primer_rev`), instead of found with PIMENTO. If primers are found, they are trimmed with cutadapt after the QC of the reads and before the handling of the read pairs (`--amplicon_pair_handling`). Short reads: all the primers found are searched at the start of both mates (also trimming pairs sequenced in the other orientation), then their reverse complements at the end of the reads (reads running past the end of the amplicon). Long reads: the forward primer at the start and the reverse complement of the reverse primer at the end, both required (the reads without both primers are discarded, as in the best practice for PacBio full-length 16S), in either orientation, with a length window of 1000-1600 bp (full-length 16S, changed with `ext.args` of `CUTADAPT_LINKED`). Runs without primers are not trimmed. The PIMENTO and cutadapt options can be changed with `ext.args` in a custom config (see the usage documentation)."
+                },
+                "amplicon_primer_fwd": {
+                    "type": "string",
+                    "pattern": "^[ACGTURYSWKMBDHVNacgturyswkmbdhvn]+$",
+                    "fa_icon": "fas fa-dna",
+                    "description": "Forward primer of the amplicon reads, 5'-3' (IUPAC codes allowed), instead of finding the primers with PIMENTO. Requires --amplicon_primer_rev",
+                    "help_text": "With `--amplicon_primer_fwd` and `--amplicon_primer_rev`, the primers of all the AMPLICON runs are these, and PIMENTO is not run. Short reads: both primers are searched at the start of the reads (and mates), and their reverse complements at the end. Long reads: the forward primer at the start and the reverse complement of the reverse primer at the end, both required (the reads without both primers are discarded), in either orientation (cutadapt `--revcomp`, the reads are written in the orientation of the forward primer). E.g. for PacBio full-length 16S: `--amplicon_primer_fwd AGRGTTYGATYMTGGCTCAG --amplicon_primer_rev RGYTACCTTGTTACGACTT`."
+                },
+                "amplicon_primer_rev": {
+                    "type": "string",
+                    "pattern": "^[ACGTURYSWKMBDHVNacgturyswkmbdhvn]+$",
+                    "fa_icon": "fas fa-dna",
+                    "description": "Reverse primer of the amplicon reads, 5'-3' on the reverse strand (IUPAC codes allowed), instead of finding the primers with PIMENTO. Requires --amplicon_primer_fwd",
+                    "help_text": "See `--amplicon_primer_fwd`."
+                },
+                "amplicon_orient_reference": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "pattern": "^\\S+\\.(fasta|fas|fa|fna)(\\.gz)?$",
+                    "fa_icon": "fas fa-compass",
+                    "description": "Reference sequences (FASTA) of the gene of the long-read amplicons, in its orientation, to orient the reads before finding their primers with PIMENTO. Required with long-read AMPLICON runs, unless the primers are given",
+                    "help_text": "Long reads (PacBio) are sequenced from either end of the amplicon, so, without the primers given (`--amplicon_primer_fwd`, `--amplicon_primer_rev`), they are first oriented with `vsearch --orient` against these sequences, of the same gene as the reads (e.g. 16S), all in the orientation of the gene. A few diverse sequences are enough, as only the strand is found: e.g. a 16S of a few bacterial phyla and an archaeon, or a 16S database such as GTDB `ssu_all`. The reads that cannot be oriented (not of the gene of the reference) are dropped."
+                },
+                "amplicon_pair_handling": {
+                    "type": "string",
+                    "default": "merged_plus_joined",
+                    "enum": ["merged_plus_joined", "merged_plus_unmerged", "none"],
+                    "description": "How the read pairs of paired-end amplicon reads are made into single sequences",
+                    "help_text": "The amplicon profilers (IDTAXA) classify single sequences, so the read pairs of the AMPLICON runs are handled at the end of their preprocessing, after primer trimming and before run merging. `merged_plus_joined`: the pairs are merged with vsearch if they overlap, and the others joined with a padding of Ns (R1, Ns, reverse complement of R2), so that each pair is classified once, as one sequence. `merged_plus_unmerged`: the pairs are merged with fastp if they overlap, and the two mates of the others are kept as separate sequences, so that such a pair counts twice in the profile. `none`: the pairs are kept as they are, e.g. to save them as analysis-ready reads for another tool (`--save_analysis_ready_fastqs`); the amplicon profilers cannot be run then. The analysis-ready reads of the AMPLICON runs are those after pair handling. The vsearch and fastp options can be changed with `ext.args` of `VSEARCH_MERGEJOIN` and `FASTP_AMPLICON_MERGE` in a custom config.",
+                    "fa_icon": "fas fa-object-group"
                 },
                 "perform_shortread_qc": {
                     "type": "boolean",
@@ -249,7 +280,7 @@
                     "type": "boolean",
                     "fa_icon": "fas fa-toggle-on",
                     "description": "Turns on long read quality control steps (adapter clipping, length filtering etc.)",
-                    "help_text": "Turns on long read quality control steps (adapter clipping, length and/or quality filtering.)\n\nRemoving adapters (if present) is recommend to reduce false-postive hits that may occur from 'dirty' or 'contaminated' reference genomes in a profiling database that contain accidentially incorporated adapter sequences.\n\nLength filtering, and quality filtering can speed up alignment by reducing the number of unspecific reads that need to be aligned."
+                    "help_text": "Turns on long read quality control steps (adapter clipping, length and/or quality filtering.)\n\nOxford Nanopore reads: adapter clipping with Porechop and length and quality filtering with Filtlong or Nanoq (see the other `--longread_qc_*` parameters). PacBio (HiFi) reads: the reads with more than 2 expected errors or with Ns are removed with vsearch (`--fastq_maxee 2 --fastq_maxns 0`, changed with `ext.args` of `VSEARCH_FASTQFILTER`), then those with a base of quality below 3 with BBDuk (`mbq=3`, `ext.args` of `BBDUK_PACBIO`), as in the best practice for full-length 16S (Callahan et al. 2019).\n\nRemoving adapters (if present) is recommend to reduce false-postive hits that may occur from 'dirty' or 'contaminated' reference genomes in a profiling database that contain accidentially incorporated adapter sequences.\n\nLength filtering, and quality filtering can speed up alignment by reducing the number of unspecific reads that need to be aligned."
                 },
                 "longread_adapterremoval_tool": {
                     "type": "string",
@@ -459,16 +490,8 @@
                 "run_idtaxa": {
                     "type": "boolean",
                     "description": "Turn on taxonomic classification of amplicon reads with IDTAXA. Requires database CSV file passed to --databases",
-                    "help_text": "IDTAXA (DECIPHER) classifies the AMPLICON samples (library_strategy column of the samplesheet) against a training set, the db_path of an idtaxa row of the database CSV (.RData, as distributed with DECIPHER). The pairs of paired-end reads are merged if they overlap, the others are handled as set by `--idtaxa_pair_handling`. The confidence threshold is set with `--idtaxa_threshold`, the strand of the sequences (default both) with `ext.strand` in a custom config.",
+                    "help_text": "IDTAXA (DECIPHER) classifies the AMPLICON samples (library_strategy column of the samplesheet) against a training set, the db_path of an idtaxa row of the database CSV (.RData, as distributed with DECIPHER). The pairs of paired-end reads are merged if they overlap, the others are handled as set by `--amplicon_pair_handling`. The confidence threshold is set with `--idtaxa_threshold`, the strand of the sequences (default both) with `ext.strand` in a custom config.",
                     "fa_icon": "fas fa-toggle-on"
-                },
-                "idtaxa_pair_handling": {
-                    "type": "string",
-                    "default": "merged_plus_joined",
-                    "enum": ["merged_plus_joined", "merged_plus_unmerged"],
-                    "description": "How the read pairs of paired-end amplicon reads are given to IDTAXA",
-                    "help_text": "IDTAXA classifies single sequences. `merged_plus_joined`: the pairs are merged with vsearch if they overlap, and the others joined with a padding of Ns (R1, Ns, reverse complement of R2), so that each pair is classified once, as one sequence. `merged_plus_unmerged`: the pairs are merged with fastp if they overlap, and the two mates of the others are classified as separate sequences, so that such a pair counts twice in the profile. Only the reads given to IDTAXA change, not the analysis-ready reads. The vsearch and fastp options can be changed with `ext.args` of `VSEARCH_MERGEJOIN` and `FASTP_IDTAXA_MERGE` in a custom config.",
-                    "fa_icon": "fas fa-object-group"
                 },
                 "idtaxa_db_names": {
                     "type": "string",

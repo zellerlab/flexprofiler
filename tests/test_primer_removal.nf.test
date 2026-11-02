@@ -13,8 +13,9 @@ nextflow_pipeline {
                 // a quarter of the pairs in the other orientation (R1 starting with 805R), and without primers
                 input                      = "${baseDir}/assets/test-data/samplesheet_primers.csv"
                 outdir                     = "${outputDir}"
-                // no profiling: the test checks the analysis-ready reads
+                // no profiling: the test checks the analysis-ready reads, with the pairs kept as they are
                 run_idtaxa                 = false
+                amplicon_pair_handling     = "none"
                 perform_runmerging         = false
                 save_analysis_ready_fastqs = true
             }
@@ -27,7 +28,7 @@ nextflow_pipeline {
             def primers           = path( "${params.outdir}/amplicon_primers/primers.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
             // the reads of a fastq: [ name without /1 or /2, sequence ]
             def reads             = { file -> path( file.toString() ).linesGzip.collate( 4 ).collect { record -> [ record[0].substring( 1 ).split( /\s/ )[0].replaceAll( /\/[12]$/, '' ), record[1] ] } }
-            def ready             = { name -> reads( "${params.outdir}/analysis_ready_fastqs/${name}.fastp.fastq.gz" ) }
+            def ready             = { name -> reads( "${params.outdir}/analysis_ready_fastqs/${name}.fastq.gz" ) }
             // the primers, with the IUPAC codes of their sequences, searched in the first 60 bases of the reads
             def primer_regex      = ~/CCTACGGG[ACGT]GGC[AT]GCAG|GACTAC[ACT][ACG]GGGTATCTAATCC/
             def with_primer       = { rows -> rows.count { _name, seq -> seq.take( 60 ) =~ primer_regex } }
@@ -110,7 +111,7 @@ nextflow_pipeline {
                 // primers in the last 50 bases (as if the reads spanned the whole amplicon), and reports a primer only if
                 // it is in more than 60% of the reads. 805R is in none of the 250 bp reads but the 69 read-through ones
                 // (12.5%), and in these it is not in the last 50 bases either, followed by the adapter and random bases.
-                // fastp, run after, does not remove the adapter either: it detects the adapter of single-end reads only in
+                // fastp, run before, does not remove the adapter either: it detects the adapter of single-end reads only in
                 // files of at least 10000 reads. So the read-through reads keep rc(805R), the adapter and the random
                 // bases, and lose only 341F (233 bp; one also 3 bases at its end matching the start of rc(341F)) (see TODO.md)
                 { assert ready_files.collectEntries { name -> [ name, ready( name ).count { _name, seq -> seq =~ rc_805R_regex || seq =~ rc_341F_regex } ] } == [

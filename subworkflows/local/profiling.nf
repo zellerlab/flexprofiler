@@ -9,8 +9,6 @@ include { MOTUS_PROFILE  as MOTUS3_PROFILE  } from '../../modules/nf-core/motus/
 include { CAYMAN_PROFILE                } from '../../modules/local/cayman/profile/main'
 include { BWA_MEM as BWA_ALIGN         } from '../../modules/nf-core/bwa/mem/main'
 include { GQLIB_PROFILE_GENES           } from '../../modules/local/gqlib/profile_genes/main'
-include { VSEARCH_MERGEJOIN             } from '../../modules/local/vsearch/mergejoin/main'
-include { FASTP as FASTP_IDTAXA_MERGE   } from '../../modules/nf-core/fastp/main'
 include { IDTAXA_CLASSIFY               } from '../../modules/local/idtaxa/classify/main'
 
 workflow PROFILING {
@@ -23,8 +21,7 @@ workflow PROFILING {
     ch_multiqc_files = Channel.empty()
     // count tables
     ch_raw_profiles = Channel.empty()
-    // logs of the profilers and of the steps preparing the reads for a profiler, for the read counts, with the tool in
-    // meta.tool: [ meta, log ]
+    // logs of the profilers, for the read counts, with the tool in meta.tool: [ meta, log ]
     ch_read_count_logs = Channel.empty()
 
     /*
@@ -120,39 +117,10 @@ workflow PROFILING {
         .collect { db_meta -> [db_meta.tool, db_meta.db_name, db_meta.annot_db_name] }
     def is_first_annot_log = { meta, _log_file -> [meta.tool, meta.db_name, meta.annot_db_name] in first_annots }
 
-    // IDTAXA classifies single sequences: the pairs of paired-end amplicon reads are merged if they overlap, and the
-    // others joined with a padding of Ns (merged_plus_joined, vsearch) or kept as two separate mates
-    // (merged_plus_unmerged, fastp)
-    if (params.run_idtaxa) {
-        ch_reads_for_pairhandling = reads
-            .filter { meta, _input_reads -> meta.library_strategy == 'AMPLICON' }
-            .branch { meta, _input_reads ->
-                pe: !meta.single_end
-                se: true
-            }
-        if (params.idtaxa_pair_handling == 'merged_plus_joined') {
-            VSEARCH_MERGEJOIN(ch_reads_for_pairhandling.pe)
-            ch_versions = ch_versions.mix(VSEARCH_MERGEJOIN.out.versions.first())
-            ch_read_count_logs = ch_read_count_logs.mix(VSEARCH_MERGEJOIN.out.log.map { meta, log_file -> [meta + [tool: 'vsearch'], log_file] })
-            ch_reads_pairhandled = VSEARCH_MERGEJOIN.out.reads
-        }
-        else if (params.idtaxa_pair_handling == 'merged_plus_unmerged') {
-            FASTP_IDTAXA_MERGE(ch_reads_for_pairhandling.pe, [], false, false, true)
-            ch_versions = ch_versions.mix(FASTP_IDTAXA_MERGE.out.versions.first())
-            ch_read_count_logs = ch_read_count_logs.mix(FASTP_IDTAXA_MERGE.out.log.map { meta, log_file -> [meta + [tool: 'fastp_merge'], log_file] })
-            ch_reads_pairhandled = FASTP_IDTAXA_MERGE.out.reads_merged
-        }
-        ch_reads_for_idtaxa = ch_reads_pairhandled
-            .map { meta, merged_reads -> [meta + [single_end: true], [merged_reads]] }
-            .mix(ch_reads_for_pairhandling.se)
-    }
-    else {
-        ch_reads_for_idtaxa = Channel.empty()
-    }
-
-    ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> !(db_meta.tool in ['motus4', 'cayman', 'gqlib', 'idtaxa']) }.mix(ch_dbs_bwa))
+    // the amplicon reads are single sequences (merged or joined read pairs, mates of unmerged pairs, or single-end
+    // reads), as made by the amplicon preprocessing
+    ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> !(db_meta.tool in ['motus4', 'cayman', 'gqlib']) }.mix(ch_dbs_bwa))
         .mix(combineReadsWithDatabases(ch_reads_for_motus4, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool == 'motus4' }))
-        .mix(combineReadsWithDatabases(ch_reads_for_idtaxa, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool == 'idtaxa' }))
         .branch { _meta, _input_reads, db_meta, _db ->
             motus4: db_meta.tool == 'motus4'
             motus3: db_meta.tool == 'motus3'
@@ -212,7 +180,7 @@ workflow PROFILING {
         // spread out each alignment to the profilers using its gene catalogue, each with its annotation file
         ch_bams_for_profiling = BWA_ALIGN.out.bam
             .flatMap { meta, bam ->
-                meta.profilers.collect { db_meta -> [meta.subMap(meta.keySet() - 'profilers') + db_meta, bam, file(db_meta.annot_db_path)] }
+                meta.profilers.collect { db_meta -> [meta.subMap(meta.keySet() - 'profilers') + db_meta, bam, file(db_meta.annot_db_path, checkIfExists: true)] }
             }
             .branch { meta, _bam, _annot ->
                 cayman: meta.tool == 'cayman'
@@ -261,7 +229,7 @@ workflow PROFILING {
 
     emit:
     profiles        = ch_raw_profiles // channel: [ val(meta), [ reads ] ] - should be text files or biom
-    read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman, gqlib (of the first annotation of each gene catalogue) and idtaxa (with meta.db_name), and of vsearch or fastp (merging the pairs for idtaxa), with the tool in meta.tool
+    read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman, gqlib (of the first annotation of each gene catalogue) and idtaxa (with meta.db_name), with the tool in meta.tool
     versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }
