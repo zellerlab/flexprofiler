@@ -31,14 +31,14 @@ process IDTAXA_CLASSIFY {
     // R code: lists are indexed with [[ ]], as $ would be taken by Nextflow
     """
     #!/usr/bin/env Rscript
-    suppressPackageStartupMessages(library(DECIPHER))
+    library(DECIPHER)
 
     # the training set, the only object of the .RData file, whatever its name (trainingSet in those of DECIPHER)
     training_set <- get(load("${training_set}"))
     seqs <- readDNAStringSet("${reads}", format = "fastq")
     # IdTaxa needs at least one sequence, and sapply below would return an empty list for none
     stopifnot("no sequences in ${reads}" = length(seqs) > 0)
-    ids <- IdTaxa(seqs, training_set, strand = "${strand}", threshold = ${threshold}, processors = ${task.cpus}, verbose = FALSE)
+    ids <- IdTaxa(seqs, training_set, strand = "${strand}", threshold = ${threshold}, processors = ${task.cpus}, verbose = TRUE)
 
     # the lineage of each sequence and its ranks (";"-separated, tab-separated from each other), without the root and the
     # unclassified_ placeholder of the rank where the assignment stopped; NA if no taxon was assigned
