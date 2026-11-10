@@ -444,7 +444,7 @@
                     "type": "boolean",
                     "fa_icon": "fas fa-filter",
                     "description": "Filter the host reads with PathSeq-T2T, for low-biomass human samples",
-                    "help_text": "Replaces the short-read QC and host removal with the PathSeq-T2T host filtering of Dohlman et al., Cell 2026 (https://doi.org/10.1016/j.cell.2026.04.015): alignment to GRCh38 with `bwa mem -T 0`, selection of the reads not aligned to it (and of those aligned to its viral decoy contigs), GATK PathSeqFilterSpark (quality, complexity, host k-mer and duplicate filters), and removal of the reads aligned to T2T-CHM13. Only Illumina WGS FASTQ are accepted, and `--perform_shortread_qc`, `--perform_shortread_complexityfilter`, `--perform_shortread_hostremoval` and `--perform_shortread_redundancyestimation` must be off. The differences from the upstream implementation (https://github.com/abdohlman/pathseq-t2t) are listed in docs/pathseq_t2t.md."
+                    "help_text": "Replaces the short-read QC and host removal with the PathSeq-T2T host filtering of Dohlman et al., Cell 2026 (https://doi.org/10.1016/j.cell.2026.04.015): alignment to GRCh38 with `bwa mem -T 0`, selection of the reads not aligned to it (and of those aligned to its viral decoy contigs), GATK PathSeqFilterSpark (quality, complexity, host k-mer and duplicate filters), and removal of the reads aligned to T2T-CHM13. Only Illumina WGS FASTQ are accepted, and `--perform_shortread_qc`, `--perform_shortread_complexityfilter`, `--perform_shortread_hostremoval` and `--perform_shortread_redundancyestimation` must be off, as well as `--run_cayman` and `--run_gqlib`. The differences from the upstream implementation (https://github.com/abdohlman/pathseq-t2t) are listed in docs/pathseq_t2t.md."
                 },
                 "pathseq_t2t_grch38_reference": {
                     "type": "string",
@@ -575,7 +575,7 @@
                     "type": "boolean",
                     "fa_icon": "fas fa-toggle-on",
                     "description": "Classify the WGS reads with Kraken2, against the kraken2 databases of the database sheet",
-                    "help_text": "The options of a database (db_params) default to `--confidence 0.15 --report-minimizer-data`, as in PathSeq-T2T (Dohlman et al., Cell 2026, https://doi.org/10.1016/j.cell.2026.04.015), which used the PlusPF database of 2024-06-05 (https://benlangmead.github.io/aws-indexes/k2). With --pathseq_t2t, the reads left without their mate are classified too. The reports are merged into tables of reads and of reads per million raw reads per taxon (--run_profile_standardisation)."
+                    "help_text": "The options of a database (db_params) default to `--confidence 0.15 --report-minimizer-data`, as in PathSeq-T2T (Dohlman et al., Cell 2026, https://doi.org/10.1016/j.cell.2026.04.015), which used the PlusPF database of 2024-06-05 (https://benlangmead.github.io/aws-indexes/k2). With --pathseq_t2t, the reads left without their mate are classified too. The reports are merged into tables of reads per taxon (--run_profile_standardisation)."
                 },
                 "run_idtaxa": {
                     "type": "boolean",

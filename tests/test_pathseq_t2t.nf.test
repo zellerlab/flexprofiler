@@ -72,12 +72,9 @@ nextflow_pipeline {
                 // the reads of the decoy contig are classified as the virus, and those of the microbial genome as it
                 { assert kraken2_clade( "900003", "lowbiomass" ) == 2 * pe_1.count( "decoy_pair" ) + singletons.count( "decoy_pair" ) },
                 { assert kraken2_clade( "900003", "lowbiomass_se" ) == se.count( "decoy_single" ) },
-                // the reads per million raw reads
-                { assert Math.abs( ( kraken2_table( "rpm_clade" ).find { row -> row[0] == "900002" }[1] as double ) - 1e6 * kraken2_clade( "900002", "lowbiomass" ) / count( "lowbiomass", "raw_reads" ) ) < 1 },
                 { assert snapshot (
                     path( "${params.outdir}/kraken2/kraken2_test_kraken2.reads_clade.tsv" ),
                     path( "${params.outdir}/kraken2/kraken2_test_kraken2.reads_taxon.tsv" ),
-                    path( "${params.outdir}/kraken2/kraken2_test_kraken2.rpm_clade.tsv" ),
                     path( "${params.outdir}/kraken2/kraken2_test_kraken2.taxonomy.tsv" ),
                 ).match( "kraken2_tables" ) },
             )

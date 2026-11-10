@@ -1,5 +1,5 @@
 // Merge the Kraken2 reports of the samples of a database into tables of taxa by samples, counting reads (each mate
-// counted), and the reads per million raw reads (bin/kraken2_merge.py)
+// counted) (bin/kraken2_merge.py)
 process KRAKEN2_MERGE {
     tag "$meta.id"
     label 'process_single'
@@ -10,17 +10,13 @@ process KRAKEN2_MERGE {
         : 'biocontainers/pandas:2.2.1'}"
 
     input:
-    // meta.id: the database
-    tuple val(meta), path(reports, stageAs: 'reports/*')
-    // with a header, one row per report: file sample id run_accession mates
-    path manifest
-    // the read counts, for the reads per million, [] for none
-    path read_counts
+    // meta.id: the database; the reports of the read pairs, and those of the single reads (single-end reads, and the
+    // reads left without their mate by --pathseq_t2t)
+    tuple val(meta), path(pairs, stageAs: 'pairs/*'), path(single_reads, stageAs: 'single_reads/*')
 
     output:
     tuple val(meta), path("*.reads_clade.tsv"), emit: reads_clade
     tuple val(meta), path("*.reads_taxon.tsv"), emit: reads_taxon
-    tuple val(meta), path("*.rpm_clade.tsv")  , emit: rpm_clade, optional: true
     tuple val(meta), path("*.taxonomy.tsv")   , emit: taxonomy
     path "versions.yml"                       , emit: versions
 
@@ -30,10 +26,12 @@ process KRAKEN2_MERGE {
     script:
     def prefix = task.ext.prefix ?: "kraken2_${meta.id}"
     """
+    # a directory is not staged if it has no reports
+    mkdir -p pairs single_reads
     kraken2_merge.py \\
-        ${manifest} \\
-        reports \\
-        ${read_counts ?: '-'} \\
+        ${meta.id} \\
+        pairs \\
+        single_reads \\
         ${prefix}
 
     cat <<-END_VERSIONS > versions.yml

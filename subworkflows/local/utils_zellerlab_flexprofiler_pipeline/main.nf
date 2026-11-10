@@ -612,6 +612,12 @@ def validatePathseqT2t(samplesheet_rows) {
         error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t filters the reads as they were sequenced, and cannot be used with ${conflicting.collect { name -> "--${name}" }.join(', ')}: please turn ${conflicting.size() > 1 ? 'them' : 'it'} off")
     }
 
+    // the gene catalogue profilers are not supported on the reads filtered by PathSeq-T2T
+    def unsupported_profilers = ['run_cayman', 'run_gqlib'].findAll { name -> params[name] }
+    if (unsupported_profilers) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t cannot be used with ${unsupported_profilers.collect { name -> "--${name}" }.join(', ')}: please turn ${unsupported_profilers.size() > 1 ? 'them' : 'it'} off")
+    }
+
     if (!params.pathseq_t2t_grch38_reference && !params.pathseq_t2t_grch38_bwa_index) {
         error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs GRCh38: please give its bwa index (--pathseq_t2t_grch38_bwa_index) or its FASTA to build it (--pathseq_t2t_grch38_reference)")
     }

@@ -15,7 +15,7 @@ include { KRAKEN2_KRAKEN2                } from '../../modules/nf-core/kraken2/k
 workflow PROFILING {
     take:
     reads      // [ [ meta ], [ reads ] ]
-    singletons // [ [ meta ], fastq ], the paired-end reads left without their mate by --pathseq_t2t, for Kraken2
+    singletons // [ [ meta ], fastq ], the paired-end reads left without their mate by --pathseq_t2t, for Kraken2 and mOTUs
     databases  // [ [ meta ], path ]
 
     main:
@@ -94,6 +94,13 @@ workflow PROFILING {
         ch_reads_for_motus4 = reads
     }
 
+    // mOTUs takes the reads left without their mate by --pathseq_t2t in the same run as the pairs, as unpaired reads:
+    // [ meta, [ fwd, rev, singletons ] ], or [ meta, [ singletons ] ] if no pair is left. The empty files are left out.
+    // They are not renamed for mOTUs v4, as the unpaired reads are not matched by name
+    ch_singletons_for_motus = singletons.filter { _meta, fastq -> fastq.countFastq() > 0 }
+    ch_reads_for_motus4 = addSingletons(ch_reads_for_motus4, ch_singletons_for_motus)
+    ch_reads_for_motus3 = addSingletons(reads, ch_singletons_for_motus)
+
     // cayman and gqlib databases are the gene catalogue fasta (db_path), with its bwa index alongside,
     // and the annotation file (annot_db_path). The alignment is shared by all the annotations of a
     // gene catalogue, and between cayman and gqlib: the databases with the same name and gene
@@ -121,8 +128,9 @@ workflow PROFILING {
 
     // the amplicon reads are single sequences (merged or joined read pairs, mates of unmerged pairs, or single-end
     // reads), as made by the amplicon preprocessing
-    ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> !(db_meta.tool in ['motus4', 'cayman', 'gqlib']) }.mix(ch_dbs_bwa))
+    ch_input_for_profiling = combineReadsWithDatabases(reads, ch_dbs.filter { _type, db_meta, _db -> !(db_meta.tool in ['motus4', 'motus3', 'cayman', 'gqlib']) }.mix(ch_dbs_bwa))
         .mix(combineReadsWithDatabases(ch_reads_for_motus4, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool == 'motus4' }))
+        .mix(combineReadsWithDatabases(ch_reads_for_motus3, ch_dbs.filter { _type, db_meta, _db -> db_meta.tool == 'motus3' }))
         .branch { _meta, _input_reads, db_meta, _db ->
             motus4: db_meta.tool == 'motus4'
             motus3: db_meta.tool == 'motus3'
@@ -275,6 +283,20 @@ def combineReadsWithDatabases(ch_reads, ch_databases) {
         .map { meta, input_reads -> [[type: meta.type, library_strategy: meta.library_strategy], meta, input_reads] }
         .combine(ch_databases, by: 0)
         .map { _db_type, meta, input_reads, db_meta, db -> [meta, input_reads, db_meta, db] }
+}
+
+/**
+* Add to the reads of each sample its reads left without their mate, if any.
+*
+* @param ch_reads A channel of [ meta, [ reads ] ]
+* @param ch_singletons A channel of [ meta, fastq ], with the same meta as the reads (or with no reads, if no pair is left)
+* @return A channel of [ meta, [ reads, singletons ] ], [ meta, [ reads ] ] without singletons, [ meta, [ singletons ] ]
+*     without reads
+*/
+def addSingletons(ch_reads, ch_singletons) {
+    return ch_reads
+        .join(ch_singletons, remainder: true)
+        .map { meta, input_reads, singletons_fastq -> [meta, (input_reads ?: []) + (singletons_fastq ? [singletons_fastq] : [])] }
 }
 
 /**

@@ -251,9 +251,6 @@ workflow FLEXPROFILER {
         SUBWORKFLOW: PATHSEQ-T2T HOST FILTERING
     */
 
-    // the host filtering (--pathseq_t2t, else a pass-through) of the reads as they were sequenced (the QC and host
-    // removal steps are off with --pathseq_t2t), after the run merging, so that with it the duplicates are removed over
-    // the whole sample
     PATHSEQ_T2T(
         RUN_MERGING.out.reads,
         ch_pathseq_grch38_reference,
@@ -269,6 +266,7 @@ workflow FLEXPROFILER {
     ch_singletons = PATHSEQ_T2T.out.singletons
 
     // the FASTA inputs are not merged
+    // NOTE: FASTA fails with pathseq_t2t, so the mix is only useful when PATHSEQ_T2T is a passthrough
     ch_reads_runmerged = PATHSEQ_T2T.out.reads.mix(ch_input.fasta_short, ch_input.fasta_long)
 
     /*
@@ -297,10 +295,7 @@ workflow FLEXPROFILER {
         SUBWORKFLOW: PROFILING STANDARDISATION
     */
     if (params.run_profile_standardisation) {
-        // the reads per million of Kraken2 are per raw read, counted by fastp or, with --pathseq_t2t, by the alignment to
-        // GRCh38
-        def has_raw_reads = params.pathseq_t2t || (params.perform_shortread_qc && params.shortread_qc_tool == 'fastp')
-        STANDARDISATION_PROFILES(PROFILING.out.profiles, ch_final_dbs, has_raw_reads ? READ_COUNTING.out.tsv : [])
+        STANDARDISATION_PROFILES(PROFILING.out.profiles, ch_final_dbs)
         ch_versions = ch_versions.mix(STANDARDISATION_PROFILES.out.versions)
     }
 

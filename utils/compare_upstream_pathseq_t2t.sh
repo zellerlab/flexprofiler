@@ -120,10 +120,9 @@ for kind, suffix in (("paired", ""), ("unpaired", "_singletons")):
     print(f"Kraken2 report of the {kind} reads: {'same' if up_report == our_report else 'DIFFERENT'}")
 up = {r["tax_id"]: r for r in csv.DictReader(open(f"{U}/results/{S}.kraken.txt"), delimiter="\t")}
 clade = {r["taxid"]: r for r in csv.DictReader(open(merged), delimiter="\t")}
-rpm = {r["taxid"]: r for r in csv.DictReader(open(f"{O}/kraken2/kraken2_{db}.rpm_clade.tsv"), delimiter="\t")}
-print("\n| Taxon | Upstream reads | flexprofiler reads | Upstream RPM | flexprofiler RPM |")
-print("|---|---|---|---|---|")
+print("\n| Taxon | Upstream reads | flexprofiler reads |")
+print("|---|---|---|")
 for taxid, row in sorted(up.items(), key=lambda item: -int(item[1]["reads_clade"]))[:30]:
-    print(f"| {row['name']} ({taxid}) | {row['reads_clade']} | {clade[taxid][S]} | {float(row['reads_clade_per_million']):.4g} | {float(rpm[taxid][S]):.4g} |")
+    print(f"| {row['name']} ({taxid}) | {row['reads_clade']} | {clade[taxid][S]} |")
 EOF
 run "export PATH=/c/env/bin:\$PATH; python /c/compare.py $SAMPLE"

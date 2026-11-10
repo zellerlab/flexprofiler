@@ -21,7 +21,6 @@
                 "kraken2",
                 "kraken2/kraken2_test_kraken2.reads_clade.tsv",
                 "kraken2/kraken2_test_kraken2.reads_taxon.tsv",
-                "kraken2/kraken2_test_kraken2.rpm_clade.tsv",
                 "kraken2/kraken2_test_kraken2.taxonomy.tsv",
                 "kraken2/test_kraken2",
                 "kraken2/test_kraken2/lowbiomass_se_test_kraken2.kraken2.report.txt",
@@ -55,7 +54,6 @@
         "content": [
             "kraken2_test_kraken2.reads_clade.tsv:md5,e3a57ef267d130c1a5304877285e54fc",
             "kraken2_test_kraken2.reads_taxon.tsv:md5,11331f35e7ad9f00e711a6b54d2ecb47",
-            "kraken2_test_kraken2.rpm_clade.tsv:md5,d288fde79a4e98c35318949c764a64f6",
             "kraken2_test_kraken2.taxonomy.tsv:md5,9ec8f4df1acd94c21db251f4da9e67f0"
         ],
         "timestamp": "2026-11-10T13:34:26.580146",

@@ -29,7 +29,7 @@ process PATHSEQT2T_PREFILTER {
     tuple val(meta), path("*.prefilter.unaligned.bam"), emit: unaligned
     // the reads aligned to the host that overlap the decoy contigs, only if there are any
     tuple val(meta), path("*.prefilter.decoys.bam")   , emit: decoys, optional: true
-    // samtools flagstat of the input: its primary reads are the denominator of the reads per million
+    // samtools flagstat of the input: its primary reads are the raw reads of the read counts
     tuple val(meta), path("*.flagstat.tsv")           , emit: flagstat
     path "versions.yml"                               , emit: versions
 

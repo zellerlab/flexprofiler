@@ -32,7 +32,7 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 - [bwa](#bwa) - Optional alignments of the reads to the gene catalogues of cayman and gqlib
 - [cayman](#cayman) - Profiling of carbohydrate-active enzymes from a gene catalogue
 - [gqlib](#gqlib) - Functional profiling from the annotation of a gene catalogue
-- [Kraken2](#kraken2) - Taxonomic classification of the reads, with merged tables of reads and reads per million
+- [Kraken2](#kraken2) - Taxonomic classification of the reads, with merged tables of reads
 <!--
 [//]:- [Bracken](#bracken) - Taxonomic classifier using k-mers and abundance estimations
 - [KrakenUniq](#krakenuniq) - Taxonomic classifier that combines the k-mer-based classification and the number of unique k-mers found in each species
@@ -557,6 +557,23 @@ and 10 single-end reads passing the alignment filters (`filtered_reads` = 10): 6
 
 With paired-end reads, the same holds for each pair: a pair with both mates aligned only to A counts `1/2` + `1/2` = 1 for A.
 
+### Kraken2
+
+[Kraken2](https://ccb.jhu.edu/software/kraken2/) assigns each read (or read pair) to the lowest common ancestor of the genomes of the database that share its k-mers (`--run_kraken2`).
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `kraken2/`
+  - `<db_name>/<sample>_<db_name>[_singletons].kraken2.report.txt`: the Kraken2 report of a sample (`_singletons`: of the reads left without their mate by `--pathseq_t2t`, classified on their own). Kraken2 counts a pair as one fragment.
+  - `kraken2_<db_name>.reads_clade.tsv` (`--run_profile_standardisation`): the reads assigned to each taxon or to a taxon below it, by sample, each mate counted (the pairs counted twice, the singletons once), with the unclassified reads (taxid 0) first
+  - `kraken2_<db_name>.reads_taxon.tsv`: the reads assigned to each taxon itself
+  - `kraken2_<db_name>.taxonomy.tsv`: the name, rank and lineage (taxids from the root) of each taxon of the tables
+
+</details>
+
+`<sample>` is the sample, or `<sample>_<run_accession>` without run merging. The reports are also in the MultiQC report. The reads per million of PathSeq-T2T are not computed: with `--pathseq_t2t` they are `reads_clade` times 10^6 divided by the `raw_reads` of the [read counts](#read-counts), except that here the singletons are counted once instead of twice (see [the PathSeq-T2T page](pathseq_t2t.md#differences-from-upstream-pathseq-t2t)); the paper takes 0.1 reads per million as the background level of contamination.
+
 <!--
 ### Bracken
 
@@ -579,24 +596,6 @@ The first step of using Bracken requires running Kraken2, therefore the initial 
 </details>
 
 The main taxonomic profiling file from Bracken is the `*.tsv` file. This provides the basic results from Kraken2 but with the corrected abundance information. Note that the raw Kraken2 version of the upstream step of Bracken can be found in the `kraken2/` directory with the suffix of `<sample_id>_<db_name>.bracken.report.txt` (with a 6 column variant when `--save_minimizers` specified).
-
-### Kraken2
-
-[Kraken2](https://ccb.jhu.edu/software/kraken2/) assigns each read (or read pair) to the lowest common ancestor of the genomes of the database that share its k-mers (`--run_kraken2`).
-
-<details markdown="1">
-<summary>Output files</summary>
-
-- `kraken2/`
-  - `<db_name>/<sample>_<db_name>[_singletons].kraken2.report.txt`: the Kraken2 report of a sample (`_singletons`: of the reads left without their mate by `--pathseq_t2t`, classified on their own). Kraken2 counts a pair as one fragment.
-  - `kraken2_<db_name>.reads_clade.tsv` (`--run_profile_standardisation`): the reads assigned to each taxon or to a taxon below it, by sample, each mate counted (the pairs counted twice, the singletons once), with the unclassified reads (taxid 0) first
-  - `kraken2_<db_name>.reads_taxon.tsv`: the reads assigned to each taxon itself
-  - `kraken2_<db_name>.rpm_clade.tsv`: the reads of `reads_clade` per million raw reads of the sample (`raw_reads` of the [read counts](#read-counts): the primary reads aligned to GRCh38 with `--pathseq_t2t`, as in Dohlman et al. 2026, or the reads before fastp). Only if the raw reads are counted, i.e. with `--pathseq_t2t` or with fastp.
-  - `kraken2_<db_name>.taxonomy.tsv`: the name, rank and lineage (taxids from the root) of each taxon of the tables
-
-</details>
-
-`<sample>` is the sample, or `<sample>_<run_accession>` without run merging. The reports are also in the MultiQC report. The reads per million are those of PathSeq-T2T, except that its singletons are counted once instead of twice (see [the PathSeq-T2T page](pathseq_t2t.md#differences-from-upstream-pathseq-t2t)); the paper takes 0.1 reads per million as the background level of contamination.
 
 ### KrakenUniq
 
@@ -834,8 +833,8 @@ The counts are parsed from the logs of the tools. There is one row per sample an
 | `host_kmer_filter_reads`    | reads, each mate counted                 | PathSeq-T2T: PathSeqFilterSpark, `READS_AFTER_HOST_FILTER`                                                 |
 | `deduplication_filter_reads` | reads, each mate counted                | PathSeq-T2T: PathSeqFilterSpark, `READS_AFTER_DEDUPLICATION`                                               |
 | `t2t_filter_reads`          | reads, each mate counted                 | PathSeq-T2T: reads not aligned to T2T-CHM13 (pairs and singletons), i.e. the reads given to the profilers |
-| `motus4_<db_name>_pairs`    | read pairs                               | mOTUs v4, inserts aligned to the database and passing the mOTUs filters (`Read N aligned inserts`)         |
-| `motus3_<db_name>_pairs`    | read pairs                               | mOTUs v3, inserts aligned to the database and passing the mOTUs filters (`Total number of inserts`)        |
+| `motus4_<db_name>_pairs`    | read pairs                               | mOTUs v4, inserts aligned to the database and passing the mOTUs filters (`Read N aligned inserts`); with `--pathseq_t2t`, each singleton counts as one insert |
+| `motus3_<db_name>_pairs`    | read pairs                               | mOTUs v3, inserts aligned to the database and passing the mOTUs filters (`Total number of inserts`); with `--pathseq_t2t`, each singleton counts as one insert |
 | `cayman_<db_name>_pairs`    | read pairs                               | cayman, reads aligned to the gene catalogue and passing the filters (`Reads passing filters`)              |
 | `gqlib_<db_name>_pairs`     | read pairs                               | gqlib, reads aligned to the gene catalogue and passing the filters (`Reads passing filters`)               |
 | `kraken2_<db_name>_reads`   | reads, each mate counted                 | Kraken2, reads classified (the `root` line of the report; pairs counted twice, with the singletons of `--pathseq_t2t`) |

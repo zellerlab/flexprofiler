@@ -167,12 +167,12 @@ def parse_kraken2(text, kind, db):
 
 
 def parse_motus4(text, kind, db):
-    # the inserts (read pairs) passing the motus filters
+    # the inserts (read pairs, and the singletons of --pathseq_t2t) passing the motus filters
     return {f"{kind}_{db}_pairs": search_int(r"Read (\d+) aligned inserts", text)}
 
 
 def parse_motus3(text, kind, db):
-    # the inserts (read pairs) passing the motus filters
+    # the inserts (read pairs, and the singletons of --pathseq_t2t) passing the motus filters
     return {f"{kind}_{db}_pairs": search_int(r"Total number of inserts: (\d+)", text)}
 
 
@@ -223,7 +223,7 @@ DESCRIPTIONS = {
     "raw_reads": (
         "Raw reads",
         "Reads before QC (fastp, or vsearch for PacBio reads), each mate counted; PathSeq-T2T: the primary reads"
-        " aligned to GRCh38 (samtools flagstat), the denominator of the reads per million",
+        " aligned to GRCh38 (samtools flagstat)",
     ),
     "qc_reads": ("QC reads", "Reads after QC (fastp, or vsearch and BBDuk for PacBio reads), each mate counted"),
     "oriented_reads": ("Oriented reads", "Long amplicon reads oriented as the reference sequences (vsearch), the others dropped"),
@@ -259,8 +259,16 @@ DESCRIPTIONS = {
         "PathSeq-T2T: reads not aligned to T2T-CHM13, given to the profilers, each mate counted: the pairs, and the"
         " reads left without their mate",
     ),
-    "motus4": ("mOTUs v4 {db} pairs", "Read pairs aligned to the mOTUs v4 database {db} and passing the mOTUs filters"),
-    "motus3": ("mOTUs v3 {db} pairs", "Read pairs aligned to the mOTUs v3 database {db} and passing the mOTUs filters"),
+    "motus4": (
+        "mOTUs v4 {db} pairs",
+        "Inserts (read pairs, and the reads left without their mate by PathSeq-T2T) aligned to the mOTUs v4 database {db}"
+        " and passing the mOTUs filters",
+    ),
+    "motus3": (
+        "mOTUs v3 {db} pairs",
+        "Inserts (read pairs, and the reads left without their mate by PathSeq-T2T) aligned to the mOTUs v3 database {db}"
+        " and passing the mOTUs filters",
+    ),
     "cayman": ("cayman {db} pairs", "Read pairs aligned to the gene catalogue {db} and passing the cayman filters"),
     "gqlib": ("gqlib {db} pairs", "Read pairs aligned to the gene catalogue {db} and passing the gqlib filters"),
     "kraken2": ("Kraken2 {db} reads", "Reads classified by Kraken2 with the database {db}, each mate counted"),

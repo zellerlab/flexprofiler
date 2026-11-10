@@ -14,7 +14,6 @@ workflow STANDARDISATION_PROFILES {
     take:
     profiles
     databases
-    read_counts // path(read_counts.tsv), for the reads per million of Kraken2, [] if it has no raw reads
 
     main:
     ch_versions = Channel.empty()
@@ -71,17 +70,9 @@ workflow STANDARDISATION_PROFILES {
     IDTAXA_MERGE(ch_profiles_for_idtaxa)
     ch_versions = ch_versions.mix(IDTAXA_MERGE.out.versions.first())
 
-    // Kraken2, merged separately for each database: the reports of the pairs and of the singletons of a sample are
-    // summed, each read counted once. The manifest says which sample and run each report is of, for all the databases
-    // (the reports are named by database)
-    def manifest_columns = ['file', 'sample', 'id', 'run_accession', 'mates']
-    ch_kraken2_manifest = ch_input_profiles.kraken2
-        .map { meta, report ->
-            def sample = params.perform_runmerging ? meta.id : "${meta.id}_${meta.run_accession}"
-            [report.name, sample, meta.id, meta.run_accession, meta.single_end ? 1 : 2].join('\t')
-        }
-        .collectFile(name: 'kraken2_manifest.tsv', seed: manifest_columns.join('\t'), newLine: true, sort: true)
-    KRAKEN2_MERGE(groupProfiles(ch_input_profiles.kraken2), ch_kraken2_manifest, read_counts)
+    // Kraken2, merged separately for each database. Kraken2 counts a pair as one fragment: the pairs are counted twice,
+    // and added to the single reads of the same sample
+    KRAKEN2_MERGE(groupProfilesByEndedness(ch_input_profiles.kraken2))
     ch_versions = ch_versions.mix(KRAKEN2_MERGE.out.versions.first())
 
     emit:
@@ -120,6 +111,35 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
                 )
             }
             [[id: db_name], profiles]
+        }
+}
+
+/**
+* Group all profiles per reference database, the profiles of read pairs apart from those of single reads.
+*
+* For the profilers whose counts are not the same for a pair and for a single read (e.g. Kraken2, which counts a pair
+* as one fragment), and that are run apart on the pairs and on the reads left without their mate by --pathseq_t2t,
+* whose profiles are then added to those of the pairs of the same sample.
+*
+* @param ch_profiles A channel containing pairs of a meta map, where meta must contain the keys `db_name` and
+*   `single_end`, and the report of a given profiler.
+* @return A channel with one element per reference database: a meta map with an `id` key, the profiles of the read
+*   pairs, and those of the single reads (single-end reads, and the singletons of --pathseq_t2t), [] if none.
+*/
+def groupProfilesByEndedness(ch_profiles) {
+    def ch_branched = ch_profiles.branch { meta, _profile ->
+        pairs: !meta.single_end
+        single_reads: true
+    }
+    return groupProfiles(ch_branched.pairs)
+        .join(groupProfiles(ch_branched.single_reads), remainder: true)
+        .map { meta, pairs, single_reads ->
+            // a paired-end and a single-end sample with the same name, whose profiles would be added
+            def duplicates = (pairs ?: [])*.name.intersect((single_reads ?: [])*.name)
+            if (duplicates) {
+                error("[zellerlab/flexprofiler] ERROR: Duplicate sample names identified in profile standardisation: ${duplicates.join(', ')}")
+            }
+            [meta, pairs ?: [], single_reads ?: []]
         }
 }
 

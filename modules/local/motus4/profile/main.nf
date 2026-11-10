@@ -24,8 +24,11 @@ process MOTUS4_PROFILE {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    // mOTUs 4 does not support anymore additional inputs formats except for FASTA,FASTQ
-    def inputs = meta.single_end ? "-s $reads" : "-f ${reads[0]} -r ${reads[1]}"
+    // mOTUs 4 does not support anymore additional inputs formats except for FASTA,FASTQ. The paired-end reads can be
+    // followed by the reads left without their mate by --pathseq_t2t, given as unpaired reads, or be only those if no
+    // pair is left (a single file is staged as a path, not a list)
+    def fastqs = reads instanceof List ? reads : [reads]
+    def inputs = meta.single_end || fastqs.size() == 1 ? "-s ${fastqs.join(' ')}" : "-f ${fastqs[0]} -r ${fastqs[1]}" + (fastqs.size() > 2 ? " -s ${fastqs[2]}" : "")
     """
     motus4_patch.py profile \\
         $args \\
@@ -52,7 +55,6 @@ process MOTUS4_PROFILE {
     stub:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def inputs = meta.single_end ? "-s $reads" : "-f ${reads[0]} -r ${reads[1]}"
     """
     touch ${prefix}.out
     touch ${prefix}.log
