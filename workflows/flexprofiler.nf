@@ -251,33 +251,25 @@ workflow FLEXPROFILER {
         SUBWORKFLOW: PATHSEQ-T2T HOST FILTERING
     */
 
-    // of the reads as they were sequenced (the QC and host removal steps are off with --pathseq_t2t), after the run
-    // merging, so that with it the duplicates are removed over the whole sample
-    ch_pathseq_read_count_logs = channel.empty()
+    // the host filtering (--pathseq_t2t, else a pass-through) of the reads as they were sequenced (the QC and host
+    // removal steps are off with --pathseq_t2t), after the run merging, so that with it the duplicates are removed over
+    // the whole sample
+    PATHSEQ_T2T(
+        RUN_MERGING.out.reads,
+        ch_pathseq_grch38_reference,
+        ch_pathseq_grch38_index,
+        ch_pathseq_chm13_reference,
+        ch_pathseq_chm13_index,
+        ch_pathseq_host_dir,
+        ch_pathseq_decoys_bed,
+    )
+    ch_versions = ch_versions.mix(PATHSEQ_T2T.out.versions)
+    ch_multiqc_files = ch_multiqc_files.mix(PATHSEQ_T2T.out.mqc.collect { it[1] }.ifEmpty([]))
     // the paired-end reads left without their mate, for the profilers that can use them
-    ch_singletons = channel.empty()
-    if (params.pathseq_t2t) {
-        PATHSEQ_T2T(
-            RUN_MERGING.out.reads,
-            ch_pathseq_grch38_reference,
-            ch_pathseq_grch38_index,
-            ch_pathseq_chm13_reference,
-            ch_pathseq_chm13_index,
-            ch_pathseq_host_dir,
-            ch_pathseq_decoys_bed,
-        )
-        ch_versions = ch_versions.mix(PATHSEQ_T2T.out.versions)
-        ch_multiqc_files = ch_multiqc_files.mix(PATHSEQ_T2T.out.mqc.collect { it[1] }.ifEmpty([]))
-        ch_pathseq_read_count_logs = PATHSEQ_T2T.out.read_count_logs
-        ch_singletons = PATHSEQ_T2T.out.singletons
-        ch_reads_for_profiling = PATHSEQ_T2T.out.reads
-    }
-    else {
-        ch_reads_for_profiling = RUN_MERGING.out.reads
-    }
+    ch_singletons = PATHSEQ_T2T.out.singletons
 
     // the FASTA inputs are not merged
-    ch_reads_runmerged = ch_reads_for_profiling.mix(ch_input.fasta_short, ch_input.fasta_long)
+    ch_reads_runmerged = PATHSEQ_T2T.out.reads.mix(ch_input.fasta_short, ch_input.fasta_long)
 
     /*
         SUBWORKFLOW: PROFILING
@@ -296,7 +288,7 @@ workflow FLEXPROFILER {
             .mix(LONGREAD_PREPROCESSING.out.read_count_logs)
             .mix(WGS_PREPROCESSING.out.read_count_logs)
             .mix(AMPLICON_PREPROCESSING.out.read_count_logs)
-            .mix(ch_pathseq_read_count_logs)
+            .mix(PATHSEQ_T2T.out.read_count_logs)
             .mix(PROFILING.out.read_count_logs)
     )
     ch_versions = ch_versions.mix(READ_COUNTING.out.versions)
