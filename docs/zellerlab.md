@@ -22,6 +22,7 @@ The following profiles are available:
 - `zellerlab_shark`: for use on the LUMC shark cluster, sets paths to databases etc.
 - `zellerlab_metagenomics`: for short read metagenomics profiling, sets defaults for preprocessing and collation
 - `zellerlab_amplicon`: for 16S amplicon profiling with IDTAXA, sets defaults for preprocessing (with primer trimming), run merging, collation and IDTAXA (turn it on with `--run_idtaxa`): the pairs not merged are joined with Ns (`--amplicon_pair_handling merged_plus_joined`), and classified against the `gtdb_r220_motus4.0` training set of the database CSV (GTDB R220, the taxonomy of mOTUs 4.0 used by `--run_motus4`, so that 16S and shotgun profiles share the taxon names; change with `--idtaxa_db_names`), with a merged table for the genus only besides the one of the whole lineages (`--idtaxa_ranks genus`)
+- `zellerlab_pathseq_t2t`: for low-biomass human samples (e.g. tumour WGS), the [PathSeq-T2T host filtering](pathseq_t2t.md) with Kraken2, run merging and collation; use it instead of `zellerlab_metagenomics`. The paths of its references are not set yet for the clusters: give them with `--pathseq_t2t_grch38_bwa_index`, `--pathseq_t2t_chm13_bwa_index` and `--pathseq_host_dir`
 - `zellerlab_minimal`: skip all non-essential QC steps, useful for large meta-analysis runs
 - `zellerlab_alice`: for testing only, on the ALICE cluster, sets paths to databases etc.
 

@@ -6,8 +6,8 @@
 # The steps run in the order below, whatever the order given. Without steps, the `local` group runs.
 #
 # groups:
-#   local      suffixed unordered mixed hostremoval adapters amplicon idtaxa
-#              made only from files in the repo (needs python3, and Rscript with DECIPHER for idtaxa)
+#   local      suffixed unordered mixed hostremoval pathseqt2t adapters amplicon idtaxa
+#              made only from files in the repo (needs python3, Rscript with DECIPHER for idtaxa, and docker for pathseqt2t)
 #   download   hostref ref16s
 #              downloaded from NCBI, which may change over time and then change the files made from them
 #   databases  motus4 motus3 gmgc10 cayman gqlib
@@ -20,6 +20,7 @@
 #   mixed        symbolic links in data/fastq/mixed/
 #   hostref      data/hostremoval/NC_012920.1.fna.gz
 #   hostremoval  data/fastq/hostremoval/ (from hostref)
+#   pathseqt2t   data/pathseq_t2t/, data/fastq/pathseq_t2t/ and data/kraken2/ (from hostref)
 #   adapters     data/fastq/adapters/adapters_*.fastq.gz (from hostref)
 #   ref16s       data/idtaxa/reference_16s.fasta.gz
 #   amplicon     data/fastq/amplicon/ (from ref16s)
@@ -41,8 +42,8 @@
 # regenerated, nor are the hand-written files (data/fastq/adapters/adapters.fasta, data/gmgc10/genes.txt).
 set -euo pipefail
 
-STEPS=(suffixed unordered mixed hostref hostremoval adapters ref16s amplicon idtaxa motus4 motus3 gmgc10 cayman gqlib)
-LOCAL=(suffixed unordered mixed hostremoval adapters amplicon idtaxa)
+STEPS=(suffixed unordered mixed hostref hostremoval pathseqt2t adapters ref16s amplicon idtaxa motus4 motus3 gmgc10 cayman gqlib)
+LOCAL=(suffixed unordered mixed hostremoval pathseqt2t adapters amplicon idtaxa)
 DOWNLOAD=(hostref ref16s)
 DATABASES=(motus4 motus3 gmgc10 cayman gqlib)
 
@@ -136,6 +137,16 @@ step_hostremoval() {
     python3 scripts/make_host_contaminated_reads.py \
         data/fastq/ERX5474937_ERR5766181_1.fastq.gz data/fastq/ERX5474937_ERR5766181_2.fastq.gz \
         data/hostremoval/NC_012920.1.fna.gz data/fastq/hostremoval
+}
+
+step_pathseqt2t() {
+    python3 scripts/make_pathseq_t2t_data.py data/hostremoval/NC_012920.1.fna.gz data/pathseq_t2t data/fastq/pathseq_t2t
+    # the k-mers and BWA index image of the PathSeq host, with the GATK of the pipeline
+    docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/data/pathseq_t2t/pathseq_host:/w" -w /w \
+        quay.io/biocontainers/gatk4:4.6.2.0--py310hdfd78af_0 sh -c \
+        'gatk PathSeqBuildKmers --reference pathseq_host.fa --output pathseq_host.bfi --bloom-false-positive-probability 0.001 && gatk BwaMemIndexImageCreator -I pathseq_host.fa -O pathseq_host.fa.img'
+    # the Kraken2 database of the microbial and decoy genomes
+    bash scripts/make_kraken2_db.sh
 }
 
 step_adapters() {

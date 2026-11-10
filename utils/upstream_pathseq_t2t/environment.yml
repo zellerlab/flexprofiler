@@ -1,0 +1,19 @@
+# The environment to run upstream PathSeq-T2T (https://github.com/abdohlman/pathseq-t2t, commit 51d74430) with the
+# tool versions of the PathSeq-T2T mode of flexprofiler, for the comparison (see README.md). Upstream's own
+# envs/main.yml leaves the versions open.
+name: pathseq-t2t-upstream
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - pandas
+  - gatk4=4.6.2.0
+  # the Spark tools of GATK 4.6 need Java 17 (upstream checks for it too)
+  - openjdk=17
+  # upstream needs a picard.jar (--picard-jar): share/picard-3.4.0-0/picard.jar of the environment
+  - picard=3.4.0
+  - samtools=1.22.1
+  - bwa=0.7.19
+  - kraken2=2.1.6
+  - pigz

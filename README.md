@@ -23,11 +23,13 @@ We plan to contribute to **nf-core** modules or other components of more general
 3. Read pre-processing
    - Adapter clipping and merging: [fastp](https://github.com/OpenGene/fastp)
    - Host-read removal: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/)
+   - Or, for low-biomass human samples, the stringent host filtering of [PathSeq-T2T](docs/pathseq_t2t.md) ([Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015)): alignment to GRCh38, [GATK PathSeq](https://doi.org/10.1093/bioinformatics/bty501) filters, and alignment to T2T-CHM13 (`--pathseq_t2t`)
 4. Performs classification and/or profiling using one or more of:
    - [mOTUs v3](https://motus-tool.org/)
    - [mOTUs v4](https://motus-tool.org/)
    - [Cayman](https://github.com/zellerlab/cayman)
    - [gqlib](https://github.com/cschu/gqlib) (gene-based functional profiling)
+   - [Kraken2](https://ccb.jhu.edu/software/kraken2/)
 5. Standardises and collates output tables (tool-specific)
 6. Reports the read counts of each sample after each step
 7. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))

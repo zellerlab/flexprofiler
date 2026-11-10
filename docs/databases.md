@@ -28,6 +28,18 @@ DB_PATH=$(python -c 'import motus.motus as m; print(m.DATABASE)')
 cp -r ${DB_PATH} .
 ```
 
+## Kraken2
+
+PathSeq-T2T (`--pathseq_t2t`, [Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015)) used the PlusPF database of 2024-06-05 (bacteria, archaea, viruses, protozoa, fungi, human and UniVec), from the [Kraken2 index collection](https://benlangmead.github.io/aws-indexes/k2):
+
+```
+wget https://genome-idx.s3.amazonaws.com/kraken/k2_pluspf_20240605.tar.gz
+mkdir k2_pluspf_20240605
+tar -xzf k2_pluspf_20240605.tar.gz -C k2_pluspf_20240605
+```
+
+Database sheet row: `kraken2,k2_pluspf_20240605,,<path>/k2_pluspf_20240605,,`
+
 ## Cayman
 
 ```

@@ -12,6 +12,7 @@ if [[ $# -lt 1 || $# -gt 2 ]] ; then
     echo "It also generates a CSV file in the local directory with the paths to the downloaded databases, which can be used as input for flexprofiler."
     echo "The gqlib database is built by annotating the gene catalogue with eggNOG-mapper, which takes long (days with few cpus)."
     echo "Set SKIP_GQLIB=1 to skip it. The gqlib part of this script has not been tested."
+    echo "Set SKIP_PATHSEQ_T2T=1 to skip the references of the PathSeq-T2T host filtering (--pathseq_t2t, ~200 GB)."
     echo "Requires micromamba, wget and unzip."
     echo "Usage: $0 <out_database_path> [cpus (default: 8)]"
     exit 0
@@ -112,6 +113,35 @@ if [[ ${SKIP_GQLIB} != 1 ]] ; then
         --emapper_version v2.1.2
 fi
 
+# PathSeq-T2T host filtering (--pathseq_t2t, see docs/pathseq_t2t.md), the references of Dohlman et al., Cell 2026
+# (https://doi.org/10.1016/j.cell.2026.04.015). Set SKIP_PATHSEQ_T2T=1 to skip them (~200 GB of disk, the bwa indexes
+# take hours). NOT TESTED as a whole: the URLs and checksums are those of the upstream scripts.
+if [[ ${SKIP_PATHSEQ_T2T:-0} != 1 ]] ; then
+    PATHSEQ_TO=${DBPATH}/pathseq_t2t
+    mkdir -p ${PATHSEQ_TO}/grch38_d1_vd1/bwa ${PATHSEQ_TO}/t2t_chm13v2/bwa ${PATHSEQ_TO}/pathseq_host
+    # GRCh38 of the NCI Genomic Data Commons, with its viral decoy contigs (GRCh38.d1.vd1)
+    wget -O ${TMPDIR}/GRCh38.d1.vd1.fa.tar.gz https://api.gdc.cancer.gov/data/254f697d-310d-4d7d-a27b-27fbf767a834
+    tar -xzf ${TMPDIR}/GRCh38.d1.vd1.fa.tar.gz -C ${PATHSEQ_TO}/grch38_d1_vd1
+    rm ${TMPDIR}/GRCh38.d1.vd1.fa.tar.gz
+    micromamba run -p ${TOOLSDIR} bwa index -p ${PATHSEQ_TO}/grch38_d1_vd1/bwa/GRCh38.d1.vd1 ${PATHSEQ_TO}/grch38_d1_vd1/GRCh38.d1.vd1.fa
+    # T2T-CHM13v2.0
+    wget -O ${PATHSEQ_TO}/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz \
+        https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/009/914/755/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz
+    echo "9e6bf6b586bc8954208d1cc1d5f2fc99  ${PATHSEQ_TO}/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz" | md5sum -c -
+    micromamba run -p ${TOOLSDIR} bwa index -p ${PATHSEQ_TO}/t2t_chm13v2/bwa/T2T-CHM13v2.0 ${PATHSEQ_TO}/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz
+    # the host files of GATK PathSeq (pathseq_host.bfi, pathseq_host.fa.img)
+    wget -O ${TMPDIR}/pathseq_host.tar.gz ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/pathseq/pathseq_host.tar.gz
+    tar -xzf ${TMPDIR}/pathseq_host.tar.gz -C ${PATHSEQ_TO}/pathseq_host
+    rm ${TMPDIR}/pathseq_host.tar.gz
+    # the Kraken2 database of the paper, PlusPF 2024-06-05 (~70 GB)
+    mkdir -p ${DBPATH}/kraken2/k2_pluspf_20240605
+    wget -O ${TMPDIR}/k2_pluspf_20240605.tar.gz https://genome-idx.s3.amazonaws.com/kraken/k2_pluspf_20240605.tar.gz
+    tar -xzf ${TMPDIR}/k2_pluspf_20240605.tar.gz -C ${DBPATH}/kraken2/k2_pluspf_20240605
+    rm ${TMPDIR}/k2_pluspf_20240605.tar.gz
+    echo "PathSeq-T2T references in ${PATHSEQ_TO}: use them with"
+    echo "  --pathseq_t2t_grch38_bwa_index ${PATHSEQ_TO}/grch38_d1_vd1/bwa --pathseq_t2t_chm13_bwa_index ${PATHSEQ_TO}/t2t_chm13v2/bwa --pathseq_host_dir <the directory of pathseq_host.bfi in ${PATHSEQ_TO}/pathseq_host>"
+fi
+
 # the database sheet, with the paths to the downloaded databases
 cat <<-EOT > flexprofiler_databases.csv
 tool,db_name,db_params,db_path,annot_db_name,annot_db_path
@@ -119,6 +149,9 @@ motus4,db_mOTUv4,,${MOTUS4_DB_TO}/db_mOTU,,
 motus3,db_mOTUv3,,${MOTUS3_DB_TO}/db_mOTU,,
 cayman,${GMGC_NAME},,${GMGC_TO}/${GMGC_NAME}.fna.gz,cayman_v3,${GMGC_TO}/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv
 EOT
+if [[ ${SKIP_PATHSEQ_T2T:-0} != 1 ]] ; then
+    echo "kraken2,k2_pluspf_20240605,,${DBPATH}/kraken2/k2_pluspf_20240605,," >> flexprofiler_databases.csv
+fi
 if [[ ${SKIP_GQLIB} != 1 ]] ; then
     echo "gqlib,${GMGC_NAME},,${GMGC_TO}/${GMGC_NAME}.fna.gz,emapper_v2.1.7,${GQLIB_DB}" >> flexprofiler_databases.csv
 fi

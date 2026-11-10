@@ -1,0 +1,156 @@
+nextflow_pipeline {
+    name "Test the PathSeq-T2T host filtering (--pathseq_t2t)"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_pathseq_t2t"
+    profile "test_pathseq_t2t"
+
+    // the reads of the fixture (assets/test-data/scripts/make_pathseq_t2t_data.py) are named by what they are: the
+    // class of a read is its name without the numbers
+    def read_classes = { file ->
+        path( file.toString() ).linesGzip.withIndex()
+            .findAll { _line, i -> i % 4 == 0 }
+            .collect { line, _i -> line.substring( 1 ).split( /\s/ )[0].replaceAll( /(_\d+)+$/, '' ) }
+    }
+    // the classes that must all be removed: from the part of the host in "GRCh38" (alone, or the host mate of a
+    // chimera), of low complexity or quality, or too short
+    def removed_classes = [ "grch38_pair", "grch38_pair2", "grch38_single", "lowcomplexity_pair", "lowcomplexity_single", "lowquality_pair", "short_pair", "chimera_grch38_t2t" ]
+
+    test("test_pathseq_t2t") {
+        when {
+            params {
+                outdir                     = "${outputDir}"
+                save_analysis_ready_fastqs = true
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir( params.outdir, includeDir: true, ignore: [ 'pipeline_info/*.{html,json,txt}', 'pipeline_info/*_versions.yml', 'multiqc/**', 'fastqc/**' ], relative: true )
+            def read_counts = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
+            def count = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] as int }
+            def out = "${params.outdir}/analysis_ready_fastqs"
+            def pe_1 = read_classes( "${out}/lowbiomass.t2tfilt_1.fastq.gz" )
+            def pe_2 = read_classes( "${out}/lowbiomass.t2tfilt_2.fastq.gz" )
+            def singletons = read_classes( "${out}/lowbiomass.t2tfilt_unpaired.fastq.gz" )
+            def se = read_classes( "${out}/lowbiomass_se.t2tfilt_unpaired.fastq.gz" )
+            def tasks = workflow.trace.succeeded()*.name
+            def kraken2_table = { name -> path( "${params.outdir}/kraken2/kraken2_test_kraken2.${name}.tsv" ).readLines().collect { line -> line.split( "\t" ) as List } }
+            def kraken2_clade = { taxid, sample ->
+                def table = kraken2_table( "reads_clade" )
+                table.find { row -> row[0] == taxid }[table[0].indexOf( sample )] as int
+            }
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                // the QC and host removal steps are not run
+                { assert !tasks.any { name -> name =~ /FASTP|ADAPTERREMOVAL|BBDUK|PRINSEQ|BOWTIE2|NONPAREIL/ } },
+                // the two runs of the sample are filtered together (run merging)
+                { assert tasks.count { name -> name.contains( "PATHSEQT2T_QCFILTER" ) } == 2 },
+                // the reads that must be removed are all removed
+                { assert ( pe_1 + pe_2 + singletons + se ).intersect( removed_classes ).isEmpty() },
+                // the mates of the pairs are in sync
+                { assert pe_1 == pe_2 },
+                // the reads of the viral decoy contig are kept, as are the microbial mates of the chimeras with a host mate
+                { assert pe_1.contains( "decoy_pair" ) && se.contains( "decoy_single" ) },
+                { assert singletons.contains( "chimera_grch38r1_microbe" ) && singletons.contains( "chimera_grch38r2_microbe" ) },
+                // one pair is kept of each group of duplicates, and the duplicates across the runs are removed with run
+                // merging: none of the 10 is left as a pair (a mate can be left, its copy having lost its mate)
+                { assert pe_1.count( "duplicate_pair" ) <= 10 && se.count( "duplicate_single" ) <= 10 },
+                { assert pe_1.count( "crossrun_duplicate" ) == 0 },
+                // the reads per step: the raw reads are the primary reads aligned to GRCh38, each mate counted
+                { assert count( "lowbiomass", "raw_reads" ) == 2 * ( 1110 ) },
+                { assert count( "lowbiomass_se", "raw_reads" ) == 840 },
+                { assert count( "lowbiomass", "t2t_filter_reads" ) == 2 * pe_1.size() + singletons.size() },
+                { assert count( "lowbiomass_se", "t2t_filter_reads" ) == se.size() },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+                // Kraken2: the reads are counted once each, pairs as two reads and singletons as one, so that the
+                // classified and unclassified reads add up to the filtered reads
+                { assert kraken2_clade( "0", "lowbiomass" ) + kraken2_clade( "1", "lowbiomass" ) == count( "lowbiomass", "t2t_filter_reads" ) },
+                { assert kraken2_clade( "0", "lowbiomass_se" ) + kraken2_clade( "1", "lowbiomass_se" ) == count( "lowbiomass_se", "t2t_filter_reads" ) },
+                { assert kraken2_clade( "1", "lowbiomass" ) == count( "lowbiomass", "kraken2_test_kraken2_reads" ) },
+                // the reads of the decoy contig are classified as the virus, and those of the microbial genome as it
+                { assert kraken2_clade( "900003", "lowbiomass" ) == 2 * pe_1.count( "decoy_pair" ) + singletons.count( "decoy_pair" ) },
+                { assert kraken2_clade( "900003", "lowbiomass_se" ) == se.count( "decoy_single" ) },
+                // the reads per million raw reads
+                { assert Math.abs( ( kraken2_table( "rpm_clade" ).find { row -> row[0] == "900002" }[1] as double ) - 1e6 * kraken2_clade( "900002", "lowbiomass" ) / count( "lowbiomass", "raw_reads" ) ) < 1 },
+                { assert snapshot (
+                    path( "${params.outdir}/kraken2/kraken2_test_kraken2.reads_clade.tsv" ),
+                    path( "${params.outdir}/kraken2/kraken2_test_kraken2.reads_taxon.tsv" ),
+                    path( "${params.outdir}/kraken2/kraken2_test_kraken2.rpm_clade.tsv" ),
+                    path( "${params.outdir}/kraken2/kraken2_test_kraken2.taxonomy.tsv" ),
+                ).match( "kraken2_tables" ) },
+            )
+        }
+    }
+
+    test("test_pathseq_t2t_no_runmerging") {
+        when {
+            params {
+                outdir             = "${outputDir}"
+                perform_runmerging = false
+            }
+        }
+
+        then {
+            def tasks = workflow.trace.succeeded()*.name
+            assertAll(
+                { assert workflow.success },
+                // each run is filtered on its own
+                { assert tasks.count { name -> name.contains( "PATHSEQT2T_QCFILTER" ) } == 3 },
+                { assert path( "${params.outdir}/pathseq_t2t/t2tfilter/lowbiomass_run1.t2tfilter.log" ).exists() },
+                { assert path( "${params.outdir}/pathseq_t2t/t2tfilter/lowbiomass_run2.t2tfilter.log" ).exists() },
+            )
+        }
+    }
+
+    test("test_pathseq_t2t_conflicting_steps") {
+        when {
+            params {
+                outdir                        = "${outputDir}"
+                perform_shortread_qc          = true
+                perform_shortread_hostremoval = true
+                hostremoval_reference         = "${baseDir}/assets/test-data/data/hostremoval/NC_012920.1.fna.gz"
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.failed },
+                { assert workflow.stdout.any { line -> line.contains( "--pathseq_t2t filters the reads as they were sequenced, and cannot be used with --perform_shortread_qc, --perform_shortread_hostremoval" ) } },
+            )
+        }
+    }
+
+    test("test_pathseq_t2t_unsupported_input") {
+        when {
+            params {
+                outdir = "${outputDir}"
+                input  = "${baseDir}/assets/test-data/samplesheet_pacbio.csv"
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.failed },
+                { assert workflow.stdout.any { line -> line.contains( "--pathseq_t2t accepts only ILLUMINA FASTQ of WGS runs" ) } },
+            )
+        }
+    }
+
+    test("test_pathseq_t2t_missing_reference") {
+        when {
+            params {
+                outdir                       = "${outputDir}"
+                pathseq_t2t_grch38_reference = null
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.failed },
+                { assert workflow.stdout.any { line -> line.contains( "--pathseq_t2t needs GRCh38" ) } },
+            )
+        }
+    }
+}

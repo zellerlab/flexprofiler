@@ -10,11 +10,13 @@ include { CAYMAN_PROFILE                } from '../../modules/local/cayman/profi
 include { BWA_MEM as BWA_ALIGN         } from '../../modules/nf-core/bwa/mem/main'
 include { GQLIB_PROFILE_GENES           } from '../../modules/local/gqlib/profile_genes/main'
 include { IDTAXA_CLASSIFY               } from '../../modules/local/idtaxa/classify/main'
+include { KRAKEN2_KRAKEN2                } from '../../modules/nf-core/kraken2/kraken2/main'
 
 workflow PROFILING {
     take:
-    reads     // [ [ meta ], [ reads ] ]
-    databases // [ [ meta ], path ]
+    reads      // [ [ meta ], [ reads ] ]
+    singletons // [ [ meta ], fastq ], the paired-end reads left without their mate by --pathseq_t2t, for Kraken2
+    databases  // [ [ meta ], path ]
 
     main:
     ch_versions = Channel.empty()
@@ -41,7 +43,7 @@ workflow PROFILING {
         }
 
     // a profiler run on no reads is most likely a mistake in the samplesheet (library_strategy) or in the parameters
-    ['motus4', 'motus3', 'cayman', 'gqlib', 'idtaxa'].findAll { tool -> params["run_${tool}"] }.each { tool ->
+    ['motus4', 'motus3', 'cayman', 'gqlib', 'idtaxa', 'kraken2'].findAll { tool -> params["run_${tool}"] }.each { tool ->
         def strategy = toolLibraryStrategy(tool)
         reads
             .filter { meta, _input_reads -> meta.library_strategy == strategy }
@@ -126,6 +128,7 @@ workflow PROFILING {
             motus3: db_meta.tool == 'motus3'
             bwa: db_meta.tool == 'bwa'
             idtaxa: db_meta.tool == 'idtaxa'
+            kraken2: db_meta.tool == 'kraken2'
             unknown: true
         }
 
@@ -225,6 +228,29 @@ workflow PROFILING {
         ch_versions = ch_versions.mix(IDTAXA_CLASSIFY.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(IDTAXA_CLASSIFY.out.profile)
         ch_read_count_logs = ch_read_count_logs.mix(IDTAXA_CLASSIFY.out.log)
+    }
+
+    if (params.run_kraken2) {
+        // the singletons are classified on their own, as single-end reads, as in PathSeq-T2T: their counts are added to
+        // those of the pairs by the merge (KRAKEN2_MERGE), counting each read once
+        ch_singletons_for_kraken2 = combineReadsWithDatabases(
+            singletons.map { meta, fastq -> [meta + [single_end: true, singletons: true], [fastq]] },
+            ch_dbs.filter { _type, db_meta, _db -> db_meta.tool == 'kraken2' }
+        )
+        ch_input_for_kraken2 = ch_input_for_profiling.kraken2
+            .mix(ch_singletons_for_kraken2)
+            .multiMap { read_meta, input_reads, db_meta, db ->
+                reads: [read_meta + db_meta, input_reads]
+                db: db
+            }
+
+        KRAKEN2_KRAKEN2(ch_input_for_kraken2.reads, ch_input_for_kraken2.db, false, false)
+        ch_raw_profiles = ch_raw_profiles.mix(KRAKEN2_KRAKEN2.out.report)
+        ch_multiqc_files = ch_multiqc_files.mix(KRAKEN2_KRAKEN2.out.report)
+        // the reads of a pair are one fragment for Kraken2: counted twice in the read counts
+        ch_read_count_logs = ch_read_count_logs.mix(
+            KRAKEN2_KRAKEN2.out.report.map { meta, report -> [meta + [tool: meta.single_end ? 'kraken2' : 'kraken2_pairs'], report] }
+        )
     }
 
     emit:

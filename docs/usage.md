@@ -351,6 +351,14 @@ Pre-supplying the index directory or files can greatly speed up the process, and
 If you have multiple taxa or sequences you wish to remove (e.g., the host genome and then also PhiX - common quality-control reagent during sequencing) you can simply concatenate the FASTAs of each taxa or sequences into a single reference file.
 :::
 
+#### PathSeq-T2T host filtering (low-biomass samples)
+
+For human samples with few microbial reads, such as tumour or blood whole-genome sequencing, a single alignment to the host genome leaves enough human reads to cause false microbial calls.
+`--pathseq_t2t` replaces the QC and host removal with the PathSeq-T2T host filtering of [Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015): alignment to GRCh38, GATK PathSeqFilterSpark (quality, complexity, host k-mer and duplicate filters), and alignment to T2T-CHM13.
+It needs the bwa indexes (or FASTAs) of GRCh38 and T2T-CHM13 and the GATK PathSeq host files, accepts only Illumina `WGS` FASTQ, and cannot be combined with `--perform_shortread_qc`, `--perform_shortread_complexityfilter`, `--perform_shortread_hostremoval` or `--perform_shortread_redundancyestimation`.
+It runs after run merging, so that with `--perform_runmerging` the duplicates are removed over the whole sample.
+See [the PathSeq-T2T page](pathseq_t2t.md) for the references, the outputs, and the differences from the upstream implementation.
+
 #### Run Merging
 
 For samples that may have been sequenced over multiple runs, or for FASTQ files split into multiple chunks, you can activate the ability to merge across all runs or chunks with `--perform_runmerging`.
@@ -439,6 +447,14 @@ process {
 ```
 
 Keep the strand `both` for short-read libraries with reads in both orientations.
+
+##### Kraken2
+
+To run Kraken2, specify `--run_kraken2` and give `kraken2` rows in the database sheet, with the directory of the database (the `hash.k2d`, `opts.k2d` and `taxo.k2d` files, or a `.tar.gz` of them) as `db_path`.
+The options of a database (`db_params`) default to `--confidence 0.15 --report-minimizer-data`, as in PathSeq-T2T ([Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015)), which used the [PlusPF database of 2024-06-05](https://benlangmead.github.io/aws-indexes/k2): give other options in `db_params` to replace them.
+With `--pathseq_t2t`, the reads left without their mate are classified too, on their own, and added to the pairs in the merged tables.
+With `--run_profile_standardisation`, the reports are merged into tables of reads and of reads per million raw reads per taxon (see [the output documentation](output.md#kraken2)).
+The PlusPF database needs about 80 GB of memory: `KRAKEN2_KRAKEN2` asks for 128 GB.
 
 ##### mOTUs v4
 

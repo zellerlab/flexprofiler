@@ -8,11 +8,13 @@ include { GQLIB_MERGE                  } from '../../modules/local/gqlib/merge/m
 // cayman profiles have the same format as the gqlib ones
 include { GQLIB_MERGE  as CAYMAN_MERGE } from '../../modules/local/gqlib/merge/main'
 include { IDTAXA_MERGE                 } from '../../modules/local/idtaxa/merge/main'
+include { KRAKEN2_MERGE                } from '../../modules/local/kraken2/merge/main'
 
 workflow STANDARDISATION_PROFILES {
     take:
     profiles
     databases
+    read_counts // path(read_counts.tsv), for the reads per million of Kraken2, [] if it has no raw reads
 
     main:
     ch_versions = Channel.empty()
@@ -27,6 +29,7 @@ workflow STANDARDISATION_PROFILES {
         cayman: it[0]['tool'] == 'cayman'
         gqlib: it[0]['tool'] == 'gqlib'
         idtaxa: it[0]['tool'] == 'idtaxa'
+        kraken2: it[0]['tool'] == 'kraken2'
         unknown: true
     }
 
@@ -67,6 +70,19 @@ workflow STANDARDISATION_PROFILES {
     ch_profiles_for_idtaxa = groupProfiles(ch_input_profiles.idtaxa)
     IDTAXA_MERGE(ch_profiles_for_idtaxa)
     ch_versions = ch_versions.mix(IDTAXA_MERGE.out.versions.first())
+
+    // Kraken2, merged separately for each database: the reports of the pairs and of the singletons of a sample are
+    // summed, each read counted once. The manifest says which sample and run each report is of, for all the databases
+    // (the reports are named by database)
+    def manifest_columns = ['file', 'sample', 'id', 'run_accession', 'mates']
+    ch_kraken2_manifest = ch_input_profiles.kraken2
+        .map { meta, report ->
+            def sample = params.perform_runmerging ? meta.id : "${meta.id}_${meta.run_accession}"
+            [report.name, sample, meta.id, meta.run_accession, meta.single_end ? 1 : 2].join('\t')
+        }
+        .collectFile(name: 'kraken2_manifest.tsv', seed: manifest_columns.join('\t'), newLine: true, sort: true)
+    KRAKEN2_MERGE(groupProfiles(ch_input_profiles.kraken2), ch_kraken2_manifest, read_counts)
+    ch_versions = ch_versions.mix(KRAKEN2_MERGE.out.versions.first())
 
     emit:
     versions = ch_versions

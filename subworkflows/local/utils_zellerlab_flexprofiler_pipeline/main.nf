@@ -102,6 +102,10 @@ workflow PIPELINE_INITIALISATION {
     if (params.perform_runmerging) {
         validateRunMerging(samplesheet_rows)
     }
+    // first, as it rejects the inputs that the other checks are about
+    if (params.pathseq_t2t) {
+        validatePathseqT2t(samplesheet_rows)
+    }
     validateAmpliconPrimers(samplesheet_rows)
     // Samples with more than one run are published as analysis-ready reads only after run merging. The runs of a
     // sample are merged separately for each library strategy, so they are counted per sample and strategy
@@ -389,6 +393,10 @@ def toolCitationText() {
         "Host read removal was performed for short reads with Bowtie2 (Langmead and Salzberg 2012) and SAMtools (Danecek et al. 2021)."
     ].join(' ').trim()
 
+    def text_pathseq_t2t = [
+        "Host reads were removed with PathSeq-T2T (Dohlman et al. 2026): the reads were aligned to GRCh38 with BWA-MEM (Li and Durbin 2009), the reads not aligned to it and those aligned to its viral decoy contigs selected with SAMtools (Danecek et al. 2021), filtered with GATK PathSeqFilterSpark (Walker et al. 2018), and the reads aligned to T2T-CHM13 (Nurk et al. 2022) removed."
+    ].join(' ').trim()
+
     def text_longreadhostremoval = [
         "Host read removal was performed for long reads with minimap2 (Li et al. 2018) and SAMtools (Danecek et al. 2021)."
     ].join(' ').trim()
@@ -408,6 +416,7 @@ def toolCitationText() {
         params.run_cayman ? "Cayman (Ducarmon et al. 2026)," : "",
         params.run_gqlib ? "gqlib (https://github.com/cschu/gqlib)," : "",
         params.run_idtaxa ? "IDTAXA (Murali et al. 2018) of DECIPHER (Wright 2016)," : "",
+        params.run_kraken2 ? "Kraken2 (Wood et al. 2019)," : "",
         ".",
     ].join(' ').trim()
 
@@ -427,6 +436,7 @@ def toolCitationText() {
         params.perform_longread_qc ? text_longread_qc : "",
         params.perform_shortread_complexityfilter ? text_shortreadcomplexity : "",
         params.perform_shortread_hostremoval ? text_shortreadhostremoval : "",
+        params.pathseq_t2t ? text_pathseq_t2t : "",
         params.perform_longread_hostremoval ? text_longreadhostremoval : "",
         params.perform_amplicon_primertrimming ? text_amplicon_primertrimming : "",
         params.amplicon_pair_handling == 'merged_plus_joined' ? text_amplicon_pairmerging : "",
@@ -434,7 +444,8 @@ def toolCitationText() {
             params.run_motus4,
             params.run_cayman,
             params.run_gqlib,
-            params.run_idtaxa
+            params.run_idtaxa,
+            params.run_kraken2
         ].any()
             ? text_classification
             : "",
@@ -488,6 +499,13 @@ def toolBibliographyText() {
         "<li>Rognes, T., Flouri, T., Nichols, B., Quince, C., & Mahé, F. (2016). VSEARCH: a versatile open source tool for metagenomics. PeerJ, 4, e2584. <a href=\"https://doi.org/10.7717/peerj.2584\">10.7717/peerj.2584</a></li>"
     ].join(' ').trim()
 
+    def text_pathseq_t2t = [
+        "<li>Dohlman, A. B., Mjelle, R., Wood, H. M., Jiang, K., Shumate, A., Lee, I., Piccinno, G., Serna, G., Yakubu, A.-R., Nuciforo, P., Quirke, P., Huttenhower, C., Segata, N., & Meyerson, M. (2026). Biodiversity and biogeography of the multi-kingdom cancer microbiome. Cell, 189, 3817–3837. <a href=\"https://doi.org/10.1016/j.cell.2026.04.015\">10.1016/j.cell.2026.04.015</a></li>",
+        "<li>Walker, M. A., Pedamallu, C. S., Ojesina, A. I., Bullman, S., Sharpe, T., Whelan, C. W., & Meyerson, M. (2018). GATK PathSeq: a customizable computational tool for the discovery and identification of microbial sequences in libraries from eukaryotic hosts. Bioinformatics, 34(24), 4287–4289. <a href=\"https://doi.org/10.1093/bioinformatics/bty501\">10.1093/bioinformatics/bty501</a></li>",
+        "<li>Li, H., & Durbin, R. (2009). Fast and accurate short read alignment with Burrows-Wheeler transform. Bioinformatics, 25(14), 1754–1760. <a href=\"https://doi.org/10.1093/bioinformatics/btp324\">10.1093/bioinformatics/btp324</a></li>",
+        "<li>Nurk, S., Koren, S., Rhie, A., et al. (2022). The complete sequence of a human genome. Science, 376(6588), 44–53. <a href=\"https://doi.org/10.1126/science.abj6987\">10.1126/science.abj6987</a></li>",
+    ].join(' ').trim()
+
     def text_longreadhostremoval = [
         "<li>Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. Bioinformatics , 34(18), 3094–3100. <a href=\"https://doi.org/10.1093/bioinformatics/bty191\">10.1093/bioinformatics/bty191</a></li>"
     ].join(' ').trim()
@@ -498,6 +516,7 @@ def toolBibliographyText() {
         params.run_cayman ? "<li>Ducarmon, Q.R., Karcher, N., Giri, S. et al. Cayman enables large-scale analysis of gut microbiome carbohydrate-active enzyme repertoires. Nat Microbiol (2026). <a href=\"https://doi.org/10.1038/s41564-026-02318-2\">https://doi.org/10.1038/s41564-026-02318-2</a></li>" : "",
         params.run_gqlib ? "<li>Schudoma, C. gqlib: gene quantification library (gffquant). <a href=\"https://github.com/cschu/gqlib\">https://github.com/cschu/gqlib</a></li>" : "",
         params.run_idtaxa ? "<li>Murali, A., Bhargava, A., & Wright, E. S. (2018). IDTAXA: a novel approach for accurate taxonomic classification of microbiome sequences. Microbiome, 6(1), 140. <a href=\"https://doi.org/10.1186/s40168-018-0521-5\">10.1186/s40168-018-0521-5</a></li>" : "",
+        params.run_kraken2 ? "<li>Wood, D. E., Lu, J., & Langmead, B. (2019). Improved metagenomic analysis with Kraken 2. Genome Biology, 20(1), 257. <a href=\"https://doi.org/10.1186/s13059-019-1891-0\">10.1186/s13059-019-1891-0</a></li>" : "",
         params.run_idtaxa ? "<li>Wright, E. S. (2016). Using DECIPHER v2.0 to Analyze Big Biological Sequence Data in R. The R Journal, 8(1), 352–359. <a href=\"https://doi.org/10.32614/RJ-2016-025\">10.32614/RJ-2016-025</a></li>" : "",
     ].join(' ').trim()
 
@@ -521,6 +540,7 @@ def toolBibliographyText() {
         params.perform_shortread_redundancyestimation ? text_shortread_redundancy : "",
         params.perform_shortread_complexityfilter ? text_shortreadcomplexity : "",
         params.perform_shortread_hostremoval ? text_shortreadhostremoval : "",
+        params.pathseq_t2t ? text_pathseq_t2t : "",
         params.perform_longread_hostremoval ? text_longreadhostremoval : "",
         params.perform_amplicon_primertrimming ? text_amplicon_primertrimming : "",
         // VSEARCH: pair merging, orientation of the long amplicon reads, and QC of the PacBio reads
@@ -571,4 +591,39 @@ def methodsDescriptionText(mqc_methods_yaml) {
     def description_html = engine.createTemplate(methods_text).make(meta)
 
     return description_html.toString()
+}
+
+//
+// PathSeq-T2T host filtering (--pathseq_t2t): it is for Illumina shotgun reads as they were sequenced, so the other
+// inputs and the steps that change the reads before it are errors, rather than being skipped silently
+//
+def validatePathseqT2t(samplesheet_rows) {
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
+    def unsupported = samplesheet_rows.findAll { row -> row[2] != 'ILLUMINA' || row[0].library_strategy != 'WGS' || row[5] }
+    if (unsupported) {
+        def listed = unsupported.collect { row -> "${row[0].id} ${row[1]} (${row[5] ? 'FASTA' : "${row[2]} ${row[0].library_strategy}"})" }.join(', ')
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t accepts only ILLUMINA FASTQ of WGS runs, please remove from the samplesheet: ${listed}")
+    }
+
+    // the steps that PathSeq-T2T does itself (QC, complexity filtering, host removal), or that make no sense on reads
+    // that are mostly from the host (redundancy estimation)
+    def conflicting = ['perform_shortread_qc', 'perform_shortread_complexityfilter', 'perform_shortread_hostremoval', 'perform_shortread_redundancyestimation'].findAll { name -> params[name] }
+    if (conflicting) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t filters the reads as they were sequenced, and cannot be used with ${conflicting.collect { name -> "--${name}" }.join(', ')}: please turn ${conflicting.size() > 1 ? 'them' : 'it'} off")
+    }
+
+    if (!params.pathseq_t2t_grch38_reference && !params.pathseq_t2t_grch38_bwa_index) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs GRCh38: please give its bwa index (--pathseq_t2t_grch38_bwa_index) or its FASTA to build it (--pathseq_t2t_grch38_reference)")
+    }
+    if (!params.pathseq_t2t_chm13_reference && !params.hostremoval_reference && !params.pathseq_t2t_chm13_bwa_index) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs T2T-CHM13: please give its bwa index (--pathseq_t2t_chm13_bwa_index) or its FASTA to build it (--pathseq_t2t_chm13_reference, by default --hostremoval_reference)")
+    }
+    if (!params.pathseq_host_dir) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs the PathSeq host files (pathseq_host.bfi and pathseq_host.fa.img): please give their directory (--pathseq_host_dir)")
+    }
+    def host_dir = file(params.pathseq_host_dir, checkIfExists: true)
+    def missing = ['pathseq_host.bfi', 'pathseq_host.fa.img'].findAll { name -> !host_dir.resolve(name).exists() }
+    if (missing) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_host_dir ${params.pathseq_host_dir} has no ${missing.join(' and ')}")
+    }
 }

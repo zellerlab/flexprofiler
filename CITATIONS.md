@@ -61,6 +61,28 @@
 
   > Langmead, B., & Salzberg, S. L. (2012). Fast gapped-read alignment with Bowtie 2. Nature Methods, 9(4), 357–359. https://doi.org/10.1038/nmeth.1923
 
+- [PathSeq-T2T](https://github.com/abdohlman/pathseq-t2t) (`--pathseq_t2t`)
+
+  > Dohlman, A. B., Mjelle, R., Wood, H. M., Jiang, K., Shumate, A., Lee, I., Piccinno, G., Serna, G., Yakubu, A.-R., Nuciforo, P., Quirke, P., Huttenhower, C., Segata, N., & Meyerson, M. (2026). Biodiversity and biogeography of the multi-kingdom cancer microbiome. Cell, 189, 3817–3837. https://doi.org/10.1016/j.cell.2026.04.015
+
+- [GATK PathSeq](https://doi.org/10.1093/bioinformatics/bty501)
+
+  > Walker, M. A., Pedamallu, C. S., Ojesina, A. I., Bullman, S., Sharpe, T., Whelan, C. W., & Meyerson, M. (2018). GATK PathSeq: a customizable computational tool for the discovery and identification of microbial sequences in libraries from eukaryotic hosts. Bioinformatics, 34(24), 4287–4289. https://doi.org/10.1093/bioinformatics/bty501
+
+  > Kostic, A. D., Ojesina, A. I., Pedamallu, C. S., Jung, J., Verhaak, R. G. W., Getz, G., & Meyerson, M. (2011). PathSeq: software to identify or discover microbes by deep sequencing of human tissue. Nature Biotechnology, 29(5), 393–396. https://doi.org/10.1038/nbt.1868
+
+- [BWA](https://doi.org/10.1093/bioinformatics/btp324)
+
+  > Li, H., & Durbin, R. (2009). Fast and accurate short read alignment with Burrows-Wheeler transform. Bioinformatics, 25(14), 1754–1760. https://doi.org/10.1093/bioinformatics/btp324
+
+- [SAMtools](https://doi.org/10.1093/bioinformatics/btp352)
+
+  > Li, H., Handsaker, B., Wysoker, A., Fennell, T., Ruan, J., Homer, N., Marth, G., Abecasis, G., Durbin, R., & 1000 Genome Project Data Processing Subgroup. (2009). The Sequence Alignment/Map format and SAMtools. Bioinformatics, 25(16), 2078–2079. https://doi.org/10.1093/bioinformatics/btp352
+
+- [T2T-CHM13](https://doi.org/10.1126/science.abj6987)
+
+  > Nurk, S., Koren, S., Rhie, A., Rautiainen, M., Bzikadze, A. V., Mikheenko, A., Vollger, M. R., Altemose, N., Uralsky, L., Gershman, A., et al. (2022). The complete sequence of a human genome. Science, 376(6588), 44–53. https://doi.org/10.1126/science.abj6987
+
 - [minimap2](https://doi.org/10.1093/bioinformatics/bty191)
 
   > Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. Bioinformatics , 34(18), 3094–3100. https://doi.org/10.1093/bioinformatics/bty191

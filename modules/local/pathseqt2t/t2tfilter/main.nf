@@ -1,0 +1,163 @@
+// Third step of the PathSeq-T2T host filtering (Dohlman et al., Cell 2026, https://doi.org/10.1016/j.cell.2026.04.015):
+// the reads left by PathSeqFilterSpark are aligned to the complete human genome T2T-CHM13 with bwa mem -T 0, the
+// paired and the unpaired reads separately, and those aligned to it are removed.
+//
+// Reimplements src/commands/t2tfilter.sh of https://github.com/abdohlman/pathseq-t2t (v0.3.0, commit 51d74430), with
+// the same read selection. Differences (see docs/pathseq_t2t.md):
+// - upstream writes its BAMs through background process substitutions (t2tfilter.sh:251-253, 280-281): here each BAM
+//   is written to a file by a command that has finished before the next one starts
+// - the BAMs are converted to FASTQ with samtools fastq instead of Picard SamToFastq, which upstream calls with a
+//   malformed option for the unpaired reads (t2tfilter.sh:231, 236)
+// - no reads of a kind (paired or unpaired) give an empty FASTQ instead of an error
+// - the reads are written as FASTQ, and a read of a proper pair kept without its mate (the mate being aligned to
+//   T2T-CHM13) is dropped here: upstream keeps it in the BAM of the paired reads, and drops it when converting that
+//   BAM to FASTQ for the classification (classify.sh, Picard SamToFastq with a lenient validation)
+process PATHSEQT2T_T2TFILTER {
+    tag "$meta.id"
+    label 'process_high'
+
+    conda "${moduleDir}/environment.yml"
+    container "${ workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/d7/d7e24dc1e4d93ca4d3a76a78d4c834a7be3985b0e1e56fddd61662e047863a8a/data' :
+        'community.wave.seqera.io/library/bwa_htslib_samtools:83b50ff84ead50d0' }"
+
+    input:
+    // the paired and the unpaired reads of PATHSEQT2T_QCFILTER, any number of BAMs of each, [] if none
+    tuple val(meta), path(paired, stageAs: 'paired/*'), path(unpaired, stageAs: 'unpaired/*')
+    // the bwa index of T2T-CHM13
+    tuple val(meta2), path(index)
+    // the viral decoy contigs of the reference, [] to not rescue the reads aligned to them
+    path decoys_bed
+
+    output:
+    // the reads not aligned to T2T-CHM13: the pairs (paired-end reads only), and the reads without their mate (for
+    // single-end reads, all the reads); empty if no read is left
+    tuple val(meta), path("*.t2tfilt_{1,2}.fastq.gz")    , emit: paired  , optional: true
+    tuple val(meta), path("*.t2tfilt_unpaired.fastq.gz") , emit: unpaired
+    // the alignments to T2T-CHM13, none if there were no reads to align
+    tuple val(meta), path("*.t2t.{paired,unpaired}.bam") , emit: bam     , optional: true
+    // the reads before and after the filter, for the read counts
+    tuple val(meta), path("*.t2tfilter.log")             , emit: log
+    path "versions.yml"                                  , emit: versions
+
+    when:
+    task.ext.when == null || task.ext.when
+
+    script:
+    // bwa mem, e.g. -T 0
+    def args = task.ext.args ?: ''
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    def bed = decoys_bed ? "${decoys_bed}" : ''
+    def paired_end = meta.single_end ? '' : 'true'
+    // no supplementary alignments, and none of the tags that depend on the alignment
+    def clean = "-F 2048 -x SA -x OQ -x MD"
+    """
+    set -euo pipefail
+
+    INDEX=\$(find -L ./ -name "*.amb" | sed 's/\\.amb\$//')
+
+    # the number of reads of a FASTQ
+    count_fastq() {
+        bgzip -dc "\$1" | awk 'END { print NR / 4 }'
+    }
+
+    # the reads of \$1 that are not aligned to T2T-CHM13 (\$2: the flags of those aligned) are written to \$3, with those
+    # aligned to it that overlap the decoy contigs, as upstream (T2T-CHM13 has no decoy contig, so there are none)
+    not_aligned() {
+        samtools view -@ ${task.cpus} -b -h \$2 -e '[AS]>35' -U not_aligned.tmp.bam -o aligned.tmp.bam "\$1"
+        samtools view -@ ${task.cpus} -b -h ${clean} -o "\$3" not_aligned.tmp.bam
+        if [ -n "${bed}" ]; then
+            samtools view -@ ${task.cpus} -b -h ${clean} -L "${bed}" -o decoys.tmp.bam aligned.tmp.bam
+            samtools cat -o with_decoys.tmp.bam "\$3" decoys.tmp.bam
+            mv with_decoys.tmp.bam "\$3"
+        fi
+        rm -f not_aligned.tmp.bam aligned.tmp.bam decoys.tmp.bam
+    }
+
+    input_pairs=0
+    retained_pairs=0
+    dropped_mates=0
+    if [ -n "${paired_end}" ]; then
+        : > in_1.tmp.fastq
+        : > in_2.tmp.fastq
+        for bam in paired/*.bam; do
+            [ -e "\$bam" ] || continue
+            samtools collate -@ ${task.cpus} -u -O "\$bam" collate.tmp \\
+                | samtools fastq -n -1 one_1.tmp.fastq -2 one_2.tmp.fastq -0 /dev/null -s /dev/null -
+            cat one_1.tmp.fastq >> in_1.tmp.fastq
+            cat one_2.tmp.fastq >> in_2.tmp.fastq
+        done
+        input_pairs=\$(awk 'END { print NR / 4 }' in_1.tmp.fastq)
+        if [ "\$input_pairs" -gt 0 ]; then
+            bwa mem ${args} -t ${task.cpus} \$INDEX in_1.tmp.fastq in_2.tmp.fastq \\
+                | samtools view -@ ${task.cpus} -b -o ${prefix}.t2t.paired.bam -
+            # properly paired, with an alignment score above 35
+            not_aligned ${prefix}.t2t.paired.bam "-f 3" kept.tmp.bam
+            # a read kept without its mate (-s) is dropped
+            samtools collate -@ ${task.cpus} -u -O kept.tmp.bam collate.tmp \\
+                | samtools fastq -n -1 ${prefix}.t2tfilt_1.fastq.gz -2 ${prefix}.t2tfilt_2.fastq.gz -0 /dev/null -s dropped.tmp.fastq -
+            dropped_mates=\$(awk 'END { print NR / 4 }' dropped.tmp.fastq)
+        fi
+        # no reads: empty FASTQs (samtools fastq writes no file without reads for it)
+        for mate in 1 2; do
+            [ -e ${prefix}.t2tfilt_\$mate.fastq.gz ] || bgzip -c < /dev/null > ${prefix}.t2tfilt_\$mate.fastq.gz
+        done
+        retained_pairs=\$(count_fastq ${prefix}.t2tfilt_1.fastq.gz)
+        if [ "\$retained_pairs" != "\$(count_fastq ${prefix}.t2tfilt_2.fastq.gz)" ]; then
+            echo "The mates of the pairs not aligned to T2T-CHM13 are not the same number" >&2
+            exit 1
+        fi
+    fi
+
+    : > in_unpaired.tmp.fastq
+    for bam in unpaired/*.bam; do
+        [ -e "\$bam" ] || continue
+        samtools fastq -n "\$bam" >> in_unpaired.tmp.fastq
+    done
+    input_unpaired=\$(awk 'END { print NR / 4 }' in_unpaired.tmp.fastq)
+    if [ "\$input_unpaired" -gt 0 ]; then
+        bwa mem ${args} -t ${task.cpus} \$INDEX in_unpaired.tmp.fastq \\
+            | samtools view -@ ${task.cpus} -b -o ${prefix}.t2t.unpaired.bam -
+        # with an alignment score above 35 (the reads not aligned have none)
+        not_aligned ${prefix}.t2t.unpaired.bam "" kept.tmp.bam
+        samtools fastq -n kept.tmp.bam | bgzip -@ ${task.cpus} -c > ${prefix}.t2tfilt_unpaired.fastq.gz
+    else
+        bgzip -c < /dev/null > ${prefix}.t2tfilt_unpaired.fastq.gz
+    fi
+    retained_unpaired=\$(count_fastq ${prefix}.t2tfilt_unpaired.fastq.gz)
+
+    rm -f *.tmp.fastq *.tmp.bam
+
+    cat <<-END_LOG > ${prefix}.t2tfilter.log
+    Input pairs: \$input_pairs
+    Input unpaired reads: \$input_unpaired
+    Retained pairs: \$retained_pairs
+    Dropped reads kept without their mate: \$dropped_mates
+    Retained unpaired reads: \$retained_unpaired
+    END_LOG
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        bwa: \$(bwa 2>&1 | sed -n "s/^Version: //p")
+        samtools: \$(samtools version | sed '1!d;s/.* //')
+    END_VERSIONS
+    """
+
+    stub:
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    def paired_end = meta.single_end ? '' : 'true'
+    """
+    if [ -n "${paired_end}" ]; then
+        echo "" | gzip > ${prefix}.t2tfilt_1.fastq.gz
+        echo "" | gzip > ${prefix}.t2tfilt_2.fastq.gz
+    fi
+    echo "" | gzip > ${prefix}.t2tfilt_unpaired.fastq.gz
+    touch ${prefix}.t2tfilter.log
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        bwa: \$(bwa 2>&1 | sed -n "s/^Version: //p")
+        samtools: \$(samtools version | sed '1!d;s/.* //')
+    END_VERSIONS
+    """
+}

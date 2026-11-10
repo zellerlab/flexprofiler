@@ -21,6 +21,7 @@ include { LONGREAD_PREPROCESSING        } from '../subworkflows/local/longread_p
 include { WGS_PREPROCESSING             } from '../subworkflows/local/wgs_preprocessing'
 include { AMPLICON_PREPROCESSING        } from '../subworkflows/local/amplicon_preprocessing'
 include { RUN_MERGING                   } from '../subworkflows/local/run_merging'
+include { PATHSEQ_T2T                   } from '../subworkflows/local/pathseq_t2t'
 include { PROFILING                     } from '../subworkflows/local/profiling'
 include { STANDARDISATION_PROFILES      } from '../subworkflows/local/standardisation_profiles'
 include { READ_COUNTING                 } from '../subworkflows/local/read_counting'
@@ -70,6 +71,16 @@ workflow FLEXPROFILER {
     else {
         ch_longread_reference_index = []
     }
+
+    // PathSeq-T2T host filtering (--pathseq_t2t): a reference is needed only to build its bwa index, T2T-CHM13 being
+    // by default the host removal reference
+    def pathseq_t2t_chm13_reference = params.pathseq_t2t_chm13_reference ?: params.hostremoval_reference
+    ch_pathseq_grch38_reference = params.pathseq_t2t && !params.pathseq_t2t_grch38_bwa_index ? file(params.pathseq_t2t_grch38_reference, checkIfExists: true) : []
+    ch_pathseq_grch38_index = params.pathseq_t2t && params.pathseq_t2t_grch38_bwa_index ? file(params.pathseq_t2t_grch38_bwa_index, checkIfExists: true) : []
+    ch_pathseq_chm13_reference = params.pathseq_t2t && !params.pathseq_t2t_chm13_bwa_index ? file(pathseq_t2t_chm13_reference, checkIfExists: true) : []
+    ch_pathseq_chm13_index = params.pathseq_t2t && params.pathseq_t2t_chm13_bwa_index ? file(params.pathseq_t2t_chm13_bwa_index, checkIfExists: true) : []
+    ch_pathseq_host_dir = params.pathseq_t2t ? file(params.pathseq_host_dir, checkIfExists: true) : []
+    ch_pathseq_decoys_bed = params.pathseq_t2t && params.pathseq_decoys_bed ? file(params.pathseq_decoys_bed, checkIfExists: true) : []
 
     // Validate input files and create separate channels for FASTQ, FASTA, and Nanopore data
     ch_input = samplesheet
@@ -238,14 +249,43 @@ workflow FLEXPROFILER {
     RUN_MERGING(ch_reads_preprocessed)
     ch_versions = ch_versions.mix(RUN_MERGING.out.versions)
 
+    /*
+        SUBWORKFLOW: PATHSEQ-T2T HOST FILTERING
+    */
+
+    // of the reads as they were sequenced (the QC and host removal steps are off with --pathseq_t2t), after the run
+    // merging, so that with it the duplicates are removed over the whole sample
+    ch_pathseq_read_count_logs = channel.empty()
+    // the paired-end reads left without their mate, for the profilers that can use them
+    ch_singletons = channel.empty()
+    if (params.pathseq_t2t) {
+        PATHSEQ_T2T(
+            RUN_MERGING.out.reads,
+            ch_pathseq_grch38_reference,
+            ch_pathseq_grch38_index,
+            ch_pathseq_chm13_reference,
+            ch_pathseq_chm13_index,
+            ch_pathseq_host_dir,
+            ch_pathseq_decoys_bed,
+        )
+        ch_versions = ch_versions.mix(PATHSEQ_T2T.out.versions)
+        ch_multiqc_files = ch_multiqc_files.mix(PATHSEQ_T2T.out.mqc.collect { it[1] }.ifEmpty([]))
+        ch_pathseq_read_count_logs = PATHSEQ_T2T.out.read_count_logs
+        ch_singletons = PATHSEQ_T2T.out.singletons
+        ch_reads_for_profiling = PATHSEQ_T2T.out.reads
+    }
+    else {
+        ch_reads_for_profiling = RUN_MERGING.out.reads
+    }
+
     // the FASTA inputs are not merged
-    ch_reads_runmerged = RUN_MERGING.out.reads.mix(ch_input.fasta_short, ch_input.fasta_long)
+    ch_reads_runmerged = ch_reads_for_profiling.mix(ch_input.fasta_short, ch_input.fasta_long)
 
     /*
         SUBWORKFLOW: PROFILING
     */
 
-    PROFILING(ch_reads_runmerged, ch_final_dbs)
+    PROFILING(ch_reads_runmerged, ch_singletons, ch_final_dbs)
     ch_versions = ch_versions.mix(PROFILING.out.versions)
 
     /*
@@ -258,6 +298,7 @@ workflow FLEXPROFILER {
             .mix(LONGREAD_PREPROCESSING.out.read_count_logs)
             .mix(WGS_PREPROCESSING.out.read_count_logs)
             .mix(AMPLICON_PREPROCESSING.out.read_count_logs)
+            .mix(ch_pathseq_read_count_logs)
             .mix(PROFILING.out.read_count_logs)
     )
     ch_versions = ch_versions.mix(READ_COUNTING.out.versions)
@@ -266,7 +307,10 @@ workflow FLEXPROFILER {
         SUBWORKFLOW: PROFILING STANDARDISATION
     */
     if (params.run_profile_standardisation) {
-        STANDARDISATION_PROFILES(PROFILING.out.profiles, ch_final_dbs)
+        // the reads per million of Kraken2 are per raw read, counted by fastp or, with --pathseq_t2t, by the alignment to
+        // GRCh38
+        def has_raw_reads = params.pathseq_t2t || (params.perform_shortread_qc && params.shortread_qc_tool == 'fastp')
+        STANDARDISATION_PROFILES(PROFILING.out.profiles, ch_final_dbs, has_raw_reads ? READ_COUNTING.out.tsv : [])
         ch_versions = ch_versions.mix(STANDARDISATION_PROFILES.out.versions)
     }
 

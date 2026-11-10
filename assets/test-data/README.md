@@ -102,6 +102,18 @@ curl -s "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id
 
 The reference is stored under `data/hostremoval/`.
 
+### PathSeq-T2T
+
+The test of the PathSeq-T2T host filtering (`tests/test_pathseq_t2t.nf.test`, `samplesheet_pathseq_t2t.csv`, profile `test_pathseq_t2t`) uses references made from the host reference above, so that each filter has reads that only it removes: the first 8000 bp of the mitochondrial genome and a random "viral decoy" contig stand for GRCh38 (`data/pathseq_t2t/grch38_test.fna.gz`, `decoys_test.bed`), the first 8000 bp alone for the PathSeq host files (`data/pathseq_t2t/pathseq_host/`), and the whole mitochondrial genome for T2T-CHM13 (`t2t_test.fna.gz`). The reads (`data/fastq/pathseq_t2t/`, two runs of a paired-end sample and a single-end sample) are simulated from these and from a random "microbial" genome, and named by what they are (host, decoy, microbial, duplicate, low quality or complexity, short, chimeric pairs); see the docstring of the script. They were made with:
+
+```bash
+python3 scripts/make_pathseq_t2t_data.py data/hostremoval/NC_012920.1.fna.gz data/pathseq_t2t data/fastq/pathseq_t2t
+docker run --rm -v $PWD/data/pathseq_t2t/pathseq_host:/w -w /w quay.io/biocontainers/gatk4:4.6.2.0--py310hdfd78af_0 sh -c \
+    'gatk PathSeqBuildKmers --reference pathseq_host.fa --output pathseq_host.bfi --bloom-false-positive-probability 0.001 && gatk BwaMemIndexImageCreator -I pathseq_host.fa -O pathseq_host.fa.img'
+```
+
+The Kraken2 database of the test (`data/kraken2/`, row `test_kraken2` of `databases.csv`) is built from the "microbial" genome and the decoy contig of these references (`data/pathseq_t2t/microbe_genomes.fna.gz`), with a made-up taxonomy of a species of bacteria (taxid 900002) and one of virus (900003), with `scripts/make_kraken2_db.sh`. Its files are not byte-identical from one build to the next.
+
 ### Adapter-contaminated reads
 
 To test that adapter removal removes the adapters and keeps the inserts (`tests/test_adapter_removal.nf.test`, `samplesheet_adapters.csv`), error-free 2x150 reads were simulated from the host reference (see above) for two library kits, TruSeq and Nextera, in `data/fastq/adapters/`. For each kit, `adapters_<kit>_{1,2}.fastq.gz` have 1000 pairs, shuffled:
