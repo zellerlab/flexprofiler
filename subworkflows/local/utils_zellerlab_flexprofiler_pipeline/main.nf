@@ -63,6 +63,7 @@ workflow PIPELINE_INITIALISATION {
 \033[0;34m /____\\___|_|_|\\___|_|  |_|\\__,_|_.__/     \033[0m
                                        
 \033[0;35m  zellerlab/flexprofiler ${workflow.manifest.version}\033[0m
+\033[0;35m  commit ${getPipelineCommit()}\033[0m
 -\033[2m-----------------------------------------------\033[0m-
 """
     after_text = """
@@ -228,6 +229,36 @@ workflow PIPELINE_COMPLETION {
     FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
+//
+// The commit of the pipeline code that is run: Nextflow knows it only when the pipeline is run from a repository
+// (nextflow run zellerlab/flexprofiler -r ...), so for a local clone it is read with git, and marked as dirty if the
+// clone has uncommitted changes
+//
+def getPipelineCommit() {
+    if (workflow.commitId) {
+        return workflow.commitId
+    }
+    def commit = runGit(['rev-parse', 'HEAD'])
+    if (!commit) {
+        return 'unknown'
+    }
+    def status = runGit(['status', '--porcelain', '--untracked-files=no'])
+    return status ? "${commit}-dirty" : commit
+}
+
+// The output of a git command run on the pipeline code, or null if it fails (e.g. git is missing or it is not a clone)
+def runGit(args) {
+    try {
+        def proc = (['git', '-C', projectDir.toString()] + args).execute()
+        def out = proc.text.trim()
+        proc.waitFor()
+        return proc.exitValue() == 0 ? out : null
+    }
+    catch (Exception e) {
+        return null
+    }
+}
+
 // Validate that all runs of each sample can be merged together
 //
 def validateRunMerging(rows) {

@@ -7,6 +7,7 @@ include { paramsSummaryMap       } from 'plugin/nf-schema'
 include { paramsSummaryMultiqc   } from '../nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from './utils_zellerlab_flexprofiler_pipeline'
+include { getPipelineCommit      } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow MULTIQC_REPORTING {
     take:
@@ -35,7 +36,22 @@ workflow MULTIQC_REPORTING {
             "${process}:\n${tool_versions.join('\n')}"
         }
 
+    // The commit of the pipeline code is added to the Workflow section made by the nf-core utils (workflowVersionToYAML),
+    // so that the versions file and the MultiQC report record which code was run, also for a local clone (where
+    // workflow.commitId is not set and getWorkflowVersion has no commit). The nf-core utils indent the entries of this
+    // section with 4 spaces, unlike the 2 of the other sections (dumped by the YAML library or made above): they are
+    // re-indented with 2, so that the file is consistent and the added entry does not depend on the indentation of the
+    // nf-core utils (a mismatched one would make the YAML invalid)
+    def pipeline_commit = getPipelineCommit()
     ch_collated_versions = softwareVersionsToYAML(versions.mix(topic_versions.versions_file))
+        .map { version ->
+            if (!version.startsWith('Workflow:')) {
+                return version
+            }
+            def lines = version.readLines()
+            def entries = lines.drop(1).collect { line -> "  ${line.trim()}" }
+            return ([lines[0]] + entries + ["  ${workflow.manifest.name}_commit: ${pipeline_commit}"]).join('\n')
+        }
         .mix(topic_versions_string)
         .collectFile(
             storeDir: "${params.outdir}/pipeline_info",
