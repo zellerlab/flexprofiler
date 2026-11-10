@@ -615,8 +615,8 @@ def validatePathseqT2t(samplesheet_rows) {
     if (!params.pathseq_t2t_grch38_reference && !params.pathseq_t2t_grch38_bwa_index) {
         error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs GRCh38: please give its bwa index (--pathseq_t2t_grch38_bwa_index) or its FASTA to build it (--pathseq_t2t_grch38_reference)")
     }
-    if (!params.pathseq_t2t_chm13_reference && !params.hostremoval_reference && !params.pathseq_t2t_chm13_bwa_index) {
-        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs T2T-CHM13: please give its bwa index (--pathseq_t2t_chm13_bwa_index) or its FASTA to build it (--pathseq_t2t_chm13_reference, by default --hostremoval_reference)")
+    if (!params.pathseq_t2t_chm13_reference && !params.pathseq_t2t_chm13_bwa_index) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs T2T-CHM13: please give its bwa index (--pathseq_t2t_chm13_bwa_index) or its FASTA to build it (--pathseq_t2t_chm13_reference)")
     }
     if (!params.pathseq_host_dir) {
         error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs the PathSeq host files (pathseq_host.bfi and pathseq_host.fa.img): please give their directory (--pathseq_host_dir)")

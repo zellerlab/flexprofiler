@@ -466,7 +466,7 @@
                     "format": "file-path",
                     "exists": true,
                     "fa_icon": "fas fa-file-alt",
-                    "description": "FASTA of T2T-CHM13, to build its bwa index if --pathseq_t2t_chm13_bwa_index is not given (default: --hostremoval_reference)"
+                    "description": "FASTA of T2T-CHM13, to build its bwa index if --pathseq_t2t_chm13_bwa_index is not given"
                 },
                 "pathseq_t2t_chm13_bwa_index": {
                     "type": "string",

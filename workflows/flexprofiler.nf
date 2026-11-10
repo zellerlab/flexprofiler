@@ -72,12 +72,10 @@ workflow FLEXPROFILER {
         ch_longread_reference_index = []
     }
 
-    // PathSeq-T2T host filtering (--pathseq_t2t): a reference is needed only to build its bwa index, T2T-CHM13 being
-    // by default the host removal reference
-    def pathseq_t2t_chm13_reference = params.pathseq_t2t_chm13_reference ?: params.hostremoval_reference
+    // PathSeq-T2T host filtering (--pathseq_t2t): a reference is needed only to build its bwa index
     ch_pathseq_grch38_reference = params.pathseq_t2t && !params.pathseq_t2t_grch38_bwa_index ? file(params.pathseq_t2t_grch38_reference, checkIfExists: true) : []
     ch_pathseq_grch38_index = params.pathseq_t2t && params.pathseq_t2t_grch38_bwa_index ? file(params.pathseq_t2t_grch38_bwa_index, checkIfExists: true) : []
-    ch_pathseq_chm13_reference = params.pathseq_t2t && !params.pathseq_t2t_chm13_bwa_index ? file(pathseq_t2t_chm13_reference, checkIfExists: true) : []
+    ch_pathseq_chm13_reference = params.pathseq_t2t && !params.pathseq_t2t_chm13_bwa_index ? file(params.pathseq_t2t_chm13_reference, checkIfExists: true) : []
     ch_pathseq_chm13_index = params.pathseq_t2t && params.pathseq_t2t_chm13_bwa_index ? file(params.pathseq_t2t_chm13_bwa_index, checkIfExists: true) : []
     ch_pathseq_host_dir = params.pathseq_t2t ? file(params.pathseq_host_dir, checkIfExists: true) : []
     ch_pathseq_decoys_bed = params.pathseq_t2t && params.pathseq_decoys_bed ? file(params.pathseq_decoys_bed, checkIfExists: true) : []
