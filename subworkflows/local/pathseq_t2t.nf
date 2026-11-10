@@ -16,8 +16,7 @@ include { BWA_MEM as BWA_GRCH38             } from '../../modules/nf-core/bwa/me
 include { PATHSEQT2T_PREFILTER              } from '../../modules/local/pathseqt2t/prefilter/main'
 include { PATHSEQT2T_QCFILTER               } from '../../modules/local/pathseqt2t/qcfilter/main'
 include { PATHSEQT2T_T2TFILTER              } from '../../modules/local/pathseqt2t/t2tfilter/main'
-include { FASTQC as FASTQC_PATHSEQ_T2T      } from '../../modules/nf-core/fastqc/main'
-include { FALCO as FALCO_PATHSEQ_T2T        } from '../../modules/nf-core/falco/main'
+include { READS_QC                          } from './reads_qc'
 
 workflow PATHSEQ_T2T {
     take:
@@ -97,23 +96,14 @@ workflow PATHSEQ_T2T {
             QC OF THE FILTERED READS
         */
 
-        if (!params.skip_postprocessing_qc) {
-            // the singletons as single-end reads, named apart; a sample can be left with no reads, which FastQC cannot read
-            ch_reads_for_qc = ch_reads_filtered
-                .mix(ch_unpaired.singletons.map { meta, fastq -> [meta + [single_end: true, singletons: true], [fastq]] })
-                .filter { _meta, fastqs -> fastqs[0].countFastq() > 0 }
+        // the singletons as single-end reads, named apart; a sample can be left with no reads, which FastQC cannot read
+        ch_reads_for_qc = ch_reads_filtered
+            .mix(ch_unpaired.singletons.map { meta, fastq -> [meta + [single_end: true, singletons: true], [fastq]] })
+            .filter { _meta, fastqs -> fastqs[0].countFastq() > 0 }
 
-            if (params.preprocessing_qc_tool == 'falco') {
-                FALCO_PATHSEQ_T2T(ch_reads_for_qc)
-                ch_versions = ch_versions.mix(FALCO_PATHSEQ_T2T.out.versions.first())
-                ch_multiqc_files = ch_multiqc_files.mix(FALCO_PATHSEQ_T2T.out.txt)
-            }
-            else {
-                FASTQC_PATHSEQ_T2T(ch_reads_for_qc)
-                ch_versions = ch_versions.mix(FASTQC_PATHSEQ_T2T.out.versions.first())
-                ch_multiqc_files = ch_multiqc_files.mix(FASTQC_PATHSEQ_T2T.out.zip)
-            }
-        }
+        READS_QC(ch_reads_for_qc, 'pathseq_t2t')
+        ch_versions = ch_versions.mix(READS_QC.out.versions)
+        ch_multiqc_files = ch_multiqc_files.mix(READS_QC.out.mqc)
 
         // the reads after each step, for the read counts: the primary reads given to the filtering (flagstat), the reads
         // after each filter of PathSeqFilterSpark (the metrics of the reads not aligned to the host and of those aligned to

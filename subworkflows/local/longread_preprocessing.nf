@@ -3,8 +3,7 @@
 // reads, and quality filtering of the PacBio (HiFi) reads
 //
 
-include { FASTQC as FASTQC_PROCESSED } from '../../modules/nf-core/fastqc/main'
-include { FALCO as FALCO_PROCESSED   } from '../../modules/nf-core/falco/main'
+include { READS_QC                   } from './reads_qc'
 
 include { LONGREAD_ADAPTERREMOVAL    } from './longread_adapterremoval.nf'
 include { LONGREAD_FILTERING         } from './longread_filtering.nf'
@@ -65,18 +64,10 @@ workflow LONGREAD_PREPROCESSING {
         ch_multiqc_files = ch_multiqc_files.mix(LONGREAD_FILTERING.out.mqc)
     }
 
-    if (params.perform_longread_qc && !params.skip_postprocessing_qc){
-        if (params.preprocessing_qc_tool == 'fastqc') {
-            FASTQC_PROCESSED(ch_processed_reads)
-            ch_versions = ch_versions.mix(FASTQC_PROCESSED.out.versions)
-            ch_multiqc_files = ch_multiqc_files.mix(FASTQC_PROCESSED.out.zip)
-        }
-        else if (params.preprocessing_qc_tool == 'falco') {
-            FALCO_PROCESSED(ch_processed_reads)
-            ch_versions = ch_versions.mix(FALCO_PROCESSED.out.versions)
-            ch_multiqc_files = ch_multiqc_files.mix(FALCO_PROCESSED.out.txt)
-        }
-    }
+    // no reads without --perform_longread_qc
+    READS_QC(ch_processed_reads, 'processed')
+    ch_versions = ch_versions.mix(READS_QC.out.versions)
+    ch_multiqc_files = ch_multiqc_files.mix(READS_QC.out.mqc)
 
     emit:
     // the processed reads are a single file, put in a list as the other reads

@@ -7,8 +7,7 @@
 include { SHORTREAD_FASTP               } from './shortread_fastp'
 include { SHORTREAD_ADAPTERREMOVAL      } from './shortread_adapterremoval'
 include { SHORTREAD_COMPLEXITYFILTERING } from './shortread_complexityfiltering'
-include { FASTQC as FASTQC_PROCESSED    } from '../../modules/nf-core/fastqc/main'
-include { FALCO as FALCO_PROCESSED      } from '../../modules/nf-core/falco/main'
+include { READS_QC                      } from './reads_qc'
 
 workflow SHORTREAD_PREPROCESSING {
     take:
@@ -38,18 +37,9 @@ workflow SHORTREAD_PREPROCESSING {
             ch_processed_reads = reads
         }
 
-        if (!params.skip_postprocessing_qc) {
-            if (params.preprocessing_qc_tool == 'fastqc') {
-                FASTQC_PROCESSED(ch_processed_reads)
-                ch_versions = ch_versions.mix(FASTQC_PROCESSED.out.versions)
-                ch_multiqc_files = ch_multiqc_files.mix(FASTQC_PROCESSED.out.zip)
-            }
-            else if (params.preprocessing_qc_tool == 'falco') {
-                FALCO_PROCESSED(ch_processed_reads)
-                ch_versions = ch_versions.mix(FALCO_PROCESSED.out.versions)
-                ch_multiqc_files = ch_multiqc_files.mix(FALCO_PROCESSED.out.txt)
-            }
-        }
+        READS_QC(ch_processed_reads, 'processed')
+        ch_versions = ch_versions.mix(READS_QC.out.versions)
+        ch_multiqc_files = ch_multiqc_files.mix(READS_QC.out.mqc)
     }
     else {
         ch_processed_reads = reads

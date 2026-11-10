@@ -4,7 +4,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 include { BBMAP_REPAIR                  } from '../modules/local/bbmap/repair/main'
-include { FASTQC                        } from '../modules/nf-core/fastqc/main'
+include { READS_QC                      } from '../subworkflows/local/reads_qc'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -37,7 +37,6 @@ include { MULTIQC_REPORTING             } from '../subworkflows/local/multiqc_re
 // MODULE: Installed directly from nf-core/modules
 //
 include { UNTAR                         } from '../modules/nf-core/untar/main'
-include { FALCO                         } from '../modules/nf-core/falco/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -190,19 +189,12 @@ workflow FLEXPROFILER {
         }
 
     /*
-        MODULE: Run FastQC
+        SUBWORKFLOW: QC of the raw reads
     */
 
-    if (!params.skip_preprocessing_qc) {
-        if (params.preprocessing_qc_tool == 'falco') {
-            FALCO(ch_input_for_fastqc)
-            ch_versions = ch_versions.mix(FALCO.out.versions.first())
-        }
-        else {
-            FASTQC(ch_input_for_fastqc)
-            ch_versions = ch_versions.mix(FASTQC.out.versions.first())
-        }
-    }
+    READS_QC(ch_input_for_fastqc, 'raw')
+    ch_versions = ch_versions.mix(READS_QC.out.versions)
+    ch_multiqc_files = ch_multiqc_files.mix(READS_QC.out.mqc.collect { it[1] }.ifEmpty([]))
 
     /*
         SUBWORKFLOW: READ TYPE PREPROCESSING
@@ -304,18 +296,6 @@ workflow FLEXPROFILER {
     */
 
     // the reports of the steps for MultiQC
-    if (!params.skip_preprocessing_qc) {
-        if (params.preprocessing_qc_tool == 'falco') {
-            // only mix in files actually used by MultiQC
-            ch_multiqc_files = ch_multiqc_files.mix(
-                FALCO.out.txt.map { _meta, reports -> reports }.flatten().filter { path -> path.name.endsWith('_data.txt') }.ifEmpty([])
-            )
-        }
-        else {
-            ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect { it[1] }.ifEmpty([]))
-        }
-    }
-
     ch_multiqc_files = ch_multiqc_files.mix(SHORTREAD_PREPROCESSING.out.mqc.collect { it[1] }.ifEmpty([]))
     ch_multiqc_files = ch_multiqc_files.mix(LONGREAD_PREPROCESSING.out.mqc.collect { it[1] }.ifEmpty([]))
     ch_multiqc_files = ch_multiqc_files.mix(WGS_PREPROCESSING.out.mqc.collect { it[1] }.ifEmpty([]))
