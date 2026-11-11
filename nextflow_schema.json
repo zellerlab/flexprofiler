@@ -337,12 +337,6 @@
                     "fa_icon": "fas fa-ruler-horizontal",
                     "description": "Minimum read length after clipping in PathSeqFilterSpark (--min-clipped-read-length)"
                 },
-                "pathseq_filter_duplicates": {
-                    "type": "boolean",
-                    "default": true,
-                    "fa_icon": "fas fa-clone",
-                    "description": "Remove duplicate reads in PathSeqFilterSpark (--filter-duplicates)"
-                },
                 "save_pathseq_t2t_bams": {
                     "type": "boolean",
                     "fa_icon": "fas fa-save",

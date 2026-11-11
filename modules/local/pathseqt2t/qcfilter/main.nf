@@ -55,19 +55,21 @@ process PATHSEQT2T_QCFILTER {
 
     mkdir -p tmp
 
-    # PathSeqFilterSpark on \$1, writing the outputs named by \$2, with the BAM partition size \$3
+    # PathSeqFilterSpark on input_bam, writing the outputs named by name, with the BAM partition size partition_size
     pathseq_filter() {
+        local input_bam=\$1 name=\$2 partition_size=\$3
+        local kind count bam
         gatk --java-options "-Xmx${heap_mb}M" PathSeqFilterSpark \\
-            --input "\$1" \\
+            --input "\$input_bam" \\
             --tmp-dir tmp \\
             --spark-master "local[${task.cpus}]" \\
-            --bam-partition-size "\$3" \\
+            --bam-partition-size "\$partition_size" \\
             --is-host-aligned true \\
             --kmer-file ${host_dir}/pathseq_host.bfi \\
             --filter-bwa-image ${host_dir}/pathseq_host.fa.img \\
-            --filter-metrics ${prefix}.prefilter.\$2.filter_metrics.txt \\
-            --paired-output ${prefix}.\$2.qcfilt_paired.bam \\
-            --unpaired-output ${prefix}.\$2.qcfilt_unpaired.bam \\
+            --filter-metrics ${prefix}.prefilter.\$name.filter_metrics.txt \\
+            --paired-output ${prefix}.\$name.qcfilt_paired.bam \\
+            --unpaired-output ${prefix}.\$name.qcfilt_unpaired.bam \\
             ${args}
 
         # PathSeqFilterSpark writes no BAM if it has no reads for it: a BAM is expected only if the metrics count reads
@@ -76,8 +78,8 @@ process PATHSEQT2T_QCFILTER {
                 header { print \$index_of[column]; found = 1; exit }
                 \$1 == "PRIMARY_READS" { for (i = 1; i <= NF; i++) index_of[\$i] = i; header = 1 }
                 END { if (!found) exit 1 }
-            ' ${prefix}.prefilter.\$2.filter_metrics.txt)
-            bam=${prefix}.\$2.qcfilt_\$(echo \$kind | tr '[:upper:]' '[:lower:]').bam
+            ' ${prefix}.prefilter.\$name.filter_metrics.txt)
+            bam=${prefix}.\$name.qcfilt_\$(echo \$kind | tr '[:upper:]' '[:lower:]').bam
             if [ "\$count" -gt 0 ] && [ ! -s "\$bam" ]; then
                 echo "PathSeqFilterSpark counts \$count reads (FINAL_\${kind}_READS) but did not write \$bam" >&2
                 exit 1

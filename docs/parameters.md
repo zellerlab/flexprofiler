@@ -84,7 +84,6 @@ Stringent host filtering of low-biomass human samples, after PathSeq-T2T (Dohlma
 | `pathseq_host_dir` | Directory of the PathSeq host files pathseq_host.bfi and pathseq_host.fa.img <details><summary>Help</summary><small>From the GATK PathSeq resource bundle: ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/pathseq/pathseq_host.tar.gz</small></details>| `string` |  |  |  |
 | `pathseq_decoys_bed` | BED of the viral decoy contigs of GRCh38, whose reads are kept; empty to remove them as host reads | `string` | ${projectDir}/assets/pathseq_t2t/non_human_decoys.bed |  |  |
 | `pathseq_min_clipped_read_length` | Minimum read length after clipping in PathSeqFilterSpark (--min-clipped-read-length) | `integer` | 60 |  |  |
-| `pathseq_filter_duplicates` | Remove duplicate reads in PathSeqFilterSpark (--filter-duplicates) | `boolean` | True |  |  |
 | `save_pathseq_t2t_bams` | Save the BAMs of the PathSeq-T2T filtering steps | `boolean` |  |  |  |
 
 ## Preprocessing run merging options

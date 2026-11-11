@@ -93,7 +93,6 @@ params {
     pathseq_host_dir:                String?
     pathseq_decoys_bed:              String?
     pathseq_min_clipped_read_length: Integer
-    pathseq_filter_duplicates:       Boolean
     save_pathseq_t2t_bams:           Boolean
     save_analysis_ready_fastqs:      Boolean
     run_motus4:                      Boolean
