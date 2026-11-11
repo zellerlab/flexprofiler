@@ -83,7 +83,7 @@ workflow PATHSEQ_T2T {
             .join(PATHSEQT2T_QCFILTER.out.unpaired, remainder: true)
             .map { meta, _metrics, paired, unpaired -> [meta, paired ?: [], unpaired ?: []] }
 
-        PATHSEQT2T_T2TFILTER(ch_reads_for_t2tfilter, ch_t2t_index, decoys_bed)
+        PATHSEQT2T_T2TFILTER(ch_reads_for_t2tfilter, ch_t2t_index)
 
         // paired-end reads: the pairs, the reads left without their mate (singletons) being kept apart for the profilers
         // that can use them; single-end reads: all the reads are unpaired
