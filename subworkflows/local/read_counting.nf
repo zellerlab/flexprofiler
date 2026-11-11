@@ -2,7 +2,8 @@
 // The read counts after each step, parsed from the logs of the steps, per run or, with run merging, per merged run
 //
 
-include { READ_COUNTS } from '../../modules/local/read_counts/main'
+include { READ_COUNTS  } from '../../modules/local/read_counts/main'
+include { publishFiles } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow READ_COUNTING {
     take:
@@ -44,6 +45,8 @@ workflow READ_COUNTING {
     READ_COUNTS(ch_read_count_files, ch_read_count_manifest)
 
     emit:
-    tsv      = READ_COUNTS.out.tsv // channel: path(read_counts.tsv)
-    mqc      = READ_COUNTS.out.mqc // channel: path(read_counts_mqc.tsv)
+    tsv       = READ_COUNTS.out.tsv // channel: path(read_counts.tsv)
+    mqc       = READ_COUNTS.out.mqc // channel: path(read_counts_mqc.tsv)
+    // read_counts_mqc.tsv goes only to MultiQC
+    published = publishFiles(READ_COUNTS.out.tsv, 'read_counts', 'read_counts.tsv') // channel: [ file, target ], the files to publish (publishFiles)
 }

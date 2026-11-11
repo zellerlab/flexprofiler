@@ -35,9 +35,6 @@ process PATHSEQT2T_QCFILTER {
     tuple val(meta), path("*.filter_metrics.txt") , emit: metrics
     tuple val("${task.process}"), val('gatk4'), eval("gatk --version | sed -n '/GATK.*v/s/.*v//p'"), emit: versions_gatk4, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     // e.g. --min-clipped-read-length
     def args = task.ext.args ?: ''

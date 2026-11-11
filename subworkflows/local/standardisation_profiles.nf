@@ -9,6 +9,7 @@ include { GQLIB_MERGE                  } from '../../modules/local/gqlib/merge/m
 include { GQLIB_MERGE  as CAYMAN_MERGE } from '../../modules/local/gqlib/merge/main'
 include { IDTAXA_MERGE                 } from '../../modules/local/idtaxa/merge/main'
 include { KRAKEN2_MERGE                } from '../../modules/local/kraken2/merge/main'
+include { publishFiles                 } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow STANDARDISATION_PROFILES {
     take:
@@ -16,24 +17,24 @@ workflow STANDARDISATION_PROFILES {
     databases
 
     main:
-    ch_multiqc_files = Channel.empty()
+    ch_multiqc_files = channel.empty()
 
     /*
         Split profile results based on tool they come from
     */
-    ch_input_profiles = profiles.branch {
-        motus4: it[0]['tool'] == 'motus4'
-        motus3: it[0]['tool'] == 'motus3'
-        cayman: it[0]['tool'] == 'cayman'
-        gqlib: it[0]['tool'] == 'gqlib'
-        idtaxa: it[0]['tool'] == 'idtaxa'
-        kraken2: it[0]['tool'] == 'kraken2'
+    ch_input_profiles = profiles.branch { meta, _profile ->
+        motus4: meta.tool == 'motus4'
+        motus3: meta.tool == 'motus3'
+        cayman: meta.tool == 'cayman'
+        gqlib: meta.tool == 'gqlib'
+        idtaxa: meta.tool == 'idtaxa'
+        kraken2: meta.tool == 'kraken2'
         unknown: true
     }
 
-    ch_input_databases = databases.branch {
-        motus4: it[0]['tool'] == 'motus4'
-        motus3: it[0]['tool'] == 'motus3'
+    ch_input_databases = databases.branch { db_meta, _db ->
+        motus4: db_meta.tool == 'motus4'
+        motus3: db_meta.tool == 'motus3'
         unknown: true
     }
 
@@ -67,8 +68,16 @@ workflow STANDARDISATION_PROFILES {
     // and added to the single reads of the same sample
     KRAKEN2_MERGE(groupProfilesByEndedness(ch_input_profiles.kraken2))
 
+    ch_published = publishFiles(MOTUS4_MERGE.out.txt, 'motus4/merge', '*.txt')
+        .mix(publishFiles(MOTUS3_MERGE.out.txt, 'motus3/merge', '*.txt'))
+        .mix(publishFiles(CAYMAN_MERGE.out.txt, { meta -> "cayman/merge/${meta.db_name}/${meta.annot_db_name}" }, '*.txt.gz'))
+        .mix(publishFiles(GQLIB_MERGE.out.txt, { meta -> "gqlib/merge/${meta.db_name}/${meta.annot_db_name}" }, '*.txt.gz'))
+        .mix(publishFiles(IDTAXA_MERGE.out.tsv, { meta -> "idtaxa/merge/${meta.id}" }, '*.tsv'))
+        .mix(publishFiles(KRAKEN2_MERGE.out.reads_clade.mix(KRAKEN2_MERGE.out.reads_taxon, KRAKEN2_MERGE.out.taxonomy), 'kraken2', '*.tsv'))
+
     emit:
-    mqc      = ch_multiqc_files
+    mqc       = ch_multiqc_files
+    published = ch_published     // channel: [ file, target ], the files to publish (publishFiles)
 }
 
 // Custom Functions
@@ -88,9 +97,8 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
         // which starts with the task hash), so that the task inputs are the same in every run, for -resume, and the
         // samples of the mOTUs v3 merged table, in the order of its inputs, are in the same order in every run
         .groupTuple(groupTupleOptions + [sort: { profile -> profile.name }])
-        .map {
-            db_name, profiles -> 
-            def names = profiles.collect { it.getName() }
+        .map { db_name, profiles ->
+            def names = profiles.collect { profile -> profile.getName() }
             def duplicates = names.findAll { name -> names.count(name) > 1 }.unique()
             if (duplicates) {
                 error (

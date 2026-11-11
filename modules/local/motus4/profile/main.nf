@@ -18,9 +18,6 @@ process MOTUS4_PROFILE {
     tuple val(meta), path("*.log")                , emit: log
     tuple val("${task.process}"), val('motus4'), eval('motus 2>&1 | sed -n "s/^.*Version: //p"'), emit: versions_motus4, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
@@ -45,7 +42,6 @@ process MOTUS4_PROFILE {
     """
 
     stub:
-    def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.out

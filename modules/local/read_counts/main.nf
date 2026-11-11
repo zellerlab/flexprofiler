@@ -17,9 +17,6 @@ process READ_COUNTS {
     path "read_counts_mqc.tsv", emit: mqc
     tuple val("${task.process}"), val('pandas'), eval('python -c "import pandas; print(pandas.__version__)"'), emit: versions_pandas, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     """
     read_counts.py \\

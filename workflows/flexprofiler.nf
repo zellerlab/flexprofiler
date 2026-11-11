@@ -26,6 +26,7 @@ include { PROFILING                     } from '../subworkflows/local/profiling'
 include { STANDARDISATION_PROFILES      } from '../subworkflows/local/standardisation_profiles'
 include { READ_COUNTING                 } from '../subworkflows/local/read_counting'
 include { MULTIQC_REPORTING             } from '../subworkflows/local/multiqc_reporting'
+include { publishFiles                  } from '../subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,7 +59,7 @@ workflow FLEXPROFILER {
     ch_reference = params.hostremoval_reference ? file(params.hostremoval_reference, checkIfExists: true) : []
     ch_amplicon_orient_reference = params.amplicon_orient_reference ? file(params.amplicon_orient_reference, checkIfExists: true) : []
     if (params.shortread_hostremoval_index) {
-        ch_shortread_reference_index = channel.fromPath(params.shortread_hostremoval_index, checkIfExists: true).map { [[], it] }
+        ch_shortread_reference_index = channel.fromPath(params.shortread_hostremoval_index, checkIfExists: true).map { index -> [[], index] }
     }
     else {
         ch_shortread_reference_index = []
@@ -95,11 +96,13 @@ workflow FLEXPROFILER {
     */
 
     if (params.perform_repair_pe_order) {
-        BBMAP_REPAIR(ch_input.fastq_pe, Channel.value(false))
+        BBMAP_REPAIR(ch_input.fastq_pe, channel.value(false))
         ch_fastq_repaired = BBMAP_REPAIR.out.repaired.mix(ch_input.fastq_se)
+        ch_repair_published = publishFiles(BBMAP_REPAIR.out.repaired.mix(BBMAP_REPAIR.out.singleton, BBMAP_REPAIR.out.log), 'bbmap')
     }
     else {
         ch_fastq_repaired = ch_input.fastq_pe.mix(ch_input.fastq_se)
+        ch_repair_published = channel.empty()
     }
     
     // the short and long reads, for the QC of the raw reads
@@ -127,6 +130,7 @@ workflow FLEXPROFILER {
 
     // Untar the databases
     UNTAR(ch_inputdb_untar)
+    ch_databases_published = params.save_untarred_databases ? publishFiles(UNTAR.out.untar, 'untar/databases') : channel.empty()
     // Spread out the untarred and shared databases
     ch_outputdb_from_untar = UNTAR.out.untar
         .map { meta, db ->
@@ -193,7 +197,7 @@ workflow FLEXPROFILER {
         ch_pathseq_host_dir,
         ch_pathseq_decoys_bed,
     )
-    ch_multiqc_files = ch_multiqc_files.mix(PATHSEQ_T2T.out.mqc.collect { it[1] }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(PATHSEQ_T2T.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
     // the paired-end reads left without their mate, for the profilers that can use them
     ch_singletons = PATHSEQ_T2T.out.singletons
 
@@ -209,7 +213,7 @@ workflow FLEXPROFILER {
         ch_input_for_fastqc,
         ch_reads_runmerged.mix(ch_singletons.map { meta, fastq -> [meta + [single_end: true, singletons: true], [fastq]] }),
     )
-    ch_multiqc_files = ch_multiqc_files.mix(READS_QC.out.mqc.collect { it[1] }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(READS_QC.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
 
     /*
         SUBWORKFLOW: PROFILING
@@ -236,6 +240,10 @@ workflow FLEXPROFILER {
     */
     if (params.run_profile_standardisation) {
         STANDARDISATION_PROFILES(PROFILING.out.profiles, ch_final_dbs)
+        ch_merged_profiles_published = STANDARDISATION_PROFILES.out.published
+    }
+    else {
+        ch_merged_profiles_published = channel.empty()
     }
 
     /*
@@ -243,20 +251,37 @@ workflow FLEXPROFILER {
     */
 
     // the reports of the steps for MultiQC
-    ch_multiqc_files = ch_multiqc_files.mix(SHORTREAD_PREPROCESSING.out.mqc.collect { it[1] }.ifEmpty([]))
-    ch_multiqc_files = ch_multiqc_files.mix(LONGREAD_PREPROCESSING.out.mqc.collect { it[1] }.ifEmpty([]))
-    ch_multiqc_files = ch_multiqc_files.mix(WGS_PREPROCESSING.out.mqc.collect { it[1] }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(SHORTREAD_PREPROCESSING.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(LONGREAD_PREPROCESSING.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(WGS_PREPROCESSING.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
 
-    ch_multiqc_files = ch_multiqc_files.mix(PROFILING.out.mqc.collect { it[1] }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(PROFILING.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
     ch_multiqc_files = ch_multiqc_files.mix(READ_COUNTING.out.mqc)
 
     if (params.run_profile_standardisation) {
-        ch_multiqc_files = ch_multiqc_files.mix(STANDARDISATION_PROFILES.out.mqc.collect { it[1] }.ifEmpty([]))
+        ch_multiqc_files = ch_multiqc_files.mix(STANDARDISATION_PROFILES.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
     }
 
     MULTIQC_REPORTING(ch_multiqc_files)
 
     emit:
     multiqc_report = MULTIQC_REPORTING.out.report // channel: /path/to/multiqc_report.html
+    // the files to publish of all the stages, for the output block of main.nf: [ file, target ] (publishFiles)
+    published      = ch_databases_published.mix(
+        ch_repair_published,
+        SHORTREAD_PREPROCESSING.out.published,
+        LONGREAD_PREPROCESSING.out.published,
+        WGS_PREPROCESSING.out.published,
+        AMPLICON_PREPROCESSING.out.published,
+        RUN_MERGING.out.published,
+        PATHSEQ_T2T.out.published,
+        READS_QC.out.published,
+        PROFILING.out.published,
+        ch_merged_profiles_published,
+        READ_COUNTING.out.published,
+        MULTIQC_REPORTING.out.published,
+    )
+    // the analysis-ready reads of the amplicon runs: [ file, target ], which can be input files
+    amplicon_analysis_ready = AMPLICON_PREPROCESSING.out.analysis_ready
 }
 

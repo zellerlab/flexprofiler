@@ -33,9 +33,6 @@ process PATHSEQT2T_PREFILTER {
     tuple val(meta), path("*.flagstat.tsv")           , emit: flagstat
     tuple val("${task.process}"), val('samtools'), eval("samtools version | sed '1!d;s/.* //'"), emit: versions_samtools, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
     // paired-end: properly paired (prefilter.sh, aligner bwa); single-end: aligned (the reads not aligned have no AS)

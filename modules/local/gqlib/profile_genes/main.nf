@@ -19,9 +19,6 @@ process GQLIB_PROFILE_GENES {
     tuple val(meta), path("*.gqlib.log"            ), emit: log
     tuple val("${task.process}"), val('gqlib'), eval('python -c "import gqlib; print(gqlib.__version__)"'), emit: versions_gqlib, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"

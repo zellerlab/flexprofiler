@@ -4,6 +4,7 @@
 
 include { VSEARCH_FASTQFILTER        } from '../../modules/local/vsearch/fastqfilter/main'
 include { BBMAP_BBDUK as BBDUK_PACBIO } from '../../modules/nf-core/bbmap/bbduk/main'
+include { publishFiles               } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow LONGREAD_PREPROCESSING {
     take:
@@ -40,8 +41,18 @@ workflow LONGREAD_PREPROCESSING {
     // the processed reads are a single file, put in a list as the other reads
     ch_processed_reads = ch_processed_reads.mix(BBDUK_PACBIO.out.reads.map { meta, processed_reads -> [meta, [processed_reads].flatten()] })
 
+    // the logs, and the reads with --save_preprocessed_reads
+    ch_published = publishFiles(VSEARCH_FASTQFILTER.out.log, 'vsearch_fastqfilter', '*.log')
+        .mix(publishFiles(BBDUK_PACBIO.out.log, 'bbduk_pacbio', '*.log'))
+    if (params.save_preprocessed_reads) {
+        ch_published = ch_published
+            .mix(publishFiles(VSEARCH_FASTQFILTER.out.reads, 'vsearch_fastqfilter', '*.fastq.gz'))
+            .mix(publishFiles(BBDUK_PACBIO.out.reads, 'bbduk_pacbio', '*.fastq.gz'))
+    }
+
     emit:
     reads           = ch_processed_reads.mix(ch_reads_by_platform.other) // channel: [ val(meta), [ reads ] ]
     read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], with the tool in meta.tool
     mqc             = ch_multiqc_files
+    published       = ch_published // channel: [ file, target ], the files to publish (publishFiles)
 }

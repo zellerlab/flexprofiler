@@ -16,9 +16,6 @@ process BBMAP_REPAIR {
     tuple val("${task.process}"), val('bbmap'), eval('bbversion.sh 2>&1 | grep -F -v -e "Duplicate cpuset" -e "[warning]"'), emit: versions_bbmap, topic: versions
     tuple val(meta), path("*.log")                       , emit: log
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def args   = task.ext.args ?: ''
     prefix = task.ext.prefix ?: "${meta.id}"

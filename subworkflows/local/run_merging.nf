@@ -3,12 +3,15 @@
 //
 
 include { CAT_FASTQ as MERGE_RUNS } from '../../modules/nf-core/cat/fastq/main'
+include { publishFiles            } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow RUN_MERGING {
     take:
     reads // [ [ meta ], [ reads ] ], the preprocessed reads of each run
 
     main:
+    ch_published = channel.empty()
+
     if (params.perform_runmerging) {
         ch_reads_for_cat_branch = reads
             .map { meta, input_reads ->
@@ -37,11 +40,19 @@ workflow RUN_MERGING {
             .map { meta, merged_reads ->
                 [meta, [merged_reads].flatten()]
             }
+
+        // the merged runs (--save_runmerged_reads), and, as the reads given to the profilers, those of the samples with
+        // more than one run, the others being published by the preprocessing. With --pathseq_t2t the merged runs are
+        // the reads before the host filtering, which publishes the reads given to the profilers instead
+        ch_published = ch_published
+            .mix(params.save_runmerged_reads ? publishFiles(MERGE_RUNS.out.reads, 'run_merging', '*.fastq.gz') : channel.empty())
+            .mix(params.save_analysis_ready_fastqs && !params.pathseq_t2t ? publishFiles(MERGE_RUNS.out.reads, 'analysis_ready_fastqs', '*.fastq.gz') : channel.empty())
     }
     else {
         ch_reads_runmerged = reads
     }
 
     emit:
-    reads    = ch_reads_runmerged // channel: [ val(meta), [ reads ] ], one per sample and library strategy with --perform_runmerging, else per run
+    reads     = ch_reads_runmerged // channel: [ val(meta), [ reads ] ], one per sample and library strategy with --perform_runmerging, else per run
+    published = ch_published       // channel: [ file, target ], the files to publish (publishFiles)
 }

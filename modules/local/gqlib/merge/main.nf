@@ -16,9 +16,6 @@ process GQLIB_MERGE {
     tuple val(meta), path("*.txt.gz"), emit: txt
     tuple val("${task.process}"), val('gqlib'), eval('python -c "import gqlib; print(gqlib.__version__)"'), emit: versions_gqlib, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
     // the profiles are named <sample>_<database>_<annotation>.<category>.txt.gz, meta.id being <database>_<annotation>;

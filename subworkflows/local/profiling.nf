@@ -12,6 +12,7 @@ include { GQLIB_PROFILE_GENES           } from '../../modules/local/gqlib/profil
 include { IDTAXA_CLASSIFY               } from '../../modules/local/idtaxa/classify/main'
 include { KRAKEN2_KRAKEN2                } from '../../modules/nf-core/kraken2/kraken2/main'
 include { toolLibraryStrategy           } from './utils_zellerlab_flexprofiler_pipeline'
+include { publishFiles                  } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow PROFILING {
     take:
@@ -20,11 +21,12 @@ workflow PROFILING {
     databases  // [ [ meta ], path ]
 
     main:
-    ch_multiqc_files = Channel.empty()
+    ch_multiqc_files = channel.empty()
     // count tables
-    ch_raw_profiles = Channel.empty()
+    ch_raw_profiles = channel.empty()
     // logs of the profilers, for the read counts, with the tool in meta.tool: [ meta, log ]
-    ch_read_count_logs = Channel.empty()
+    ch_read_count_logs = channel.empty()
+    ch_published = channel.empty()
 
     /*
         COMBINE READS WITH POSSIBLE DATABASES
@@ -67,6 +69,10 @@ workflow PROFILING {
             }
 
         MOTUS4_RENAME_READS(ch_input_for_motus4_rename_reads, [], false, 'fastq.gz')
+        // the reads given to motus4, saved with the analysis-ready reads, apart as only motus4 gets them
+        if (params.save_analysis_ready_fastqs) {
+            ch_published = ch_published.mix(publishFiles(MOTUS4_RENAME_READS.out.output, 'analysis_ready_fastqs/motus4', '*_renamed_reads.*.gz'))
+        }
         ch_reads_for_motus4 = MOTUS4_RENAME_READS.out.output
             .map { meta, input_reads ->
                 [ groupKey(meta.findAll { k, _v -> k != "paired_idx" }, 2), [meta.paired_idx, input_reads] ]
@@ -146,19 +152,25 @@ workflow PROFILING {
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS4_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS4_PROFILE.out.log)
         ch_read_count_logs = ch_read_count_logs.mix(MOTUS4_PROFILE.out.log)
+        ch_published = ch_published.mix(
+            publishFiles(MOTUS4_PROFILE.out.out.mix(MOTUS4_PROFILE.out.log, MOTUS4_PROFILE.out.mgc), { meta -> "motus4/profile/${meta.db_name}" }, '*.{out,log,mgc}')
+        )
     }
 
     if (params.run_motus3) {
         ch_input_for_motus3 = ch_input_for_profiling.motus3
-            .multiMap { it ->
-                reads: [it[0] + it[2], it[1]]
-                db: it[3]
+            .multiMap { read_meta, input_reads, db_meta, db ->
+                reads: [read_meta + db_meta, input_reads]
+                db: db
             }
 
         MOTUS3_PROFILE(ch_input_for_motus3.reads, ch_input_for_motus3.db)
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS3_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS3_PROFILE.out.log)
         ch_read_count_logs = ch_read_count_logs.mix(MOTUS3_PROFILE.out.log)
+        ch_published = ch_published.mix(
+            publishFiles(MOTUS3_PROFILE.out.out.mix(MOTUS3_PROFILE.out.log), { meta -> "motus3/profile/${meta.db_name}" }, '*.{out,log}')
+        )
     }
 
     if (params.run_cayman || params.run_gqlib) {
@@ -170,6 +182,10 @@ workflow PROFILING {
 
         // the bam is not sorted, as cayman and gqlib expect the alignments grouped by read
         BWA_ALIGN(ch_input_for_align.reads, ch_input_for_align.db, [[], []], false)
+        // the alignments are intermediate files, and can be large
+        if (params.save_bwa_alignments) {
+            ch_published = ch_published.mix(publishFiles(BWA_ALIGN.out.bam, { meta -> "bwa/${meta.db_name}" }, '*.bam'))
+        }
 
         // spread out each alignment to the profilers using its gene catalogue, each with its annotation file
         ch_bams_for_profiling = BWA_ALIGN.out.bam
@@ -192,6 +208,14 @@ workflow PROFILING {
         CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.annot)
         ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
         ch_read_count_logs = ch_read_count_logs.mix(CAYMAN_PROFILE.out.log.filter(is_first_annot_log))
+        // not the gqlib output with the `category` row, *.feature.txt.gz
+        ch_published = ch_published.mix(
+            publishFiles(
+                CAYMAN_PROFILE.out.out.mix(CAYMAN_PROFILE.out.aln_stats, CAYMAN_PROFILE.out.gene_counts, CAYMAN_PROFILE.out.log),
+                { meta -> "cayman/profile/${meta.db_name}/${meta.annot_db_name}" },
+                '*.{cazy.txt.gz,aln_stats.txt.gz,gene_counts.txt.gz,log}',
+            )
+        )
     }
 
     if (params.run_gqlib) {
@@ -204,6 +228,14 @@ workflow PROFILING {
         GQLIB_PROFILE_GENES(ch_input_for_gqlib.bam, ch_input_for_gqlib.annot)
         ch_raw_profiles = ch_raw_profiles.mix(GQLIB_PROFILE_GENES.out.profiles)
         ch_read_count_logs = ch_read_count_logs.mix(GQLIB_PROFILE_GENES.out.log.filter(is_first_annot_log))
+        // the aln_stats, in a subdirectory of the task only to keep them apart from the profiles, are published with them
+        ch_published = ch_published.mix(
+            publishFiles(
+                GQLIB_PROFILE_GENES.out.profiles.mix(GQLIB_PROFILE_GENES.out.aln_stats, GQLIB_PROFILE_GENES.out.log),
+                { meta -> "gqlib/profile_genes/${meta.db_name}/${meta.annot_db_name}" },
+                '*.{txt.gz,log}',
+            )
+        )
     }
 
     if (params.run_idtaxa) {
@@ -216,6 +248,9 @@ workflow PROFILING {
         IDTAXA_CLASSIFY(ch_input_for_idtaxa.reads, ch_input_for_idtaxa.db)
         ch_raw_profiles = ch_raw_profiles.mix(IDTAXA_CLASSIFY.out.profile)
         ch_read_count_logs = ch_read_count_logs.mix(IDTAXA_CLASSIFY.out.log)
+        ch_published = ch_published.mix(
+            publishFiles(IDTAXA_CLASSIFY.out.profile.mix(IDTAXA_CLASSIFY.out.log), { meta -> "idtaxa/${meta.db_name}" }, '*.{tsv,tsv.gz,log}')
+        )
     }
 
     if (params.run_kraken2) {
@@ -235,6 +270,13 @@ workflow PROFILING {
         KRAKEN2_KRAKEN2(ch_input_for_kraken2.reads, ch_input_for_kraken2.db, false, false)
         ch_raw_profiles = ch_raw_profiles.mix(KRAKEN2_KRAKEN2.out.report)
         ch_multiqc_files = ch_multiqc_files.mix(KRAKEN2_KRAKEN2.out.report)
+        ch_published = ch_published.mix(
+            publishFiles(
+                KRAKEN2_KRAKEN2.out.report.mix(KRAKEN2_KRAKEN2.out.classified_reads_assignment),
+                { meta -> "kraken2/${meta.db_name}" },
+                '*.txt',
+            )
+        )
         // the reads of a pair are one fragment for Kraken2: counted twice in the read counts
         ch_read_count_logs = ch_read_count_logs.mix(
             KRAKEN2_KRAKEN2.out.report.map { meta, report -> [meta + [tool: meta.single_end ? 'kraken2' : 'kraken2_pairs'], report] }
@@ -245,6 +287,7 @@ workflow PROFILING {
     profiles        = ch_raw_profiles // channel: [ val(meta), [ reads ] ] - should be text files or biom
     read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman, gqlib (of the first annotation of each gene catalogue) and idtaxa (with meta.db_name), with the tool in meta.tool
     mqc             = ch_multiqc_files
+    published       = ch_published // channel: [ file, target ], the files to publish (publishFiles)
 }
 
 

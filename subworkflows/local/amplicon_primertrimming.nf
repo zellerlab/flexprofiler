@@ -8,6 +8,7 @@ include { PIMENTO_STD                         } from '../../modules/local/piment
 include { CUTADAPT as CUTADAPT_PRIMERS        } from '../../modules/nf-core/cutadapt/main'
 include { CUTADAPT as CUTADAPT_READTHROUGH    } from '../../modules/nf-core/cutadapt/main'
 include { CUTADAPT as CUTADAPT_LINKED         } from '../../modules/nf-core/cutadapt/main'
+include { publishFiles                        } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow AMPLICON_PRIMERTRIMMING {
     take:
@@ -17,6 +18,7 @@ workflow AMPLICON_PRIMERTRIMMING {
     main:
     ch_read_count_logs = channel.empty()
     ch_primers_tsv = channel.empty()
+    ch_published = channel.empty()
 
     if (params.amplicon_primer_fwd && params.amplicon_primer_rev) {
         // the primers given, for all the runs: the long reads are oriented by cutadapt (--revcomp)
@@ -86,9 +88,10 @@ workflow AMPLICON_PRIMERTRIMMING {
                 newLine: true,
                 sort: true,
             )
-            // copied to the output directory here and not with storeDir, which creates the directory also without
-            // amplicon samples
-            .map { primers_tsv -> primers_tsv.copyTo("${params.outdir}/amplicon_primers/primers.tsv") }
+
+        ch_published = publishFiles(VSEARCH_ORIENT.out.log, 'amplicon_primers/vsearch_orient', '*.log')
+            .mix(publishFiles(PIMENTO_STD.out.primers.mix(PIMENTO_STD.out.out), 'amplicon_primers/pimento', '*.{fasta,txt}'))
+            .mix(publishFiles(ch_primers_tsv, 'amplicon_primers'))
     }
 
     // The long reads are trimmed only with a pair of primers, both required (linked), as in the best practice for PacBio
@@ -121,6 +124,10 @@ workflow AMPLICON_PRIMERTRIMMING {
         .mix(ch_reads_for_trimming.skip)
         .map { meta, trimmed_reads -> [meta - meta.subMap(primer_keys), trimmed_reads] }
 
+    ch_published = ch_published.mix(
+        publishFiles(CUTADAPT_PRIMERS.out.log.mix(CUTADAPT_READTHROUGH.out.log, CUTADAPT_LINKED.out.log), 'amplicon_primers/cutadapt', '*.log')
+    )
+
     ch_read_count_logs = ch_read_count_logs
         .mix(CUTADAPT_PRIMERS.out.log.map { meta, log_file -> [meta - meta.subMap(primer_keys) + [tool: 'cutadapt_primers'], log_file] })
         .mix(CUTADAPT_READTHROUGH.out.log.map { meta, log_file -> [meta - meta.subMap(primer_keys) + [tool: 'cutadapt_readthrough'], log_file] })
@@ -130,6 +137,7 @@ workflow AMPLICON_PRIMERTRIMMING {
     reads           = ch_trimmed_reads   // channel: [ val(meta), [ reads ] ]
     read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], with the tool in meta.tool
     primers         = ch_primers_tsv     // channel: path(primers.tsv), only with the primers found by PIMENTO
+    published       = ch_published       // channel: [ file, target ], the files to publish (publishFiles)
 }
 
 // Custom Functions

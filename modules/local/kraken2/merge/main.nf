@@ -20,9 +20,6 @@ process KRAKEN2_MERGE {
     tuple val(meta), path("*.taxonomy.tsv")   , emit: taxonomy
     tuple val("${task.process}"), val('pandas'), eval('python -c "import pandas; print(pandas.__version__)"'), emit: versions_pandas, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def prefix = task.ext.prefix ?: "kraken2_${meta.id}"
     """

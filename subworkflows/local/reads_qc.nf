@@ -4,8 +4,9 @@
 // conf/modules.config)
 //
 
-include { FASTQC } from '../../modules/nf-core/fastqc/main'
-include { FALCO  } from '../../modules/nf-core/falco/main'
+include { FASTQC       } from '../../modules/nf-core/fastqc/main'
+include { FALCO        } from '../../modules/nf-core/falco/main'
+include { publishFiles } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow READS_QC {
     take:
@@ -27,16 +28,19 @@ workflow READS_QC {
         ch_multiqc_files = FALCO.out.txt
             .transpose()
             .filter { _meta, report -> report.name.endsWith('_data.txt') }
+        ch_published = publishFiles(FALCO.out.html.mix(FALCO.out.txt), { meta -> "falco/${meta.qc_stage}" }, '*.{html,txt,zip}')
     }
     else {
         FASTQC(ch_reads)
         ch_multiqc_files = FASTQC.out.zip
             .transpose()
             .filter { _meta, report -> report.name.endsWith('.zip') }
+        ch_published = publishFiles(FASTQC.out.html.mix(FASTQC.out.zip), { meta -> "fastqc/${meta.qc_stage}" }, '*.{html,zip}')
     }
 
     emit:
-    mqc = ch_multiqc_files  // channel: [ val(meta), report ], one report per channel element; the versions go to the versions topic
+    mqc       = ch_multiqc_files // channel: [ val(meta), report ], one report per channel element; the versions go to the versions topic
+    published = ch_published     // channel: [ file, target ], the files to publish (publishFiles)
 }
 
 //

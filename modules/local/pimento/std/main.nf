@@ -18,9 +18,6 @@ process PIMENTO_STD {
     tuple val(meta), path("*_std_primer_out.txt"), emit: out
     tuple val("${task.process}"), val('pimento'), eval("pimento --version 2>&1 | sed -n 's/.*version //p'"), emit: versions_pimento, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"

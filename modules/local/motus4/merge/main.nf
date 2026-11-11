@@ -17,9 +17,6 @@ process MOTUS4_MERGE {
     tuple val(meta), path("*.txt") , optional: true, emit: txt
     tuple val("${task.process}"), val('motus'), eval('motus 2>&1 | sed -n "s/^.*Version: //p"'), emit: versions_motus, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"

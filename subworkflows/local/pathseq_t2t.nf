@@ -16,6 +16,7 @@ include { BWA_MEM as BWA_GRCH38             } from '../../modules/nf-core/bwa/me
 include { PATHSEQT2T_PREFILTER              } from '../../modules/local/pathseqt2t/prefilter/main'
 include { PATHSEQT2T_QCFILTER               } from '../../modules/local/pathseqt2t/qcfilter/main'
 include { PATHSEQT2T_T2TFILTER              } from '../../modules/local/pathseqt2t/t2tfilter/main'
+include { publishFiles                      } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow PATHSEQ_T2T {
     take:
@@ -34,6 +35,7 @@ workflow PATHSEQ_T2T {
     ch_reads_filtered = reads
     ch_singletons = channel.empty()
     ch_read_count_logs = channel.empty()
+    ch_published = channel.empty()
 
     if (params.pathseq_t2t) {
         if (grch38_index) {
@@ -41,12 +43,18 @@ workflow PATHSEQ_T2T {
         }
         else {
             ch_grch38_index = BWA_INDEX_GRCH38([[id: 'grch38'], grch38_fasta]).index.first()
+            if (params.save_hostremoval_index) {
+                ch_published = ch_published.mix(publishFiles(BWA_INDEX_GRCH38.out.index, { meta -> "pathseq_t2t/index/${meta.id}" }, 'bwa'))
+            }
         }
         if (t2t_index) {
             ch_t2t_index = channel.value([[id: 't2t_chm13'], t2t_index])
         }
         else {
             ch_t2t_index = BWA_INDEX_T2T([[id: 't2t_chm13'], t2t_fasta]).index.first()
+            if (params.save_hostremoval_index) {
+                ch_published = ch_published.mix(publishFiles(BWA_INDEX_T2T.out.index, { meta -> "pathseq_t2t/index/${meta.id}" }, 'bwa'))
+            }
         }
 
         /*
@@ -99,6 +107,24 @@ workflow PATHSEQ_T2T {
             )
             .mix(PATHSEQT2T_T2TFILTER.out.log.map { meta, log_file -> [meta + [tool: 'pathseq_t2tfilter'], log_file] })
         ch_singletons = ch_unpaired.singletons
+
+        // the logs and metrics of each step, the BAMs (--save_pathseq_t2t_bams), and the reads not aligned to the host
+        // (--save_hostremoval_unmapped), which are also the reads given to the profilers (--save_analysis_ready_fastqs)
+        ch_published = ch_published
+            .mix(publishFiles(PATHSEQT2T_PREFILTER.out.flagstat, 'pathseq_t2t/prefilter', '*.flagstat.tsv'))
+            .mix(publishFiles(PATHSEQT2T_QCFILTER.out.metrics, 'pathseq_t2t/qcfilter', '*.filter_metrics.txt'))
+            .mix(publishFiles(PATHSEQT2T_T2TFILTER.out.log, 'pathseq_t2t/t2tfilter', '*.t2tfilter.log'))
+        if (params.save_pathseq_t2t_bams) {
+            ch_published = ch_published
+                .mix(publishFiles(BWA_GRCH38.out.bam, 'pathseq_t2t/grch38', '*.bam'))
+                .mix(publishFiles(PATHSEQT2T_PREFILTER.out.unaligned.mix(PATHSEQT2T_PREFILTER.out.decoys), 'pathseq_t2t/prefilter', '*.bam'))
+                .mix(publishFiles(PATHSEQT2T_QCFILTER.out.paired.mix(PATHSEQT2T_QCFILTER.out.unpaired), 'pathseq_t2t/qcfilter', '*.bam'))
+                .mix(publishFiles(PATHSEQT2T_T2TFILTER.out.bam, 'pathseq_t2t/t2tfilter', '*.bam'))
+        }
+        ch_t2tfilter_reads = PATHSEQT2T_T2TFILTER.out.paired.mix(PATHSEQT2T_T2TFILTER.out.unpaired)
+        ch_published = ch_published
+            .mix(params.save_hostremoval_unmapped ? publishFiles(ch_t2tfilter_reads, 'pathseq_t2t/t2tfilter', '*.fastq.gz') : channel.empty())
+            .mix(params.save_analysis_ready_fastqs ? publishFiles(ch_t2tfilter_reads, 'analysis_ready_fastqs', '*.fastq.gz') : channel.empty())
     }
 
     emit:
@@ -106,4 +132,5 @@ workflow PATHSEQ_T2T {
     singletons      = ch_singletons         // channel: [ val(meta), fastq ], paired-end reads left without their mate
     read_count_logs = ch_read_count_logs    // channel: [ val(meta), log ], with the tool in meta.tool
     mqc             = ch_multiqc_files
+    published       = ch_published          // channel: [ file, target ], the files to publish (publishFiles)
 }

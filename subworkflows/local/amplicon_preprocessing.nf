@@ -6,6 +6,7 @@
 include { AMPLICON_PRIMERTRIMMING             } from './amplicon_primertrimming'
 include { VSEARCH_MERGEJOIN                   } from '../../modules/local/vsearch/mergejoin/main'
 include { FASTP as FASTP_AMPLICON_MERGE       } from '../../modules/nf-core/fastp/main'
+include { publishFiles                        } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow AMPLICON_PREPROCESSING {
     take:
@@ -15,6 +16,7 @@ workflow AMPLICON_PREPROCESSING {
     main:
     // logs of the steps, for the read counts, with the tool in meta.tool: [ meta, log ]
     ch_read_count_logs = channel.empty()
+    ch_published = channel.empty()
 
     /*
         SUBWORKFLOW: PRIMER TRIMMING
@@ -24,6 +26,7 @@ workflow AMPLICON_PREPROCESSING {
         AMPLICON_PRIMERTRIMMING(reads, orient_reference)
         ch_reads_primertrimmed = AMPLICON_PRIMERTRIMMING.out.reads
         ch_read_count_logs = ch_read_count_logs.mix(AMPLICON_PRIMERTRIMMING.out.read_count_logs)
+        ch_published = ch_published.mix(AMPLICON_PRIMERTRIMMING.out.published)
     }
     else {
         ch_reads_primertrimmed = reads
@@ -45,11 +48,15 @@ workflow AMPLICON_PREPROCESSING {
         VSEARCH_MERGEJOIN(ch_reads_for_pairhandling.pe)
         ch_read_count_logs = ch_read_count_logs.mix(VSEARCH_MERGEJOIN.out.log.map { meta, log_file -> [meta + [tool: 'vsearch'], log_file] })
         ch_reads_pairhandled = VSEARCH_MERGEJOIN.out.reads
+        ch_published = ch_published.mix(publishFiles(VSEARCH_MERGEJOIN.out.log, 'vsearch', '*.log'))
     }
     else if (params.amplicon_pair_handling == 'merged_plus_unmerged') {
         FASTP_AMPLICON_MERGE(ch_reads_for_pairhandling.pe.map { meta, input_reads -> [meta, input_reads, []] }, false, false, true)
         ch_read_count_logs = ch_read_count_logs.mix(FASTP_AMPLICON_MERGE.out.log.map { meta, log_file -> [meta + [tool: 'fastp_merge'], log_file] })
         ch_reads_pairhandled = FASTP_AMPLICON_MERGE.out.reads_merged
+        ch_published = ch_published.mix(
+            publishFiles(FASTP_AMPLICON_MERGE.out.log.mix(FASTP_AMPLICON_MERGE.out.html, FASTP_AMPLICON_MERGE.out.json), 'fastp_amplicon_merge', '*.{log,html,json}')
+        )
     }
     else {
         ch_reads_pairhandled = channel.empty()
@@ -64,23 +71,25 @@ workflow AMPLICON_PREPROCESSING {
     */
 
     // Which step writes the analysis-ready reads of an amplicon run is known only once the primers are searched (the
-    // runs without primers are not trimmed), so they are copied here, at the end of the amplicon preprocessing, rather
-    // than published by each step. The runs of the samples with more than one run are published after run merging
-    if (params.save_analysis_ready_fastqs) {
-        ch_reads_preprocessed
+    // runs without primers are not trimmed), so they are published here, at the end of the amplicon preprocessing,
+    // rather than by each step, named by the run. The runs of the samples with more than one run are published after
+    // run merging. They are emitted apart from the other files to publish, as those of a run that no step changed are
+    // the input reads, outside the work directory (see the output block of main.nf)
+    ch_analysis_ready = params.save_analysis_ready_fastqs
+        ? ch_reads_preprocessed
             .filter { meta, _input_reads -> !(params.perform_runmerging && meta.is_multirun) }
-            .subscribe { meta, input_reads ->
+            .flatMap { meta, input_reads ->
                 def fastqs = [input_reads].flatten()
-                fastqs.eachWithIndex { fastq, i ->
+                fastqs.withIndex().collect { fastq, i ->
                     def suffix = fastqs.size() > 1 ? "_${i + 1}" : ''
-                    def target = file("${params.outdir}/analysis_ready_fastqs/${meta.id}_${meta.run_accession}${suffix}.fastq.gz")
-                    target.parent.mkdirs()
-                    fastq.copyTo(target)
+                    [fastq, "analysis_ready_fastqs/${meta.id}_${meta.run_accession}${suffix}.fastq.gz"]
                 }
             }
-    }
+        : channel.empty()
 
     emit:
     reads           = ch_reads_preprocessed // channel: [ val(meta), [ reads ] ], single-end unless --amplicon_pair_handling none
     read_count_logs = ch_read_count_logs    // channel: [ val(meta), log ], with the tool in meta.tool
+    published       = ch_published          // channel: [ file, target ], the files to publish (publishFiles)
+    analysis_ready  = ch_analysis_ready     // channel: [ file, target ], the analysis-ready reads to publish, which can be input files
 }

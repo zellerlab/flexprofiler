@@ -15,9 +15,6 @@ process VSEARCH_MERGEJOIN {
     tuple val(meta), path("*.vsearch.log")       , emit: log
     tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed "s/vsearch //g;s/,.*//g;s/^v//;s/_.*//"'), emit: versions_vsearch, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def args = task.ext.args ?: ''   // vsearch --fastq_mergepairs
     def args2 = task.ext.args2 ?: '' // vsearch --fastq_join

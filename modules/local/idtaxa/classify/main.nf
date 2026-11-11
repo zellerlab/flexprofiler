@@ -20,9 +20,6 @@ process IDTAXA_CLASSIFY {
     tuple val(meta), path("*.idtaxa.log")        , emit: log
     tuple val("${task.process}"), val('decipher'), eval('Rscript -e "cat(as.character(packageVersion(\\"DECIPHER\\")))"'), emit: versions_decipher, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
     // the IdTaxa options, with its defaults

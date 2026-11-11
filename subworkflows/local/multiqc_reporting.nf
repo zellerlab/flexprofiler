@@ -8,6 +8,7 @@ include { paramsSummaryMultiqc   } from '../nf-core/utils_nfcore_pipeline'
 include { softwareVersionsToYAML } from '../nf-core/utils_nfcore_pipeline'
 include { methodsDescriptionText } from './utils_zellerlab_flexprofiler_pipeline'
 include { getPipelineCommit      } from './utils_zellerlab_flexprofiler_pipeline'
+include { publishFiles           } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow MULTIQC_REPORTING {
     take:
@@ -53,7 +54,6 @@ workflow MULTIQC_REPORTING {
         }
         .mix(topic_versions_string)
         .collectFile(
-            storeDir: "${params.outdir}/pipeline_info",
             name: 'zellerlab_' + 'flexprofiler_software_' + 'mqc_' + 'versions.yml',
             sort: true,
             newLine: true,
@@ -98,11 +98,15 @@ workflow MULTIQC_REPORTING {
             .map { files, configs, logo -> [[id: 'multiqc'], files, configs, logo, [], []] }
         MULTIQC(ch_multiqc_input)
         multiqc_report = MULTIQC.out.report.map { _meta, report -> report }.toList()
+        ch_multiqc_published = publishFiles(MULTIQC.out.report.mix(MULTIQC.out.data, MULTIQC.out.plots), 'multiqc')
     }
     else {
         multiqc_report = channel.empty()
+        ch_multiqc_published = channel.empty()
     }
 
     emit:
-    report = multiqc_report // channel: /path/to/multiqc_report.html
+    report    = multiqc_report // channel: /path/to/multiqc_report.html
+    // the software versions, in pipeline_info, and the MultiQC report
+    published = publishFiles(ch_collated_versions, 'pipeline_info').mix(ch_multiqc_published) // channel: [ file, target ], the files to publish (publishFiles)
 }

@@ -41,9 +41,6 @@ process PATHSEQT2T_T2TFILTER {
     tuple val("${task.process}"), val('bwa'), eval('bwa 2>&1 | sed -n "s/^Version: //p"'), emit: versions_bwa, topic: versions
     tuple val("${task.process}"), val('samtools'), eval("samtools version | sed '1!d;s/.* //'"), emit: versions_samtools, topic: versions
 
-    when:
-    task.ext.when == null || task.ext.when
-
     script:
     // bwa mem, e.g. -T 0
     def args = task.ext.args ?: ''

@@ -27,7 +27,7 @@ nextflow run . -profile test_motus4,docker --outdir results
 
 - Tests are pipeline-level only (`tests/*.nf.test` + `.snap`), each using a `test_*` profile from `conf/test_*.config`. `tests/nextflow.config` caps resources (8 CPUs, 20 GB). Test data and the test samplesheet/database sheet are in `assets/test-data/`.
 - Pre-commit runs prettier, trailing-whitespace and end-of-file fixers (excluding nf-core components and `.snap` files).
-- `docs/parameters.md` is the rendered `nextflow_schema.json`. New params go in `nextflow.config` (defaults), `nextflow_schema.json`, and the docs.
+- `docs/parameters.md` is the rendered `nextflow_schema.json`. New params go in `nextflow.config` (defaults), the `params` block of `main.nf` (types: `Boolean`, `Integer`, `String?`, so that command-line values are converted), `nextflow_schema.json`, and the docs.
 - `CHANGELOG.md` (Keep a Changelog, `Unreleased` section) is updated with detailed entries for user-facing changes.
 - At every version bump (`manifest.version` in `nextflow.config`), also update `VERSION` in `utils/run_shark.sh` (the example SHARK launcher in `docs/zellerlab.md`) to the new release, and its Nextflow module if `nextflowVersion` was raised above it.
 
@@ -48,8 +48,9 @@ Data flow in `workflows/flexprofiler.nf`:
 
 Conventions:
 
-- Subworkflows emit `reads`, `mqc` and `read_count_logs`, which the main workflow mixes together. Software versions are not passed through channels: every module (nf-core and local) emits `tuple val("${task.process}"), val(<tool>), eval(<cmd>), emit: versions_<tool>, topic: versions`, collected by `MULTIQC_REPORTING` from `channel.topic("versions")`.
-- All process options (`ext.args`, `ext.prefix`, resources, `publishDir`) are in `conf/modules.config` via `withName`, not in the modules. The default publish dir is the first `_`-token of the process name, lowercased.
+- Subworkflows emit `reads`, `mqc`, `read_count_logs` and `published`, which the main workflow mixes together. Software versions are not passed through channels: every module (nf-core and local) emits `tuple val("${task.process}"), val(<tool>), eval(<cmd>), emit: versions_<tool>, topic: versions`, collected by `MULTIQC_REPORTING` from `channel.topic("versions")`.
+- All process options (`ext.args`, `ext.prefix`, resources) are in `conf/modules.config` via `withName`, not in the modules.
+- Results are published with workflow outputs, not `publishDir`: each subworkflow emits `published`, a channel of `[file, target]` built with `publishFiles(channel, directory, pattern)` (utils subworkflow) next to the step that makes the files, `FLEXPROFILER` mixes them into one `published` channel, and the single `results` output of `main.nf` publishes it (`source >> target`) to `outputDir` (`--outdir`). Only the entry workflow can publish, so a new published channel must be emitted up to `main.nf`. Files outside the work directory are not published: the amplicon analysis-ready reads, which can be the input FASTQs, are emitted apart (`analysis_ready`) to their own output, the only one with `includeInputs true`. The layout is in `docs/output.md`.
 - Databases ending in `.tar.gz` are untarred once per file, only if their tool is enabled.
 - `conf/zellerlab.config` and `assets/zellerlab_*_databases.csv` hold the lab's institutional profiles (e.g. `zellerlab_shark`). `utils/` has helper scripts (database download, SLURM launcher, samplesheet maker).
 - `TODO.md` lists known limitations and differences from upstream tools.

@@ -109,11 +109,10 @@ workflow PIPELINE_INITIALISATION {
     // Samples with more than one run are published as analysis-ready reads only after run merging. The runs of a
     // sample are merged separately for each library strategy, so they are counted per sample and strategy
     def runs_per_sample = samplesheet_rows.countBy { row -> [row[0].id, row[0].library_strategy] }
-    Channel.fromList(samplesheet_rows)
+    ch_samplesheet = channel.fromList(samplesheet_rows)
         .map { meta, run_accession, instrument_platform, fastq_1, fastq_2 ->
             [meta + [is_multirun: runs_per_sample[[meta.id, meta.library_strategy]] > 1], run_accession, instrument_platform, fastq_1, fastq_2]
         }
-        .set { ch_samplesheet }
 
     //
     // Validate and create channel from databases file provided through params.databases
@@ -121,8 +120,7 @@ workflow PIPELINE_INITIALISATION {
     def database_rows = selectIdtaxaDatabases(samplesheetToList(databases, "assets/schema_database.json"), params.idtaxa_db_names)
     validateDatabaseSheet(database_rows)
     validateDatabaseMatching(samplesheet_rows, database_rows)
-    Channel.fromList(database_rows)
-        .set { ch_databases }
+    ch_databases = channel.fromList(database_rows)
 
     //
     // Validate parameter inputs
@@ -202,6 +200,26 @@ workflow PIPELINE_COMPLETION {
     FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
+//
+// The files to publish, for the output block of main.nf: a channel of [ file, target ], the target being the directory
+// of the file under the output directory, with a trailing slash (the file keeps its name). Each subworkflow emits the
+// files of its steps (`published`), so that what is published, and where, is decided next to the step that makes it.
+//
+// ch: a channel of files, or of tuples of a meta map and files (or lists of files, or directories); directory: a
+// string, or a closure of the meta map; pattern: a glob matched against the file names (as the publishDir pattern)
+//
+def publishFiles(ch, directory, pattern = '*') {
+    def matcher = java.nio.file.FileSystems.getDefault().getPathMatcher("glob:${pattern}")
+    return ch.flatMap { value ->
+        def items = value instanceof List ? value : [value]
+        def meta = items && items[0] instanceof Map ? items[0] : [:]
+        def target = directory instanceof Closure ? directory.call(meta) : directory
+        items.flatten()
+            .findAll { item -> item instanceof Path && matcher.matches(item.fileName) }
+            .collect { file_path -> [file_path, "${target}/"] }
+    }
+}
+
 //
 // The commit of the pipeline code that is run: Nextflow knows it only when the pipeline is run from a repository
 // (nextflow run zellerlab/flexprofiler -r ...), so for a local clone it is read with git, and marked as dirty if the
