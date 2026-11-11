@@ -7,8 +7,9 @@
 
 # Downloads the databases that are missing on SHARK (Kraken2 and the PathSeq-T2T references) to the shared database
 # directory with utils/fetch_databases.sh. Submit from the pipeline directory: sbatch utils/fetch_missing_databases_shark.sh
-# Afterwards, add the kraken2 row of flexprofiler_databases.csv (written in WORKDIR) to assets/zellerlab_shark_databases.csv
-# and the PathSeq-T2T paths printed in the log to the zellerlab_pathseq_t2t profile of conf/zellerlab.config.
+# The PathSeq-T2T paths are already set in the zellerlab_shark profile of conf/zellerlab.config. Afterwards, add the
+# kraken2 row of flexprofiler_databases.csv (written in WORKDIR) to assets/zellerlab_shark_databases.csv: it cannot be
+# added before, as the paths of the database sheet must exist.
 
 set -euo pipefail
 

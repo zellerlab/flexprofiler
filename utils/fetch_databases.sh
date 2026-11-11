@@ -162,10 +162,16 @@ if [[ ${FETCH_PATHSEQ_T2T} == 1 ]] ; then
     micromamba run -p ${TOOLSDIR} bwa index -p ${PATHSEQ_TO}/t2t_chm13v2/bwa/T2T-CHM13v2.0 ${PATHSEQ_TO}/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz
     # the host files of GATK PathSeq (pathseq_host.bfi, pathseq_host.fa.img)
     wget -O ${TMPDIR}/pathseq_host.tar.gz ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/pathseq/pathseq_host.tar.gz
-    tar -xzf ${TMPDIR}/pathseq_host.tar.gz -C ${PATHSEQ_TO}/pathseq_host
+    mkdir -p ${TMPDIR}/pathseq_host
+    tar -xzf ${TMPDIR}/pathseq_host.tar.gz -C ${TMPDIR}/pathseq_host
     rm ${TMPDIR}/pathseq_host.tar.gz
+    # the files are moved to pathseq_host/ itself, whatever the directory layout of the archive
+    find ${TMPDIR}/pathseq_host -name 'pathseq_host.bfi' -exec mv {} ${PATHSEQ_TO}/pathseq_host/ \;
+    find ${TMPDIR}/pathseq_host -name 'pathseq_host.fa.img' -exec mv {} ${PATHSEQ_TO}/pathseq_host/ \;
+    rm -rf ${TMPDIR}/pathseq_host
+    ls ${PATHSEQ_TO}/pathseq_host/pathseq_host.bfi ${PATHSEQ_TO}/pathseq_host/pathseq_host.fa.img > /dev/null
     echo "PathSeq-T2T references in ${PATHSEQ_TO}: use them with"
-    echo "  --pathseq_t2t_grch38_bwa_index ${PATHSEQ_TO}/grch38_d1_vd1/bwa --pathseq_t2t_chm13_bwa_index ${PATHSEQ_TO}/t2t_chm13v2/bwa --pathseq_host_dir <the directory of pathseq_host.bfi in ${PATHSEQ_TO}/pathseq_host>"
+    echo "  --pathseq_t2t_grch38_bwa_index ${PATHSEQ_TO}/grch38_d1_vd1/bwa --pathseq_t2t_chm13_bwa_index ${PATHSEQ_TO}/t2t_chm13v2/bwa --pathseq_host_dir ${PATHSEQ_TO}/pathseq_host"
 fi
 
 # Kraken2 PlusPF 2024-12-28 (~75 GB), the latest release (Dohlman et al. used the one of 2024-06-05), only with FETCH_KRAKEN2=1
