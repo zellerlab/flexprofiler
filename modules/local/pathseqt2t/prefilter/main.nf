@@ -44,21 +44,24 @@ process PATHSEQT2T_PREFILTER {
     set -euo pipefail
 
     # The input is read and decompressed once, and passed uncompressed (-u) through named pipes (no data on disk) to
-    # the readers, started first since opening a pipe blocks until both ends are open
+    # the readers, started first since opening a pipe blocks until both ends are open. The readers get their pipe as
+    # stdin, opened by the shell before samtools starts: a reader that fails at startup (e.g. reading the BED) then
+    # breaks the pipe, failing the writer, instead of leaving it blocked forever on opening the pipe
     mkfifo flagstat.fifo not_host_aligned.fifo host_aligned.fifo
 
     # each samtools command writes its messages to its own file (*.err), left in the work directory, and printed to
-    # stderr with their names at exit, also when the task fails
-    trap 'tail -n +1 read.err split.err flagstat.err unaligned.err decoys.err >&2 || true' EXIT
-    samtools flagstat --output-fmt tsv flagstat.fifo > ${prefix}.flagstat.tsv 2> flagstat.err &
+    # stderr with their names at exit, also when the task fails. At exit the background jobs still running (on a
+    # failure: e.g. a reader blocked on opening its pipe, if the writer failed first) are killed
+    trap 'kill \$(jobs -p) 2> /dev/null || true; tail -n +1 read.err split.err flagstat.err unaligned.err decoys.err >&2 || true' EXIT
+    samtools flagstat --output-fmt tsv - < flagstat.fifo > ${prefix}.flagstat.tsv 2> flagstat.err &
     pid_flagstat=\$!
-    samtools view -@ ${task.cpus} -b -h ${clean} -o ${prefix}.prefilter.unaligned.bam not_host_aligned.fifo 2> unaligned.err &
+    samtools view -@ ${task.cpus} -b -h ${clean} -o ${prefix}.prefilter.unaligned.bam - < not_host_aligned.fifo 2> unaligned.err &
     pid_unaligned=\$!
     if [ -n "${bed}" ]; then
-        samtools view -@ ${task.cpus} -b -h ${clean} -L "${bed}" -o decoys.tmp.bam host_aligned.fifo 2> decoys.err &
+        samtools view -@ ${task.cpus} -b -h ${clean} -L "${bed}" -o decoys.tmp.bam - < host_aligned.fifo 2> decoys.err &
     else
         # drained, or the split would block once the pipe is full
-        cat host_aligned.fifo > /dev/null 2> decoys.err &
+        cat < host_aligned.fifo > /dev/null 2> decoys.err &
     fi
     pid_decoys=\$!
 
@@ -71,8 +74,12 @@ process PATHSEQT2T_PREFILTER {
     wait \$pid_unaligned
     wait \$pid_decoys
 
-    if [ -n "${bed}" ] && [ "\$(samtools view -c decoys.tmp.bam)" -gt 0 ]; then
-        mv decoys.tmp.bam ${prefix}.prefilter.decoys.bam
+    if [ -n "${bed}" ]; then
+        # assigned apart, so that a failure of samtools fails the task (set -e is ignored in an if condition)
+        n_decoys=\$(samtools view -c decoys.tmp.bam)
+        if [ "\$n_decoys" -gt 0 ]; then
+            mv decoys.tmp.bam ${prefix}.prefilter.decoys.bam
+        fi
     fi
     rm -f flagstat.fifo not_host_aligned.fifo host_aligned.fifo decoys.tmp.bam
     """
