@@ -1,4 +1,4 @@
-sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
-lowbiomass,run1,ILLUMINA,../../../assets/test-data/data/fastq/pathseq_t2t/lowbiomass_run1_1.fastq.gz,../../../assets/test-data/data/fastq/pathseq_t2t/lowbiomass_run1_2.fastq.gz,
-lowbiomass,run2,ILLUMINA,../../../assets/test-data/data/fastq/pathseq_t2t/lowbiomass_run2_1.fastq.gz,../../../assets/test-data/data/fastq/pathseq_t2t/lowbiomass_run2_2.fastq.gz,
-lowbiomass_se,run1,ILLUMINA,../../../assets/test-data/data/fastq/pathseq_t2t/lowbiomass_se.fastq.gz,,
+sample,run_accession,instrument_platform,fastq_1,fastq_2
+lowbiomass,run1,ILLUMINA,../../../assets/test-data/data/fastq/pathseq_t2t/lowbiomass_run1_1.fastq.gz,../../../assets/test-data/data/fastq/pathseq_t2t/lowbiomass_run1_2.fastq.gz
+lowbiomass,run2,ILLUMINA,../../../assets/test-data/data/fastq/pathseq_t2t/lowbiomass_run2_1.fastq.gz,../../../assets/test-data/data/fastq/pathseq_t2t/lowbiomass_run2_2.fastq.gz
+lowbiomass_se,run1,ILLUMINA,../../../assets/test-data/data/fastq/pathseq_t2t/lowbiomass_se.fastq.gz,

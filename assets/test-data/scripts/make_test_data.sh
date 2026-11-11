@@ -38,7 +38,7 @@
 #   --cayman-csv <file>  GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv
 #   --gqlib-db <file>    GMGC10.human-gut.95nr.0.5pv.20230422.2101.sqlite3
 #
-# The original reads (data/fastq/ERX*, ERR3201952) and fastas (data/fasta/) come from nf-core/taxprofiler and are not
+# The original reads (data/fastq/ERX*) and fastas (data/fasta/) come from nf-core/taxprofiler and are not
 # regenerated, nor are the hand-written files (data/fastq/adapters/adapters.fasta, data/gmgc10/genes.txt).
 set -euo pipefail
 

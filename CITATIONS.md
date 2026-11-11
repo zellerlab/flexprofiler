@@ -1,4 +1,10 @@
-# nf-core/taxprofiler: Citations
+# zellerlab/flexprofiler: Citations
+
+## [nf-core/taxprofiler](https://doi.org/10.1101/2023.10.20.563221)
+
+> Stamouli, S., Beber, M. E., Normark, T., Christensen, T. A., Andersson-Li, L., Borry, M., Jamy, M., nf-core community, & Fellows Yates, J. A. (2023). nf-core/taxprofiler: Highly parallelised and flexible pipeline for metagenomic taxonomic classification and profiling. bioRxiv 2023.10.20.563221.
+
+zellerlab/flexprofiler started as a fork of nf-core/taxprofiler.
 
 ## [nf-core](https://pubmed.ncbi.nlm.nih.gov/32055031/)
 
@@ -26,36 +32,9 @@
 
   > Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics , 34(17), i884–i890. https://doi.org/10.1093/bioinformatics/bty560
 
-- [AdapterRemoval2](https://doi.org/10.1186/s13104-016-1900-2)
-
-  > Schubert, M., Lindgreen, S., & Orlando, L. (2016). AdapterRemoval v2: rapid adapter trimming, identification, and read merging. BMC Research Notes, 9, 88. https://doi.org/10.1186/s13104-016-1900-2
-
-- [Nonpareil](https://doi.org/10.1128/mSystems.00039-18)
-  - Rodriguez-R, L. M., Gunturu, S., Tiedje, J. M., Cole, J. R., & Konstantinidis, K. T. (2018). Nonpareil 3: Fast Estimation of Metagenomic Coverage and Sequence Diversity. mSystems, 3(3). https://doi.org/10.1128/mSystems.00039-18
-
-- [Porechop](https://github.com/rrwick/Porechop)
-
-  > Wick, R. R., Judd, L. M., Gorrie, C. L., & Holt, K. E. (2017). Completing bacterial genome assemblies with multiplex MinION sequencing. Microbial Genomics, 3(10), e000132. https://doi.org/10.1099/mgen.0.000132
-
-- [Porechop_ABI](https://github.com/bonsai-team/Porechop_ABI)
-
-  > Bonenfant, Q., Noé, L., & Touzet, H. (2023). Porechop_ABI: discovering unknown adapters in Oxford Nanopore Technology sequencing reads for downstream trimming. Bioinformatics Advances, 3(1):vbac085. https://10.1093/bioadv/vbac085
-
-- [Filtlong](https://github.com/rrwick/Filtlong)
-
-  > Wick R (2021) Filtlong, URL: https://github.com/rrwick/Filtlong
-
-- [nanoq](https://github.com/esteinig/nanoq)
-
-  > Steinig, E., & Coin, L. (2022). Nanoq: ultra-fast quality control for nanopore reads. Journal of Open Source Software, 7(69). https://doi.org/10.21105/joss.02991
-
 - [BBTools](http://sourceforge.net/projects/bbmap/)
 
   > Bushnell B. (2022) BBMap, URL: http://sourceforge.net/projects/bbmap/
-
-- [PRINSEQ++](https://doi.org/10.7287/peerj.preprints.27553v1)
-
-  > Cantu, V. A., Sadural, J., & Edwards, R. (2019). PRINSEQ++, a multi-threaded tool for fast and efficient quality control and preprocessing of sequencing datasets (e27553v1). PeerJ Preprints. https://doi.org/10.7287/peerj.preprints.27553v1
 
 - [Bowtie2](https://doi.org/10.1038/nmeth.1923)
 
@@ -83,10 +62,6 @@
 
   > Nurk, S., Koren, S., Rhie, A., Rautiainen, M., Bzikadze, A. V., Mikheenko, A., Vollger, M. R., Altemose, N., Uralsky, L., Gershman, A., et al. (2022). The complete sequence of a human genome. Science, 376(6588), 44–53. https://doi.org/10.1126/science.abj6987
 
-- [minimap2](https://doi.org/10.1093/bioinformatics/bty191)
-
-  > Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. Bioinformatics , 34(18), 3094–3100. https://doi.org/10.1093/bioinformatics/bty191
-
 - [SAMTools](https://doi.org/10.1093/gigascience/giab008)
 
   > Danecek, P., Bonfield, J. K., Liddle, J., Marshall, J., Ohan, V., Pollard, M. O., Whitwham, A., Keane, T., McCarthy, S. A., Davies, R. M., & Li, H. (2021). Twelve years of SAMtools and BCFtools. GigaScience, 10(2). https://doi.org/10.1093/gigascience/giab008
@@ -103,41 +78,9 @@
 
   > Rognes, T., Flouri, T., Nichols, B., Quince, C., & Mahé, F. (2016). VSEARCH: a versatile open source tool for metagenomics. PeerJ, 4, e2584. https://doi.org/10.7717/peerj.2584
 
-- [Bracken](https://doi.org/10.7717/peerj-cs.104)
-
-  > Lu, J., Breitwieser, F. P., Thielen, P., & Salzberg, S. L. (2017). Bracken: estimating species abundance in metagenomics data. PeerJ. Computer Science, 3(e104), e104. https://doi.org/10.7717/peerj-cs.104
-
 - [Kraken2](https://doi.org/10.1186/s13059-019-1891-0)
 
   > Wood, D. E., Lu, J., & Langmead, B. (2019). Improved metagenomic analysis with Kraken 2. Genome Biology, 20(1), 257. https://doi.org/10.1186/s13059-019-1891-0
-
-- [KrakenUniq](https://doi.org/10.1186/s13059-018-1568-0)
-
-  > Breitwieser, F. P., Baker, D. N., & Salzberg, S. L. (2018). KrakenUniq: confident and fast metagenomics classification using unique k-mer counts. Genome Biology, 19(1), 198. https://doi.org/10.1186/s13059-018-1568-0
-
-- [MetaPhlAn](https://doi.org/10.1038/s41587-023-01688-w)
-
-  > Blanco-Míguez, A., Beghini, F., Cumbo, F., McIver, L. J., Thompson, K. N., Zolfo, M., Manghi, P., Dubois, L., Huang, K. D., Thomas, A. M., Nickols, W. A., Piccinno, G., Piperni, E., Punčochář, M., Valles-Colomer, M., Tett, A., Giordano, F., Davies, R., Wolf, J., … Segata, N. (2023). Extending and improving metagenomic taxonomic profiling with uncharacterized species using MetaPhlAn 4. Nature Biotechnology, 1–12. https://doi.org/10.1038/s41587-023-01688-w
-
-- [MALT](https://doi.org/10.1038/s41559-017-0446-6)
-
-  > Vågene, Å. J., Herbig, A., Campana, M. G., Robles García, N. M., Warinner, C., Sabin, S., Spyrou, M. A., Andrades Valtueña, A., Huson, D., Tuross, N., Bos, K. I., & Krause, J. (2018). Salmonella enterica genomes from victims of a major sixteenth-century epidemic in Mexico. Nature Ecology & Evolution, 2(3), 520–528. https://doi.org/10.1038/s41559-017-0446-6
-
-- [MEGAN](https://doi.org/10.1371/journal.pcbi.1004957)
-
-  > Huson, D. H., Beier, S., Flade, I., Górska, A., El-Hadidi, M., Mitra, S., Ruscheweyh, H.-J., & Tappu, R. (2016). MEGAN Community Edition - Interactive Exploration and Analysis of Large-Scale Microbiome Sequencing Data. PLoS Computational Biology, 12(6), e1004957. https://doi.org/10.1371/journal.pcbi.1004957
-
-- [DIAMOND](https://doi.org/10.1038/nmeth.3176)
-
-  > Buchfink, B., Xie, C., & Huson, D. H. (2015). Fast and sensitive protein alignment using DIAMOND. Nature Methods, 12(1), 59–60. https://doi.org/10.1038/nmeth.3176
-
-- [Centrifuge](https://doi.org/10.1101/gr.210641.116)
-
-  > Kim, D., Song, L., Breitwieser, F. P., & Salzberg, S. L. (2016). Centrifuge: rapid and sensitive classification of metagenomic sequences. Genome Research, 26(12), 1721–1729. https://doi.org/10.1101/gr.210641.116
-
-- [Kaiju](https://doi.org/10.1038/ncomms11257)
-
-  > Menzel, P., Ng, K. L., & Krogh, A. (2016). Fast and sensitive taxonomic classification for metagenomics with Kaiju. Nature Communications, 7, 11257. https://doi.org/10.1038/ncomms11257
 
 - [mOTUs](https://doi.org/10.1186/s40168-022-01410-z)
 
@@ -158,22 +101,6 @@
 - [DECIPHER](https://doi.org/10.32614/RJ-2016-025)
 
   > Wright, E. S. (2016). Using DECIPHER v2.0 to Analyze Big Biological Sequence Data in R. The R Journal, 8(1), 352–359. https://doi.org/10.32614/RJ-2016-025
-
-- [KMCP](https://doi.org/10.1093/bioinformatics/btac845)
-
-  > Shen, W., Xiang, H., Huang, T., Tang, H., Peng, M., Cai, D., Hu, P., & Ren, H. (2023). KMCP: accurate metagenomic profiling of both prokaryotic and viral populations by pseudo-mapping. Bioinformatics (Oxford, England), 39(1). https://doi.org/10.1093/bioinformatics/btac845
-
-- [ganon](https://doi.org/10.1093/bioinformatics/btaa458)
-
-  > Piro, V. C., Dadi, T. H., Seiler, E., Reinert, K., & Renard, B. Y. (2020). Ganon: Precise metagenomics classification against large and up-to-date sets of reference sequences. Bioinformatics (Oxford, England), 36(Suppl_1), i12–i20. https://doi.org/10.1093/bioinformatics/btaa458
-
-- [Krona](https://doi.org/10.1186/1471-2105-12-385)
-
-  > Ondov, B. D., Bergman, N. H., & Phillippy, A. M. (2011). Interactive metagenomic visualization in a Web browser. BMC Bioinformatics, 12. https://doi.org/10.1186/1471-2105-12-385
-
-- [TAXPASTA](https://doi.org/10.21105/joss.05627)
-
-  > Beber, M. E., Borry, M., Stamouli, S., & Fellows Yates, J. A. (2023). TAXPASTA: TAXonomic Profile Aggregation and STAndardisation. Journal of Open Source Software, 8(87), 5627. https://doi.org/10.21105/joss.05627
 
 ## Software packaging/containerisation tools
 
@@ -203,6 +130,3 @@
 
   > Maixner, F., Sarhan, M. S., Huang, K. D., Tett, A., Schoenafinger, A., Zingale, S., Blanco-Míguez, A., Manghi, P., Cemper-Kiesslich, J., Rosendahl, W., Kusebauch, U., Morrone, S. R., Hoopmann, M. R., Rota-Stabelli, O., Rattei, T., Moritz, R. L., Oeggl, K., Segata, N., Zink, A., … Kowarik, K. (2021). Hallstatt miners consumed blue cheese and beer during the Iron Age and retained a non-Westernized gut microbiome until the Baroque period. Current Biology, 31(23). https://doi.org/10.1016/j.cub.2021.09.031
 
-- [Meslier (2022)](https://doi.org/10.1038/s41597-022-01762-z) (AWS Full Test data)
-
-  > Meslier, V., Quinquis, B., Da Silva, K., Plaza Oñate, F., Pons, N., Roume, H., Podar, M., & Almeida, M. (2022). Benchmarking second and third-generation sequencing platforms for microbial metagenomics. Scientific Data, 9(1). https://doi.org/10.1038/s41597-022-01762-z

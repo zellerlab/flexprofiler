@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/nf-core/taxprofiler/master/assets/schema_input.json",
-    "title": "nf-core/taxprofiler pipeline - params.input schema",
+    "$id": "https://raw.githubusercontent.com/zellerlab/flexprofiler/master/assets/schema_input.json",
+    "title": "zellerlab/flexprofiler pipeline - params.input schema",
     "description": "Schema for the file provided with params.input",
     "type": "array",
     "items": {
@@ -20,20 +20,8 @@
             },
             "instrument_platform": {
                 "type": "string",
-                "enum": [
-                    "ABI_SOLID",
-                    "BGISEQ",
-                    "CAPILLARY",
-                    "COMPLETE_GENOMICS",
-                    "DNBSEQ",
-                    "HELICOS",
-                    "ILLUMINA",
-                    "ION_TORRENT",
-                    "LS454",
-                    "OXFORD_NANOPORE",
-                    "PACBIO_SMRT"
-                ],
-                "errorMessage": "Sequencing platform must be provided."
+                "enum": ["ILLUMINA", "PACBIO_SMRT"],
+                "errorMessage": "Sequencing platform must be ILLUMINA or PACBIO_SMRT (ENA controlled vocabulary): the other platforms are not supported."
             },
             "library_strategy": {
                 "type": "string",
@@ -55,21 +43,13 @@
                 "format": "file-path",
                 "pattern": "^\\S+\\.f(ast)?q\\.gz$",
                 "errorMessage": "Gzipped FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'. If not applicable, leave it empty."
-            },
-            "fasta": {
-                "type": "string",
-                "exists": true,
-                "format": "file-path",
-                "pattern": "^\\S+\\.(fasta|fas|fna|fa)\\.gz$",
-                "errorMessage": "Gzipped FastA file must be provided, cannot contain spaces and must have extension '.fa.gz', 'fna.gz', 'fas.gz', or '.fasta.gz'. If not applicable, leave it empty."
             }
         },
-        "required": ["sample", "run_accession", "instrument_platform"]
+        "required": ["sample", "run_accession", "instrument_platform", "fastq_1"]
     },
     "allOf": [
         { "uniqueEntries": ["fastq_1"] },
         { "uniqueEntries": ["fastq_2"] },
-        { "uniqueEntries": ["fasta"] },
         { "uniqueEntries": ["sample", "run_accession"] }
     ]
 }

@@ -10,7 +10,7 @@ WORKDIR="/exports/lucid-grpzeller-work/<YOUR USER NAME>/<PROJECT NAME>/flexprofi
 # you usually need singularity,zellerlab_shark and either zellerlab_metagenomics or zellerlab_16s
 PROFILE="singularity,zellerlab_shark,zellerlab_metagenomics"
 # be sure that this points to the pipeline version you want to run
-VERSION="0.0.1"
+VERSION="0.0.5"
 
 # you should not need to edit this
 module purge

@@ -34,8 +34,6 @@ workflow RUN_MERGING {
         // we can't concatenate files if there is not a second run, so we branch
         // here to separate them out, and mix back in after for efficiency
         MERGE_RUNS(ch_reads_for_cat_branch.cat)
-        ch_versions = ch_versions.mix(MERGE_RUNS.out.versions)
-
         ch_reads_runmerged = MERGE_RUNS.out.reads
             .mix(ch_reads_for_cat_branch.skip)
             .map { meta, merged_reads ->

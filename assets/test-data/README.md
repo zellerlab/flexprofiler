@@ -17,7 +17,7 @@ scripts/make_test_data.sh \
     databases                        # the subsets of the full databases
 ```
 
-The downloaded files can change over time, and with them the files made from them, so they are regenerated only when asked. The original reads and fastas from nf-core/taxprofiler and the hand-written files (`data/fastq/adapters/adapters.fasta`, `data/gmgc10/genes.txt`) are not regenerated. The reads are simulated with fixed seeds and compressed without timestamps, so regenerating them gives identical files.
+The downloaded files can change over time, and with them the files made from them, so they are regenerated only when asked. The original reads from nf-core/taxprofiler and the hand-written files (`data/fastq/adapters/adapters.fasta`, `data/gmgc10/genes.txt`) are not regenerated. The reads are simulated with fixed seeds and compressed without timestamps, so regenerating them gives identical files.
 
 ### FASTQ
 
@@ -26,7 +26,6 @@ The following selected libraries were all sequenced on an Illumina MiSeq, and we
 
 - ERX5474937
 - ERX5474932
-- ERX5474930
 - ERX5474936
 
 Data was downloaded with nf-core/fetchNGS 1.5 (with Nextflow 21.10.06) (from the nf-core/taxprofiler documentation, not re-run):
@@ -36,12 +35,6 @@ nextflow run nf-core/fetchngs --input maixner2021_acc_codes.txt --input_type sra
 ```
 
 FASTQ files are stored under `data/fastq/`
-
-Test data for long reads with ENA project accession ID: PRJEB29152. They were subsampled with seqtk 1.3-r106 (from the nf-core/taxprofiler documentation, not re-run):
-
-```bash
-seqtk sample ERR3201952.fastq.gz 10000 > ERR3201952.fastq.gz
-```
 
 #### Read names with /1 and /2 suffixes
 
@@ -68,16 +61,6 @@ gzip -cd ERX5474937_ERR5766181_2.fastq.gz \
 ```
 
 `samplesheet_mixed.csv` combines in one run the reads of ERX5474937 as they are, with the suffixes and with the pairs in a different order, the last two also as two runs of one sample (`2613_mixed`), and the single-end reads of ERX5474936. `samplesheet_mixed_endedness.csv` has a sample with a paired-end run (ERX5474932) and a single-end run (ERX5474936), `2612_mixed`, which can be merged only with `--shortread_qc_mergepairs`. As the samplesheet does not allow the same file in two rows, the files used more than once are symbolic links in `data/fastq/mixed/`.
-
-### FASTA
-
-One of the files was converted to FASTA file with seqtk 1.3-r106 (from the nf-core/taxprofiler documentation, not re-run):
-
-```bash
-seqtk seq -a  ERX5474930_ERR5766174_1.fastq.gz > ERX5474930_ERR5766174_1.fa.gz
-```
-
-FASTA files are stored under `data/fasta/`
 
 ### Host removal reference
 

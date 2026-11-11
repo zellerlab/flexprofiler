@@ -53,8 +53,6 @@ workflow STANDARDISATION_PROFILES {
     ch_profiles_for_motus3 = groupProfiles(ch_input_profiles.motus3)
     ch_input_for_motus3merge = combineProfilesWithDatabase(ch_profiles_for_motus3, ch_input_databases.motus3)
     MOTUS3_MERGE(ch_input_for_motus3merge.profile, ch_input_for_motus3merge.db)
-    ch_versions = ch_versions.mix(MOTUS3_MERGE.out.versions)
-    
     // cayman
     ch_profiles_for_cayman = groupProfilesByCategory(ch_input_profiles.cayman)
     CAYMAN_MERGE(ch_profiles_for_cayman)

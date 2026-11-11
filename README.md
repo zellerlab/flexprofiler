@@ -45,10 +45,10 @@ A set of pre-configured options used internally in the group is documented [here
 First, prepare a samplesheet with your input data that looks as follows:
 
 ```csv title="samplesheet.csv"
-sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
-2612,run1,ILLUMINA,2612_run1_R1.fq.gz,2612_run1_R2.fq.gz,
-2612,run2,ILLUMINA,2612_run2_R1.fq.gz,2612_run2_R2.fq.gz,
-2612,run3,ILLUMINA,2612_run3_R1.fq.gz,2612_run3_R2.fq.gz,
+sample,run_accession,instrument_platform,fastq_1,fastq_2
+2612,run1,ILLUMINA,2612_run1_R1.fq.gz,2612_run1_R2.fq.gz
+2612,run2,ILLUMINA,2612_run2_R1.fq.gz,2612_run2_R2.fq.gz
+2612,run3,ILLUMINA,2612_run3_R1.fq.gz,2612_run3_R2.fq.gz
 ```
 
 Additionally, you will need a database sheet that looks as follows:

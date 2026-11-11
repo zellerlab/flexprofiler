@@ -40,7 +40,7 @@ With `--run_kraken2` and `--run_profile_standardisation`, the Kraken2 reports ar
 (see [the output documentation](output.md#kraken2)). The reads per million of the paper are not computed: they are the
 reads of `reads_clade` times 10^6 divided by the `raw_reads` of the read counts.
 
-FastQC (or Falco) is run on the raw reads, and on the filtered reads (`fastqc/pathseq_t2t/`). The reads left after
+FastQC (or Falco) is run on the raw reads, and on the filtered reads, as the reads given to the profilers (`fastqc/processed/`, with the reads left without their mate as `*_singletons_*`). The reads left after
 each step are in the [read counts](output.md#read-counts), as in Figure 1C of the paper.
 
 The steps are run after [run merging](usage.md#run-merging): with `--perform_runmerging`, the runs of a sample are
@@ -68,8 +68,7 @@ with a `kraken2` row in the database sheet (see [the database documentation](dat
 
 Only Illumina FASTQ of `WGS` runs are accepted: other rows of the samplesheet are an error. The steps that change the
 reads before the filtering are an error too, as PathSeqFilterSpark does the quality and complexity filtering itself:
-`--perform_shortread_qc`, `--perform_shortread_complexityfilter`, `--perform_shortread_hostremoval`, and
-`--perform_shortread_redundancyestimation` (Nonpareil, whose estimate would be of the human genome). The repair of the
+`--perform_shortread_qc` and `--perform_shortread_hostremoval`. The repair of the
 order of the read pairs (`--perform_repair_pe_order`) can be used. Cayman and gqlib (`--run_cayman`, `--run_gqlib`)
 are not supported, and are an error too.
 

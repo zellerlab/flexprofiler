@@ -50,8 +50,7 @@ workflow AMPLICON_PREPROCESSING {
         ch_reads_pairhandled = VSEARCH_MERGEJOIN.out.reads
     }
     else if (params.amplicon_pair_handling == 'merged_plus_unmerged') {
-        FASTP_AMPLICON_MERGE(ch_reads_for_pairhandling.pe, [], false, false, true)
-        ch_versions = ch_versions.mix(FASTP_AMPLICON_MERGE.out.versions.first())
+        FASTP_AMPLICON_MERGE(ch_reads_for_pairhandling.pe.map { meta, input_reads -> [meta, input_reads, []] }, false, false, true)
         ch_read_count_logs = ch_read_count_logs.mix(FASTP_AMPLICON_MERGE.out.log.map { meta, log_file -> [meta + [tool: 'fastp_merge'], log_file] })
         ch_reads_pairhandled = FASTP_AMPLICON_MERGE.out.reads_merged
     }

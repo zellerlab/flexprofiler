@@ -11,6 +11,7 @@ include { BWA_MEM as BWA_ALIGN         } from '../../modules/nf-core/bwa/mem/mai
 include { GQLIB_PROFILE_GENES           } from '../../modules/local/gqlib/profile_genes/main'
 include { IDTAXA_CLASSIFY               } from '../../modules/local/idtaxa/classify/main'
 include { KRAKEN2_KRAKEN2                } from '../../modules/nf-core/kraken2/kraken2/main'
+include { toolLibraryStrategy           } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow PROFILING {
     take:
@@ -42,24 +43,12 @@ workflow PROFILING {
             [[type: type, library_strategy: toolLibraryStrategy(meta_db.tool)], meta_db.subMap(meta_db.keySet() - 'db_type') + [type: type], db]
         }
 
-    // a profiler run on no reads is most likely a mistake in the samplesheet (library_strategy) or in the parameters
-    ['motus4', 'motus3', 'cayman', 'gqlib', 'idtaxa', 'kraken2'].findAll { tool -> params["run_${tool}"] }.each { tool ->
-        def strategy = toolLibraryStrategy(tool)
-        reads
-            .filter { meta, _input_reads -> meta.library_strategy == strategy }
-            .count()
-            .subscribe { n ->
-                if (n == 0) {
-                    log.warn("[zellerlab/flexprofiler] --run_${tool} is set, but there are no ${strategy} samples (library_strategy column of the samplesheet) to run it on.")
-                }
-            }
-    }
-
     // Join short and long reads with their corresponding short/long database
     // Note that for not-specified `short;long`, it will match with the database.
     // E.g. if there is no 'long' reads the above generated 'long' database channel element
-    //  will have nothing to join to and will be discarded
-    // Final output [DUMP: reads_plus_db] [['id':'2612', 'run_accession':'combined', 'instrument_platform':'ILLUMINA', 'single_end':false, 'is_fasta':false, 'type':'short'], <reads_path>/2612.merged.fastq.gz, ['tool':'malt', 'db_name':'malt95', 'db_params':'"-id 90"', 'type':'short'], <db_path>/malt95]
+    //  will have nothing to join to and will be discarded. The reads without any database, and the enabled profilers
+    //  without any reads, are errors in PIPELINE_INITIALISATION (validateDatabaseMatching)
+    // Final output: [ [ meta of the reads ], [ reads ], [ meta of the database ], database ], e.g. [['id':'2612', 'run_accession':'combined', 'instrument_platform':'ILLUMINA', 'single_end':false, 'type':'short'], <reads_path>/2612.merged.fastq.gz, ['tool':'kraken2', 'db_name':'standard', 'db_params':'--confidence 0.1', 'type':'short'], <db_path>/standard]
 
     // mOTUs v4 needs read names to be identical across PE mates, without /1 /2 suffix.
     // Reads are renamed once here, before being paired with the motus4 databases
@@ -78,9 +67,7 @@ workflow PROFILING {
                 ]
             }
 
-        MOTUS4_RENAME_READS(ch_input_for_motus4_rename_reads)
-        ch_versions = ch_versions.mix(MOTUS4_RENAME_READS.out.versions.first())
-
+        MOTUS4_RENAME_READS(ch_input_for_motus4_rename_reads, [], false, 'fastq.gz')
         ch_reads_for_motus4 = MOTUS4_RENAME_READS.out.output
             .map { meta, input_reads ->
                 [ groupKey(meta.findAll { k, _v -> k != "paired_idx" }, 2), [meta.paired_idx, input_reads] ]
@@ -171,8 +158,6 @@ workflow PROFILING {
             }
 
         MOTUS3_PROFILE(ch_input_for_motus3.reads, ch_input_for_motus3.db)
-
-        ch_versions = ch_versions.mix(MOTUS3_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS3_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS3_PROFILE.out.log)
         ch_read_count_logs = ch_read_count_logs.mix(MOTUS3_PROFILE.out.log)
@@ -297,14 +282,4 @@ def addSingletons(ch_reads, ch_singletons) {
     return ch_reads
         .join(ch_singletons, remainder: true)
         .map { meta, input_reads, singletons_fastq -> [meta, (input_reads ?: []) + (singletons_fastq ? [singletons_fastq] : [])] }
-}
-
-/**
-* The library strategy of the reads a profiler is run on.
-*
-* @param tool The profiler, as in the tool column of the database sheet.
-* @return AMPLICON for the amplicon profilers, WGS for the shotgun ones.
-*/
-def toolLibraryStrategy(tool) {
-    return tool in ['idtaxa'] ? 'AMPLICON' : 'WGS'
 }

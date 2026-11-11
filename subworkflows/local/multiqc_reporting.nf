@@ -72,8 +72,7 @@ workflow MULTIQC_REPORTING {
         channel.fromPath(params.multiqc_logo, checkIfExists: true) :
         channel.empty()
 
-    def summary_params  = paramsSummaryMap(
-        workflow, parameters_schema: "nextflow_schema.json")
+    def summary_params  = paramsSummaryMap(parameters_schema: "nextflow_schema.json")
     ch_workflow_summary = channel.value(paramsSummaryMultiqc(summary_params))
     ch_multiqc_custom_methods_description = params.multiqc_methods_description ?
         file(params.multiqc_methods_description, checkIfExists: true) :
@@ -92,15 +91,14 @@ workflow MULTIQC_REPORTING {
         )
 
     if (!params.skip_multiqc) {
-        MULTIQC(
-            ch_multiqc_files.collect(),
-            ch_multiqc_config.toList(),
-            ch_multiqc_custom_config.toList(),
-            ch_multiqc_logo.toList(),
-            [],
-            [],
-        )
-        multiqc_report = MULTIQC.out.report.toList()
+        // a single input: the reports, the configs (the pipeline's, then the custom one), the logo, and no sample
+        // renaming; each list is wrapped so that combine keeps it whole
+        ch_multiqc_input = ch_multiqc_files.collect().map { files -> [files] }
+            .combine(ch_multiqc_config.concat(ch_multiqc_custom_config).toList().map { configs -> [configs] })
+            .combine(ch_multiqc_logo.toList().map { logo -> [logo] })
+            .map { files, configs, logo -> [[id: 'multiqc'], files, configs, logo, [], []] }
+        MULTIQC(ch_multiqc_input)
+        multiqc_report = MULTIQC.out.report.map { _meta, report -> report }.toList()
     }
     else {
         multiqc_report = channel.empty()

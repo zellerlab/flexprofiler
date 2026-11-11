@@ -4,24 +4,23 @@ Changes in component 'nf-core/motus/profile'
 Changes in 'motus/profile/main.nf':
 --- modules/nf-core/motus/profile/main.nf
 +++ modules/nf-core/motus/profile/main.nf
-@@ -24,11 +24,14 @@
+@@ -28,10 +28,13 @@
      script:
      def args = task.ext.args ?: ''
      def prefix = task.ext.prefix ?: "${meta.id}"
 +    // the paired-end reads can be followed by the reads left without their mate, given as unpaired reads, or be only
 +    // those if no pair is left (a single file is staged as a path, not a list)
 +    def fastqs = reads instanceof List ? reads : [reads]
-     def inputs = reads[0].getExtension() == 'bam' ?
-                     "-i ${reads}" :
-                     reads[0].getExtension() == 'mgc' ? "-m $reads" :
--                        meta.single_end ?
--                            "-s $reads" : "-f ${reads[0]} -r ${reads[1]}"
-+                        meta.single_end || fastqs.size() == 1 ?
-+                            "-s $reads" : "-f ${fastqs[0]} -r ${fastqs[1]}" + (fastqs.size() > 2 ? " -s ${fastqs[2]}" : "")
+     def inputs = reads[0].getExtension() == 'bam' ? "-i ${reads}" :
+                 reads[0].getExtension() == 'mgc' ? "-m $reads" :
+-                    meta.single_end ? "-s $reads" :
+-                    "-f ${reads[0]} -r ${reads[1]}"
++                    meta.single_end || fastqs.size() == 1 ? "-s $reads" :
++                    "-f ${fastqs[0]} -r ${fastqs[1]}" + (fastqs.size() > 2 ? " -s ${fastqs[2]}" : "")
      def refdb = db ? "-db ${db}" : ""
      """
      motus profile \\
 
-'modules/nf-core/motus/profile/tests/main.nf.test' is unchanged
 'modules/nf-core/motus/profile/tests/main.nf.test.snap' is unchanged
+'modules/nf-core/motus/profile/tests/main.nf.test' is unchanged
 ************************************************************

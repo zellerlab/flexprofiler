@@ -55,7 +55,6 @@ workflow {
         params.plaintext_email,
         params.outdir,
         params.monochrome_logs,
-        params.hook_url,
         ZELLERLAB_FLEXPROFILER.out.multiqc_report,
     )
 }

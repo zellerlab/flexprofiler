@@ -14,7 +14,6 @@ include { samplesheetToList         } from 'plugin/nf-schema'
 include { paramsHelp                } from 'plugin/nf-schema'
 include { completionEmail           } from '../../nf-core/utils_nfcore_pipeline'
 include { completionSummary         } from '../../nf-core/utils_nfcore_pipeline'
-include { imNotification            } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NFCORE_PIPELINE     } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NEXTFLOW_PIPELINE   } from '../../nf-core/utils_nextflow_pipeline'
 
@@ -84,7 +83,8 @@ workflow PIPELINE_INITIALISATION {
         show_hidden,
         before_text,
         after_text,
-        command
+        command,
+        null,       // cli_typecast: the default of nf-schema
     )
 
     //
@@ -99,6 +99,7 @@ workflow PIPELINE_INITIALISATION {
     //
 
     def samplesheet_rows = samplesheetToList(input, "assets/schema_input.json")
+    validatePacbio(samplesheet_rows)
     if (params.perform_runmerging) {
         validateRunMerging(samplesheet_rows)
     }
@@ -111,8 +112,8 @@ workflow PIPELINE_INITIALISATION {
     // sample are merged separately for each library strategy, so they are counted per sample and strategy
     def runs_per_sample = samplesheet_rows.countBy { row -> [row[0].id, row[0].library_strategy] }
     Channel.fromList(samplesheet_rows)
-        .map { meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
-            [meta + [is_multirun: runs_per_sample[[meta.id, meta.library_strategy]] > 1], run_accession, instrument_platform, fastq_1, fastq_2, fasta]
+        .map { meta, run_accession, instrument_platform, fastq_1, fastq_2 ->
+            [meta + [is_multirun: runs_per_sample[[meta.id, meta.library_strategy]] > 1], run_accession, instrument_platform, fastq_1, fastq_2]
         }
         .set { ch_samplesheet }
 
@@ -121,6 +122,7 @@ workflow PIPELINE_INITIALISATION {
     //
     def database_rows = selectIdtaxaDatabases(samplesheetToList(databases, "assets/schema_database.json"), params.idtaxa_db_names)
     validateDatabaseSheet(database_rows)
+    validateDatabaseMatching(samplesheet_rows, database_rows)
     Channel.fromList(database_rows)
         .set { ch_databases }
 
@@ -139,41 +141,15 @@ workflow PIPELINE_INITIALISATION {
 
     if (params.shortread_qc_adapterlist) {
         def adapterlist = file(params.shortread_qc_adapterlist, checkIfExists: true)
-        if (params.shortread_qc_tool == 'adapterremoval' && !(adapterlist.extension == 'txt')) {
-            error("[zellerlab/flexprofiler] ERROR: AdapterRemoval2 adapter list requires a `.txt` format and extension. Check input: --shortread_qc_adapterlist ${params.shortread_qc_adapterlist}")
-        }
-        if (params.shortread_qc_tool == 'fastp' && !adapterlist.extension.matches(".*(fa|fasta|fna|fas)")) {
+        if (!adapterlist.extension.matches(".*(fa|fasta|fna|fas)")) {
             error("[zellerlab/flexprofiler] ERROR: fastp adapter list requires a `.fasta` format and extension (or fa, fas, fna). Check input: --shortread_qc_adapterlist ${params.shortread_qc_adapterlist}")
         }
     }
 
-    if (params.shortread_complexityfilter_tool == 'fastp' && (params.perform_shortread_qc == false || params.shortread_qc_tool != 'fastp')) {
-        error("ERROR: [zellerlab/flexprofiler] cannot use fastp complexity filtering if preprocessing not turned on and/or tool is not fastp. Please specify --perform_shortread_qc and/or --shortread_qc_tool 'fastp'")
-    }
     // The reference is needed also when an index is supplied, e.g. for host removal statistics
     if (params.perform_shortread_hostremoval && !params.hostremoval_reference) {
         error("ERROR: [zellerlab/flexprofiler] --perform_shortread_hostremoval requested but no --hostremoval_reference FASTA supplied (required also when providing --shortread_hostremoval_index). Check input.")
     }
-    if (params.perform_longread_hostremoval && !params.hostremoval_reference) {
-        error("ERROR: [zellerlab/flexprofiler] --perform_longread_hostremoval requested but no --hostremoval_reference FASTA supplied (required also when providing --longread_hostremoval_index). Check input.")
-    }
-    //if (!params.shortread_qc_mergepairs && params.run_malt) {
-    //    log.warn("[zellerlab/flexprofiler] MALT does not accept uncollapsed paired-reads. Pairs will be profiled as separate files.")
-    //}
-
-    // Profiling
-    //if (params.run_bracken && !params.run_kraken2) {
-    //    error('ERROR: [zellerlab/flexprofiler] You are attempting to run Bracken without running kraken2. This is not possible! Please set --run_kraken2 as well.')
-    //}
-    //if (params.diamond_save_reads) {
-    //    log.warn("[zellerlab/flexprofiler] DIAMOND only allows output of a single format. As --diamond_save_reads supplied, only aligned reads in SAM format will be produced, no taxonomic profiles will be available.")
-    //}
-    //if (params.run_malt && params.run_krona && !params.krona_taxonomy_directory) {
-    //    log.warn("[zellerlab/flexprofiler] Krona can only be run on MALT output if path to Krona taxonomy database supplied to --krona_taxonomy_directory. Krona will not be executed in this run for MALT.")
-    //}
-    //if ([params.taxpasta_add_name, params.taxpasta_add_rank, params.taxpasta_add_lineage, params.taxpasta_add_lineage, params.taxpasta_add_idlineage, params.taxpasta_add_ranklineage].any() && !params.taxpasta_taxonomy_dir) {
-    //    error('ERROR: [zellerlab/flexprofiler] All --taxpasta_add_* parameters require a taxonomy supplied to --taxpasta_taxonomy_dir. However the latter parameter was not detected. Please check input.')
-    //}
 
     emit:
     samplesheet = ch_samplesheet
@@ -194,11 +170,10 @@ workflow PIPELINE_COMPLETION {
     plaintext_email // boolean: Send plain-text email instead of HTML
     outdir          //    path: Path to output directory where results will be published
     monochrome_logs // boolean: Disable ANSI colour codes in log output
-    hook_url        //  string: hook URL for notifications
     multiqc_report  //  string: Path to MultiQC report
 
     main:
-    summary_params = paramsSummaryMap(workflow, parameters_schema: "nextflow_schema.json")
+    summary_params = paramsSummaryMap(parameters_schema: "nextflow_schema.json")
     def multiqc_reports = multiqc_report.toList()
 
     //
@@ -218,9 +193,6 @@ workflow PIPELINE_COMPLETION {
         }
 
         completionSummary(monochrome_logs)
-        if (hook_url) {
-            imNotification(summary_params, hook_url)
-        }
     }
 
     workflow.onError {
@@ -266,7 +238,7 @@ def runGit(args) {
 // Validate that all runs of each sample can be merged together
 //
 def validateRunMerging(rows) {
-    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
     // With pair merging, paired-end reads become single-end before run merging, so endedness can differ: with
     // --shortread_qc_mergepairs, and for amplicon reads unless --amplicon_pair_handling is none
     def pairs_merged = params.perform_shortread_qc && params.shortread_qc_mergepairs
@@ -275,7 +247,7 @@ def validateRunMerging(rows) {
         def (sample, strategy) = sample_strategy
         def check_endedness = !pairs_merged && (strategy != 'AMPLICON' || params.amplicon_pair_handling == 'none')
         def datatypes = sample_rows.collect { row ->
-            def datatype = [row[2], row[5] ? 'FASTA' : 'FASTQ']
+            def datatype = [row[2]]
             if (check_endedness) {
                 datatype << (row[4] ? 'paired-end' : 'single-end')
             }
@@ -284,10 +256,25 @@ def validateRunMerging(rows) {
         if (datatypes.size() > 1) {
             error(
                 "Please check input samplesheet -> with --perform_runmerging, all runs of a sample must have the same " +
-                "instrument platform, file type (FASTQ/FASTA) and, unless pairs are merged (--shortread_qc_mergepairs, or for AMPLICON runs --amplicon_pair_handling), " +
+                "instrument platform and, unless pairs are merged (--shortread_qc_mergepairs, or for AMPLICON runs --amplicon_pair_handling), " +
                 "endedness (single/paired-end).\n" +
                 "Sample '${sample}' (${strategy}) has: ${datatypes.collect { datatype -> datatype.join(' ') }.join('; ')}"
             )
+        }
+    }
+}
+
+//
+// Validate the PacBio runs: their reads are preprocessed only as amplicons, and are single-end
+//
+def validatePacbio(rows) {
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
+    rows.findAll { row -> row[2] == 'PACBIO_SMRT' }.each { row ->
+        if (row[0].library_strategy != 'AMPLICON') {
+            error("[zellerlab/flexprofiler] ERROR: PACBIO_SMRT runs are supported only with library_strategy AMPLICON: please check sample ${row[0].id}, run ${row[1]} (library_strategy ${row[0].library_strategy})")
+        }
+        if (row[4]) {
+            error("[zellerlab/flexprofiler] ERROR: PACBIO_SMRT runs are single-end, fastq_2 must be empty: please check sample ${row[0].id}, run ${row[1]}")
         }
     }
 }
@@ -297,11 +284,11 @@ def validateRunMerging(rows) {
 // need the reference to orient the reads with
 //
 def validateAmpliconPrimers(rows) {
-    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
     if (!params.amplicon_primer_fwd != !params.amplicon_primer_rev) {
         error("Please check the primer parameters -> --amplicon_primer_fwd and --amplicon_primer_rev must be given together.")
     }
-    def long_amplicon = rows.any { row -> row[0].library_strategy == 'AMPLICON' && row[2] in ['PACBIO_SMRT', 'OXFORD_NANOPORE'] }
+    def long_amplicon = rows.any { row -> row[0].library_strategy == 'AMPLICON' && row[2] == 'PACBIO_SMRT' }
     if (params.perform_amplicon_primertrimming && long_amplicon && !params.amplicon_primer_fwd && !params.amplicon_orient_reference) {
         error(
             "Please check the primer parameters -> the long reads of the AMPLICON runs are oriented before finding their " +
@@ -326,6 +313,68 @@ def selectIdtaxaDatabases(rows, db_names) {
         error("Please check --idtaxa_db_names -> ${missing.join(', ')} not among the idtaxa rows of the database sheet. Available: ${available.join(', ') ?: 'none'}")
     }
     return rows.findAll { meta, _db_path -> meta.tool != 'idtaxa' || meta.db_name in selected }
+}
+
+//
+// The library strategy of the reads a profiler is run on: AMPLICON for the amplicon profilers, WGS for the shotgun ones
+//
+def toolLibraryStrategy(tool) {
+    return tool in ['idtaxa'] ? 'AMPLICON' : 'WGS'
+}
+
+//
+// Validate that the reads and the databases of the enabled profilers match each other. In PROFILING, the reads meet
+// the databases with the same read type (short/long, from instrument_platform and db_type) and library strategy (of
+// the reads, and of the profiler, toolLibraryStrategy), and what has no match is dropped silently, so it is an error
+// here: an enabled profiler without databases, reads that no enabled profiler can run on, and an enabled profiler
+// without reads to run on. Without any enabled profiler the pipeline only preprocesses the reads, which is allowed
+//
+def validateDatabaseMatching(samplesheet_rows, database_rows) {
+    // samplesheet_rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]; database_rows: [ meta, db_path ]
+    def enabled = ['motus4', 'motus3', 'cayman', 'gqlib', 'idtaxa', 'kraken2'].findAll { tool -> params["run_${tool}"] }
+    if (!enabled) {
+        return
+    }
+    // the read type and library strategy that each enabled profiler can run on, from its databases
+    def tool_keys = enabled.collectEntries { tool ->
+        def keys = database_rows
+            .findAll { meta, _db_path -> meta.tool == tool }
+            .collectMany { meta, _db_path -> (meta.db_type ?: 'short;long').tokenize(';').collect { type -> [type, toolLibraryStrategy(tool)] } }
+            .unique()
+        [tool, keys]
+    }
+
+    def no_db = enabled.findAll { tool -> !tool_keys[tool] }
+    if (no_db) {
+        error("[zellerlab/flexprofiler] ERROR: ${no_db.collect { tool -> "--run_${tool}" }.join(', ')} set, but the database sheet has no ${no_db.join(', ')} database: add one, or turn the profiler off.")
+    }
+
+    def all_keys = tool_keys.values().sum()
+    def unprofiled = samplesheet_rows.findAll { row -> !(readKey(row) in all_keys) }
+    if (unprofiled) {
+        def listed = unprofiled.collect { row -> "${row[0].id} ${row[1]} (${readKey(row).join(' ')})" }.join(', ')
+        error(
+            "[zellerlab/flexprofiler] ERROR: no enabled profiler has a database for these runs, which would be preprocessed but not profiled: ${listed}. " +
+            "The ${enabled.join(', ')} databases match: ${all_keys.unique().collect { key -> key.join(' ') }.join(', ')} reads (read type from instrument_platform and the db_type of the database sheet, library strategy of the profiler)."
+        )
+    }
+
+    def read_keys = samplesheet_rows.collect { row -> readKey(row) }.unique()
+    def no_reads = enabled.findAll { tool -> !tool_keys[tool].any { key -> key in read_keys } }
+    if (no_reads) {
+        error(
+            "[zellerlab/flexprofiler] ERROR: no runs of the samplesheet for ${no_reads.collect { tool -> "--run_${tool} (${tool_keys[tool].collect { key -> key.join(' ') }.join(', ')})" }.join(', ')}: " +
+            "check the library_strategy and instrument_platform of the samplesheet and the db_type of the database sheet, or turn the profiler off."
+        )
+    }
+}
+
+//
+// The read type (short/long, as meta.type and db_type) and library strategy of a samplesheet row
+//
+def readKey(row) {
+    // row: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
+    return [row[2] == 'PACBIO_SMRT' ? 'long' : 'short', row[0].library_strategy]
 }
 
 //
@@ -363,30 +412,12 @@ def toolCitationText() {
     ].join(' ').trim()
 
     def text_shortread_qc = [
-        "Short read preprocessing was performed with:",
-        params.shortread_qc_tool == "adapterremoval" ? "AdapterRemoval (Schubert et al. 2016)." : "",
-        params.shortread_qc_tool == "fastp" ? "fastp (Chen et al. 2018)." : "",
+        "Short read preprocessing was performed with fastp (Chen et al. 2018).",
     ].join(' ').trim()
 
-
-    def text_shortread_redundancy = [
-        "Short-read reference-free metagenome coverage estimation was performed with Nonpareil (Rodriguez-R et al. 2018)."
-    ].join(' ').trim()
 
     def text_longread_qc = [
-        "Long read preprocessing was performed with:",
-        params.longread_adapterremoval_tool == "porechop_abi" ? "Porechop_ABI (Bonenfant et al. 2023)," : "",
-        params.longread_adapterremoval_tool == "porechop" ? "Porechop (Wick et al. 2017)," : "",
-        params.longread_filter_tool == "filtlong" ? "Filtlong (Wick 2021)." : "",
-        params.longread_filter_tool == "nanoq" ? "Nanoq (Steinig and Coin 2022)." : "",
-        "PacBio reads were filtered with VSEARCH (Rognes et al. 2016) and BBDuk (Bushnell 2022).",
-    ].join(' ').trim()
-
-    def text_shortreadcomplexity = [
-        "Low-complexity sequence filtering was carried out with:",
-        params.shortread_complexityfilter_tool == "bbduk" ? "BBDuk (Bushnell 2022)." : "",
-        params.shortread_complexityfilter_tool == "prinseqplusplus" ? "PRINSEQ++ (Cantu et al. 2019)." : "",
-        params.shortread_complexityfilter_tool == "fastp" ? "fastp (Chen et al. 2018)." : "",
+        "The PacBio reads were filtered with VSEARCH (Rognes et al. 2016) and BBDuk (Bushnell 2022)."
     ].join(' ').trim()
 
     def text_shortreadhostremoval = [
@@ -395,10 +426,6 @@ def toolCitationText() {
 
     def text_pathseq_t2t = [
         "Host reads were removed with PathSeq-T2T (Dohlman et al. 2026): the reads were aligned to GRCh38 with BWA-MEM (Li and Durbin 2009), the reads not aligned to it and those aligned to its viral decoy contigs selected with SAMtools (Danecek et al. 2021), filtered with GATK PathSeqFilterSpark (Walker et al. 2018), and the reads aligned to T2T-CHM13 (Nurk et al. 2022) removed."
-    ].join(' ').trim()
-
-    def text_longreadhostremoval = [
-        "Host read removal was performed for long reads with minimap2 (Li et al. 2018) and SAMtools (Danecek et al. 2021)."
     ].join(' ').trim()
 
     def text_amplicon_primertrimming = [
@@ -420,24 +447,13 @@ def toolCitationText() {
         ".",
     ].join(' ').trim()
 
-    def text_visualisation = [
-        "Visualisation of results, where supported, was performed with Krona (Ondov et al. 2011)."
-    ].join(' ').trim()
-
-    def text_postprocessing = [
-        "Standardisation of taxonomic profiles was carried out with TAXPASTA (Beber et al. 2023)."
-    ].join(' ').trim()
-
     def citation_text = [
         "Tools used in the workflow included:",
         text_seq_qc,
         params.perform_shortread_qc ? text_shortread_qc : "",
-        params.perform_shortread_redundancyestimation ? text_shortread_redundancy : "",
         params.perform_longread_qc ? text_longread_qc : "",
-        params.perform_shortread_complexityfilter ? text_shortreadcomplexity : "",
         params.perform_shortread_hostremoval ? text_shortreadhostremoval : "",
         params.pathseq_t2t ? text_pathseq_t2t : "",
-        params.perform_longread_hostremoval ? text_longreadhostremoval : "",
         params.perform_amplicon_primertrimming ? text_amplicon_primertrimming : "",
         params.amplicon_pair_handling == 'merged_plus_joined' ? text_amplicon_pairmerging : "",
         [
@@ -449,8 +465,6 @@ def toolCitationText() {
         ].any()
             ? text_classification
             : "",
-        // params.run_krona ? text_visualisation : "",
-        params.run_profile_standardisation ? text_postprocessing : "",
         "Pipeline results statistics were summarised with MultiQC (Ewels et al. 2016).",
     ].join(' ').trim().replaceAll("[,|.] +\\.", ".")
 
@@ -464,26 +478,10 @@ def toolBibliographyText() {
     ].join(' ').trim()
 
 
-    def text_shortread_qc = [
-        params.shortread_qc_tool == "adapterremoval" ? "<li>Schubert, M., Lindgreen, S., & Orlando, L. (2016). AdapterRemoval v2: rapid adapter trimming, identification, and read merging. BMC Research Notes, 9, 88. <a href=\"https://doi.org/10.1186/s13104-016-1900-2\">10.1186/s13104-016-1900-2</a></li>" : ""
-    ].join(' ').trim()
-
-    def text_shortread_redundancy = [
-        "<li>Rodriguez-R, L. M., Gunturu, S., Tiedje, J. M., Cole, J. R., & Konstantinidis, K. T. (2018). Nonpareil 3: Fast Estimation of Metagenomic Coverage and Sequence Diversity. mSystems, 3(3). <a href=\"https://doi.org/10.1128/mSystems.00039-18\">10.1128/mSystems.00039-18</a></li>"
-    ].join(' ').trim()
 
     def text_longread_qc = [
-        params.longread_adapterremoval_tool == "porechop_abi" ? "<li>Bonenfant, Q., Noé, L., & Touzet, H. (2023). Porechop_ABI: discovering unknown adapters in Oxford Nanopore Technology sequencing reads for downstream trimming. Bioinformatics Advances, 3(1):vbac085. <a href=\"https://10.1093/bioadv/vbac085\">10.1093/bioadv/vbac085</a></li>" : "",
-        params.longread_adapterremoval_tool == "porechop" ? "<li>Wick, R. R., Judd, L. M., Gorrie, C. L., & Holt, K. E. (2017). Completing bacterial genome assemblies with multiplex MinION sequencing. Microbial Genomics, 3(10), e000132. <a href=\"https://doi.org/10.1099/mgen.0.000132\">10.1099/mgen.0.000132</a></li>" : "",
-        params.longread_filter_tool == "filtlong" ? "<li>Wick R. (2021) Filtlong, URL:  <a href=\"https://github.com/rrwick/Filtlong\">https://github.com/rrwick/Filtlong</a></li>" : "",
-        params.longread_filter_tool == "nanoq" ? "<li>Steinig, E., & Coin, L. (2022). Nanoq: ultra-fast quality control for nanopore reads. Journal of Open Source Software, 7(69). <a href=\"https://doi.org/10.21105/joss.02991\">10.21105/joss.02991</a></li>" : "",
         // the PacBio reads (VSEARCH is cited with the amplicon pair merging)
         "<li>Bushnell B. (2022) BBMap, URL:  <a href=\"http://sourceforge.net/projects/bbmap/\">http://sourceforge.net/projects/bbmap/</a></li>",
-    ].join(' ').trim()
-
-    def text_shortreadcomplexity = [
-        params.shortread_complexityfilter_tool == "bbduk" ? "<li>Bushnell B. (2022) BBMap, URL:  <a href=\"http://sourceforge.net/projects/bbmap/\">http://sourceforge.net/projects/bbmap/</a></li>" : "",
-        params.shortread_complexityfilter_tool == "prinseqplusplus" ? "<li>Cantu, V. A., Sadural, J., & Edwards, R. (2019). PRINSEQ++, a multi-threaded tool for fast and efficient quality control and preprocessing of sequencing datasets (e27553v1). PeerJ Preprints. <a href=\"https://doi.org/10.7287/peerj.preprints.27553v1\">10.7287/peerj.preprints.27553v1</a></li>" : "",
     ].join(' ').trim()
 
     def text_shortreadhostremoval = [
@@ -506,10 +504,6 @@ def toolBibliographyText() {
         "<li>Nurk, S., Koren, S., Rhie, A., et al. (2022). The complete sequence of a human genome. Science, 376(6588), 44–53. <a href=\"https://doi.org/10.1126/science.abj6987\">10.1126/science.abj6987</a></li>",
     ].join(' ').trim()
 
-    def text_longreadhostremoval = [
-        "<li>Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. Bioinformatics , 34(18), 3094–3100. <a href=\"https://doi.org/10.1093/bioinformatics/bty191\">10.1093/bioinformatics/bty191</a></li>"
-    ].join(' ').trim()
-
 
     def text_classification = [
         params.run_motus4 ? "<li>Ruscheweyh, H.-J., Milanese, A., Paoli, L., Karcher, N., Clayssen, Q., Keller, M. I., Wirbel, J., Bork, P., Mende, D. R., Zeller, G., & Sunagawa, S. (2022). Cultivation-independent genomes greatly expand taxonomic-profiling capabilities of mOTUs across various environments. Microbiome, 10(1), 212. <a href=\"https://doi.org/10.1186/s40168-022-01410-z\">10.1186/s40168-022-01410-z</a></li>" : "",
@@ -520,35 +514,21 @@ def toolBibliographyText() {
         params.run_idtaxa ? "<li>Wright, E. S. (2016). Using DECIPHER v2.0 to Analyze Big Biological Sequence Data in R. The R Journal, 8(1), 352–359. <a href=\"https://doi.org/10.32614/RJ-2016-025\">10.32614/RJ-2016-025</a></li>" : "",
     ].join(' ').trim()
 
-    def text_visualisation = [
-        "<li>Ondov, B. D., Bergman, N. H., & Phillippy, A. M. (2011). Interactive metagenomic visualization in a Web browser. BMC Bioinformatics, 12(1), 385.  <a href=\"https://doi.org/10.1186/1471-2105-12-385\">10.1186/1471-2105-12-385</a></li>"
-    ].join(' ').trim()
-
-    def text_postprocessing = [
-        "<li>Beber, M. E., Borry, M., Stamouli, S., & Fellows Yates, J. A. (2023). TAXPASTA: TAXonomic Profile Aggregation and STAndardisation. Journal of Open Source Software, 8(87), 5627.  <a href=\"https://doi.org/10.21105/joss.05627\">10.21105/joss.05627</a></li>"
-    ].join(' ').trim()
-
     def text_extras = [
-        (params.perform_shortread_qc && params.shortread_qc_tool == "fastp") || (params.perform_shortread_complexityfilter && params.shortread_complexityfilter_tool == "fastp") ? "<li>Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics , 34(17), i884–i890. <a href=\"https://doi.org/10.1093/bioinformatics/bty560\">10.1093/bioinformatics/bty560</a></li>" : "",
-        params.perform_shortread_hostremoval || params.perform_longread_hostremoval ? "<li>Danecek, P., Bonfield, J. K., Liddle, J., Marshall, J., Ohan, V., Pollard, M. O., Whitwham, A., Keane, T., McCarthy, S. A., Davies, R. M., & Li, H. (2021). Twelve years of SAMtools and BCFtools. GigaScience, 10(2). <a href=\"https://doi.org/10.1093/gigascience/giab008\">10.1093/gigascience/giab008</a></li>" : "",
+        params.perform_shortread_qc ? "<li>Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics , 34(17), i884–i890. <a href=\"https://doi.org/10.1093/bioinformatics/bty560\">10.1093/bioinformatics/bty560</a></li>" : "",
+        params.perform_shortread_hostremoval ? "<li>Danecek, P., Bonfield, J. K., Liddle, J., Marshall, J., Ohan, V., Pollard, M. O., Whitwham, A., Keane, T., McCarthy, S. A., Davies, R. M., & Li, H. (2021). Twelve years of SAMtools and BCFtools. GigaScience, 10(2). <a href=\"https://doi.org/10.1093/gigascience/giab008\">10.1093/gigascience/giab008</a></li>" : "",
     ].join(' ').trim()
 
     def reference_text = [
         text_seq_qc,
-        params.perform_shortread_qc ? text_shortread_qc : "",
         params.perform_longread_qc ? text_longread_qc : "",
-        params.perform_shortread_redundancyestimation ? text_shortread_redundancy : "",
-        params.perform_shortread_complexityfilter ? text_shortreadcomplexity : "",
         params.perform_shortread_hostremoval ? text_shortreadhostremoval : "",
         params.pathseq_t2t ? text_pathseq_t2t : "",
-        params.perform_longread_hostremoval ? text_longreadhostremoval : "",
         params.perform_amplicon_primertrimming ? text_amplicon_primertrimming : "",
         // VSEARCH: pair merging, orientation of the long amplicon reads, and QC of the PacBio reads
         params.amplicon_pair_handling == 'merged_plus_joined' || (params.perform_amplicon_primertrimming && !params.amplicon_primer_fwd) || params.perform_longread_qc ? text_amplicon_pairmerging : "",
         text_extras,
         text_classification,
-        //params.run_krona ? text_visualisation : "",
-        params.run_profile_standardisation ? text_postprocessing : "",
         "<li>Ewels, P., Magnusson, M., Lundin, S., & Käller, M. (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics , 32(19), 3047–3048. <a href=\"https:/doi.org/10.1093/bioinformatics/btw354\">10.1093/bioinformatics/btw354.</a></li>",
     ].join(' ').trim().replaceAll("[,|.] +\\.", ".")
 
@@ -598,16 +578,15 @@ def methodsDescriptionText(mqc_methods_yaml) {
 // inputs and the steps that change the reads before it are errors, rather than being skipped silently
 //
 def validatePathseqT2t(samplesheet_rows) {
-    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
-    def unsupported = samplesheet_rows.findAll { row -> row[2] != 'ILLUMINA' || row[0].library_strategy != 'WGS' || row[5] }
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
+    def unsupported = samplesheet_rows.findAll { row -> row[2] != 'ILLUMINA' || row[0].library_strategy != 'WGS' }
     if (unsupported) {
-        def listed = unsupported.collect { row -> "${row[0].id} ${row[1]} (${row[5] ? 'FASTA' : "${row[2]} ${row[0].library_strategy}"})" }.join(', ')
+        def listed = unsupported.collect { row -> "${row[0].id} ${row[1]} (${row[2]} ${row[0].library_strategy})" }.join(', ')
         error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t accepts only ILLUMINA FASTQ of WGS runs, please remove from the samplesheet: ${listed}")
     }
 
-    // the steps that PathSeq-T2T does itself (QC, complexity filtering, host removal), or that make no sense on reads
-    // that are mostly from the host (redundancy estimation)
-    def conflicting = ['perform_shortread_qc', 'perform_shortread_complexityfilter', 'perform_shortread_hostremoval', 'perform_shortread_redundancyestimation'].findAll { name -> params[name] }
+    // the steps that PathSeq-T2T does itself (QC, host removal)
+    def conflicting = ['perform_shortread_qc', 'perform_shortread_hostremoval'].findAll { name -> params[name] }
     if (conflicting) {
         error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t filters the reads as they were sequenced, and cannot be used with ${conflicting.collect { name -> "--${name}" }.join(', ')}: please turn ${conflicting.size() > 1 ? 'them' : 'it'} off")
     }
