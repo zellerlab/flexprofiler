@@ -405,6 +405,10 @@ def validateDatabaseSheet(rows) {
         if (!(meta.tool in gene_tools) && (meta.annot_db_name || meta.annot_db_path)) {
             error("Please check database sheet -> ${meta.tool} database '${meta.db_name}' has annot_db_name or annot_db_path, which are only used by ${gene_tools.join(' and ')}.")
         }
+        // PathSeq-T2T classifies with its own Kraken2 options
+        if (params.pathseq_t2t && params.run_kraken2 && meta.tool == 'kraken2' && meta.db_params) {
+            error("Please check database sheet -> kraken2 database '${meta.db_name}' has db_params, which cannot be used with --pathseq_t2t (its options, `--confidence 0.15 --report-minimizer-data`, are used): please remove them.")
+        }
     }
     // the reads are aligned once per db_name, shared by all the annotations and by cayman and gqlib
     rows.findAll { meta, _db_path -> meta.tool in gene_tools }

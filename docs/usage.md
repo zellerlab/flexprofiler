@@ -382,7 +382,7 @@ Keep the strand `both` for short-read libraries with reads in both orientations.
 ##### Kraken2
 
 To run Kraken2, specify `--run_kraken2` and give `kraken2` rows in the database sheet, with the directory of the database (the `hash.k2d`, `opts.k2d` and `taxo.k2d` files, or a `.tar.gz` of them) as `db_path`.
-The options of a database (`db_params`) default to `--confidence 0.15 --report-minimizer-data`, as in PathSeq-T2T ([Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015)), which used the [PlusPF database of 2024-06-05](https://benlangmead.github.io/aws-indexes/k2): give other options in `db_params` to replace them.
+The options of a database (`db_params`) default to `--report-minimizer-data`, with `--confidence 0.15` added with `--pathseq_t2t`, as in PathSeq-T2T ([Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015)), which used the [PlusPF database of 2024-06-05](https://benlangmead.github.io/aws-indexes/k2): give other options in `db_params` to replace them (not with `--pathseq_t2t`, which uses its own options and rejects the `db_params` of the kraken2 databases).
 With `--pathseq_t2t`, the reads left without their mate are classified too, on their own, and added to the pairs in the merged tables.
 With `--run_profile_standardisation`, the reports are merged into tables of reads per taxon (see [the output documentation](output.md#kraken2)).
 The PlusPF database needs about 80 GB of memory: `KRAKEN2_KRAKEN2` asks for 128 GB.

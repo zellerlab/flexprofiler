@@ -415,7 +415,7 @@
                     "type": "boolean",
                     "fa_icon": "fas fa-toggle-on",
                     "description": "Classify the WGS reads with Kraken2, against the kraken2 databases of the database sheet",
-                    "help_text": "The options of a database (db_params) default to `--confidence 0.15 --report-minimizer-data`, as in PathSeq-T2T (Dohlman et al., Cell 2026, https://doi.org/10.1016/j.cell.2026.04.015), which used the PlusPF database of 2024-06-05 (https://benlangmead.github.io/aws-indexes/k2). With --pathseq_t2t, the reads left without their mate are classified too. The reports are merged into tables of reads per taxon (--run_profile_standardisation)."
+                    "help_text": "The options of a database (db_params) default to `--report-minimizer-data`, with `--confidence 0.15` added with --pathseq_t2t (which does not accept db_params for Kraken2), as in PathSeq-T2T (Dohlman et al., Cell 2026, https://doi.org/10.1016/j.cell.2026.04.015), which used the PlusPF database of 2024-06-05 (https://benlangmead.github.io/aws-indexes/k2). With --pathseq_t2t, the reads left without their mate are classified too. The reports are merged into tables of reads per taxon (--run_profile_standardisation)."
                 },
                 "run_idtaxa": {
                     "type": "boolean",

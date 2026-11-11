@@ -17,46 +17,44 @@ Writes:
 The rows are the taxa (taxid), in the order of the taxonomy, with the unclassified reads (taxid 0) first, and the
 columns the samples, sorted. A sample with no reads (an empty report) has a column of zeros.
 """
+import csv
 import pathlib
 import sys
 
 import pandas as pd
 
-COLUMNS = ["percent", "reads_clade", "reads_taxon", "minimizers", "distinct_minimizers", "rank", "taxid", "name"]
+# the columns of a Kraken2 report, with and without --report-minimizer-data
+COLUMNS_MINIMIZERS = ["percent_fragments", "fragments_clade", "fragments_taxon", "minimizers", "distinct_minimizers", "rank", "taxid", "name"]
+COLUMNS = ["percent_fragments", "fragments_clade", "fragments_taxon", "rank", "taxid", "name"]
+OUT_FIELDS = ["taxid", "name", "rank", "lineage", "fragments_clade", "fragments_taxon"]
 
 
 def read_report(path):
     """The rows of a Kraken2 report (with or without --report-minimizer-data), with the lineage of each taxon."""
-    rows = []
-    lineage = []
-    for line in path.read_text().splitlines():
-        if not line.strip():
-            continue
-        fields = line.split("\t")
-        if len(fields) == 6:
-            # without --report-minimizer-data
-            fields = fields[:3] + ["", ""] + fields[3:]
-        assert len(fields) == 8, f"Not a Kraken2 report line in {path}: {line}"
-        name = fields[7]
-        # the depth of a taxon is the indentation of its name, two spaces per level
-        depth = (len(name) - len(name.lstrip(" "))) // 2
-        taxid = int(fields[6])
-        if taxid == 0:
-            taxon_lineage = "0"
-        else:
-            lineage = lineage[:depth] + [str(taxid)]
-            taxon_lineage = ";".join(lineage)
-        rows.append(
-            {
-                "taxid": taxid,
-                "name": name.strip(),
-                "rank": fields[5],
-                "lineage": taxon_lineage,
-                "reads_clade": int(fields[1]),
-                "reads_taxon": int(fields[2]),
-            }
-        )
-    return pd.DataFrame(rows, columns=["taxid", "name", "rank", "lineage", "reads_clade", "reads_taxon"])
+    try:
+        # names can have quotes and look like missing values
+        report = pd.read_csv(path, sep="\t", header=None, quoting=csv.QUOTE_NONE, keep_default_na=False)
+    except pd.errors.EmptyDataError:
+        return pd.DataFrame(columns=OUT_FIELDS)
+    n_columns = len(report.columns)
+    assert n_columns == len(COLUMNS_MINIMIZERS) or n_columns == len(COLUMNS), f"{path}: {n_columns} columns, not a Kraken2 report"
+    report.columns = COLUMNS_MINIMIZERS if n_columns == len(COLUMNS_MINIMIZERS) else COLUMNS
+    return report.assign(name=report["name"].str.strip(), lineage=lineages(report))[OUT_FIELDS]
+
+
+def lineages(report):
+    """The lineage of each taxon of a report (the taxids from the root, joined by ";"), from the tree of the report.
+
+    The report lists the taxa depth-first, with the depth of a taxon as the indentation of its name, two spaces per
+    level. The unclassified reads (taxid 0) are at depth 0, like the root, so their lineage is "0".
+    """
+    depth = report["name"].str.extract(r"^( *)")[0].str.len() // 2
+    lineage, result = [], []
+    for taxid, d in zip(report["taxid"], depth):
+        # the ancestors are the first d taxa of the lineage of the row above
+        lineage = lineage[:d] + [str(taxid)]
+        result.append(";".join(lineage))
+    return result
 
 
 def sample_name(path, db_name):
@@ -69,7 +67,9 @@ def main(db_name, pairs_dir, single_reads_dir, prefix):
     for reports_dir, mates in [(pairs_dir, 2), (single_reads_dir, 1)]:
         for path in pathlib.Path(reports_dir).iterdir():
             report = read_report(path)
-            report[["reads_clade", "reads_taxon"]] *= mates
+            # the fragments (pairs or single reads) are converted to reads
+            for level in ["clade", "taxon"]:
+                report[f"reads_{level}"] = report.pop(f"fragments_{level}") * mates
             report["sample"] = sample_name(path, db_name)
             reports.append(report)
     # from the file names, as an empty report (a sample with no reads) has no rows
@@ -86,11 +86,13 @@ def main(db_name, pairs_dir, single_reads_dir, prefix):
 
     for column in ["reads_clade", "reads_taxon"]:
         table = (
+            # the pairs and the singletons of a sample are summed, and a taxon absent from a sample counts 0
             reports.pivot_table(index="taxid", columns="sample", values=column, aggfunc="sum", fill_value=0)
+            # the rows in the order of the taxonomy (the same taxa), and a column of zeros for the samples with no
+            # reads, which have no rows in the reports
             .reindex(index=taxonomy["taxid"], columns=samples, fill_value=0)
             .astype(int)
         )
-        table.columns.name = None
         table.to_csv(f"{prefix}.{column}.tsv", sep="\t")
 
 
