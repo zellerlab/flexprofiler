@@ -16,7 +16,7 @@ process CAYMAN_PROFILE {
     tuple val(meta), path("*.aln_stats.txt.gz"  ), emit: aln_stats
     tuple val(meta), path("*.gene_counts.txt.gz"), emit: gene_counts
     tuple val(meta), path("*.cayman.log"        ), emit: log
-    path "versions.yml" , emit: versions
+    tuple val("${task.process}"), val('gqlib'), eval('python -c "import gqlib; print(gqlib.__version__)"'), emit: versions_gqlib, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -42,13 +42,6 @@ process CAYMAN_PROFILE {
     gzip -cd ${prefix}.feature.txt.gz \\
         | awk -F '\\t' '\$1 != "category"' \\
         | gzip -n > ${prefix}.cazy.txt.gz
-
-    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gqlib: \$VERSION
-    END_VERSIONS
     """
 
     stub:
@@ -58,13 +51,6 @@ process CAYMAN_PROFILE {
     touch "${prefix}.cazy.txt.gz"
     touch "${prefix}.gene_counts.txt.gz"
     touch "${prefix}.cayman.log"
-
-    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gqlib: \$VERSION
-    END_VERSIONS
     """
 
 }

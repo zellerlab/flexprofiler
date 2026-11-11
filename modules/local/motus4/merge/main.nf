@@ -15,7 +15,7 @@ process MOTUS4_MERGE {
 
     output:
     tuple val(meta), path("*.txt") , optional: true, emit: txt
-    path "versions.yml" , emit: versions
+    tuple val("${task.process}"), val('motus'), eval('motus 2>&1 | sed -n "s/^.*Version: //p"'), emit: versions_motus, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -32,28 +32,12 @@ process MOTUS4_MERGE {
     printf '%s\\n' profiles/* > profile_list.txt
 
     $merge_cmd
-
-    # no way to get the version number without triggering an exit code 2
-    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        motus: \$VERSION
-    END_VERSIONS
     """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.txt
-
-    # no way to get the version number without triggering an exit code 2
-    version=\$(motus 2>&1 | grep "version" | sed "s%^.*version: %%" || true)
-
-    cat <<-end_versions > versions.yml
-    "${task.process}":
-        motus4: \$version
-    end_versions
     """
 
 }

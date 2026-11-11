@@ -18,7 +18,7 @@ process IDTAXA_CLASSIFY {
     tuple val(meta), path("*.idtaxa.profile.tsv"), emit: profile
     // the number of sequences and of assigned sequences, for the read counts
     tuple val(meta), path("*.idtaxa.log")        , emit: log
-    path "versions.yml"                          , emit: versions
+    tuple val("${task.process}"), val('decipher'), eval('Rscript -e "cat(as.character(packageVersion(\\"DECIPHER\\")))"'), emit: versions_decipher, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -80,17 +80,11 @@ process IDTAXA_CLASSIFY {
     ), "${prefix}.idtaxa.profile.tsv")
 
     writeLines(c(paste("Sequences:", length(lineages)), paste("Assigned sequences:", sum(!is.na(lineages)))), "${prefix}.idtaxa.log")
-    writeLines(c('"${task.process}":', paste0("    decipher: ", packageVersion("DECIPHER"))), "versions.yml")
     """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.idtaxa.profile.tsv ${prefix}.idtaxa.log
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        decipher: \$(Rscript -e 'cat(as.character(packageVersion("DECIPHER")))')
-    END_VERSIONS
     """
 }

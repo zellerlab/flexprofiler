@@ -33,7 +33,7 @@ process PATHSEQT2T_QCFILTER {
     tuple val(meta), path("*.qcfilt_unpaired.bam"), emit: unpaired, optional: true
     // the reads after each filter, of each input
     tuple val(meta), path("*.filter_metrics.txt") , emit: metrics
-    path "versions.yml"                           , emit: versions
+    tuple val("${task.process}"), val('gatk4'), eval("gatk --version | sed -n '/GATK.*v/s/.*v//p'"), emit: versions_gatk4, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -103,11 +103,6 @@ process PATHSEQT2T_QCFILTER {
     fi
 
     rm -rf tmp decoys.reverted.tmp.bam *.sbi *.bai
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gatk4: \$(echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//')
-    END_VERSIONS
     """
 
     stub:
@@ -115,10 +110,5 @@ process PATHSEQT2T_QCFILTER {
     """
     touch ${prefix}.unaligned.qcfilt_paired.bam ${prefix}.unaligned.qcfilt_unpaired.bam
     touch ${prefix}.prefilter.unaligned.filter_metrics.txt
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gatk4: \$(echo \$(gatk --version 2>&1) | sed 's/^.*(GATK) v//; s/ .*\$//')
-    END_VERSIONS
     """
 }

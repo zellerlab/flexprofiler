@@ -19,7 +19,7 @@ process VSEARCH_ORIENT {
     // the reads that could not be oriented
     tuple val(meta), path("*.notmatched.fastq.gz") , emit: notmatched
     tuple val(meta), path("*.vsearch_orient.log")  , emit: log
-    path "versions.yml"                            , emit: versions
+    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed "s/vsearch //g;s/,.*//g;s/^v//;s/_.*//"'), emit: versions_vsearch, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -38,11 +38,6 @@ process VSEARCH_ORIENT {
         2> ${prefix}.vsearch_orient.log
 
     gzip -n ${prefix}.oriented.fastq ${prefix}.notmatched.fastq
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        vsearch: \$(vsearch --version 2>&1 | sed -n '1s/^vsearch v\\([0-9.]*\\).*/\\1/p')
-    END_VERSIONS
     """
 
     stub:
@@ -51,10 +46,5 @@ process VSEARCH_ORIENT {
     echo "" | gzip > ${prefix}.oriented.fastq.gz
     echo "" | gzip > ${prefix}.notmatched.fastq.gz
     touch ${prefix}.vsearch_orient.log
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        vsearch: \$(vsearch --version 2>&1 | sed -n '1s/^vsearch v\\([0-9.]*\\).*/\\1/p')
-    END_VERSIONS
     """
 }

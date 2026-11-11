@@ -15,7 +15,7 @@ process READ_COUNTS {
     output:
     path "read_counts.tsv"    , emit: tsv
     path "read_counts_mqc.tsv", emit: mqc
-    path "versions.yml"       , emit: versions
+    tuple val("${task.process}"), val('pandas'), eval('python -c "import pandas; print(pandas.__version__)"'), emit: versions_pandas, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -27,21 +27,11 @@ process READ_COUNTS {
         inputs \\
         read_counts.tsv \\
         read_counts_mqc.tsv
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
-    END_VERSIONS
     """
 
     stub:
     """
     touch read_counts.tsv
     touch read_counts_mqc.tsv
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
-    END_VERSIONS
     """
 }

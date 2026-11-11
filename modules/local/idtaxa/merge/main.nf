@@ -14,7 +14,8 @@ process IDTAXA_MERGE {
 
     output:
     tuple val(meta), path("*.tsv"), emit: tsv
-    path "versions.yml"           , emit: versions
+    tuple val("${task.process}"), val('python'), eval('python --version 2>&1 | sed "s/Python //"'), emit: versions_python, topic: versions
+    tuple val("${task.process}"), val('pandas'), eval('python -c "import pandas; print(pandas.__version__)"'), emit: versions_pandas, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -29,23 +30,11 @@ process IDTAXA_MERGE {
     # command line
     printf '%s\\n' profiles/* > profiles.txt
     idtaxa_merge.py ${prefix} _${meta.id}.idtaxa.profile.tsv profiles.txt ${ranks}
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version 2>&1 | sed 's/Python //')
-        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
-    END_VERSIONS
     """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.lineage.tsv
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version 2>&1 | sed 's/Python //')
-        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
-    END_VERSIONS
     """
 }

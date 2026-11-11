@@ -31,7 +31,7 @@ process PATHSEQT2T_PREFILTER {
     tuple val(meta), path("*.prefilter.decoys.bam")   , emit: decoys, optional: true
     // samtools flagstat of the input: its primary reads are the raw reads of the read counts
     tuple val(meta), path("*.flagstat.tsv")           , emit: flagstat
-    path "versions.yml"                               , emit: versions
+    tuple val("${task.process}"), val('samtools'), eval("samtools version | sed '1!d;s/.* //'"), emit: versions_samtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -57,21 +57,11 @@ process PATHSEQT2T_PREFILTER {
         fi
     fi
     rm -f not_host_aligned.tmp.bam host_aligned.tmp.bam decoys.tmp.bam
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        samtools: \$(samtools version | sed '1!d;s/.* //')
-    END_VERSIONS
     """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.prefilter.unaligned.bam ${prefix}.flagstat.tsv
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        samtools: \$(samtools version | sed '1!d;s/.* //')
-    END_VERSIONS
     """
 }

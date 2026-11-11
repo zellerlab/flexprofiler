@@ -13,7 +13,6 @@ workflow AMPLICON_PREPROCESSING {
     orient_reference // the reference to orient the long reads with (FASTA), [] if not given
 
     main:
-    ch_versions = channel.empty()
     // logs of the steps, for the read counts, with the tool in meta.tool: [ meta, log ]
     ch_read_count_logs = channel.empty()
 
@@ -24,7 +23,6 @@ workflow AMPLICON_PREPROCESSING {
     if (params.perform_amplicon_primertrimming) {
         AMPLICON_PRIMERTRIMMING(reads, orient_reference)
         ch_reads_primertrimmed = AMPLICON_PRIMERTRIMMING.out.reads
-        ch_versions = ch_versions.mix(AMPLICON_PRIMERTRIMMING.out.versions)
         ch_read_count_logs = ch_read_count_logs.mix(AMPLICON_PRIMERTRIMMING.out.read_count_logs)
     }
     else {
@@ -45,7 +43,6 @@ workflow AMPLICON_PREPROCESSING {
 
     if (params.amplicon_pair_handling == 'merged_plus_joined') {
         VSEARCH_MERGEJOIN(ch_reads_for_pairhandling.pe)
-        ch_versions = ch_versions.mix(VSEARCH_MERGEJOIN.out.versions.first())
         ch_read_count_logs = ch_read_count_logs.mix(VSEARCH_MERGEJOIN.out.log.map { meta, log_file -> [meta + [tool: 'vsearch'], log_file] })
         ch_reads_pairhandled = VSEARCH_MERGEJOIN.out.reads
     }
@@ -86,5 +83,4 @@ workflow AMPLICON_PREPROCESSING {
     emit:
     reads           = ch_reads_preprocessed // channel: [ val(meta), [ reads ] ], single-end unless --amplicon_pair_handling none
     read_count_logs = ch_read_count_logs    // channel: [ val(meta), log ], with the tool in meta.tool
-    versions        = ch_versions           // channel: [ versions.yml ]
 }

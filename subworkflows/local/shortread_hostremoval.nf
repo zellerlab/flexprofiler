@@ -15,7 +15,6 @@ workflow SHORTREAD_HOSTREMOVAL {
     index     // /path/to/index
 
     main:
-    ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
 
     if (!params.shortread_hostremoval_index) {
@@ -60,7 +59,6 @@ workflow SHORTREAD_HOSTREMOVAL {
         }
 
     BBMAP_REPAIR_HOSTREMOVAL(ch_unmapped_mates, false)
-    ch_versions = ch_versions.mix(BBMAP_REPAIR_HOSTREMOVAL.out.versions.first())
 
     // Indexing whole BAM for host removal statistics
     if (!params.skip_hostremoval_qc) {
@@ -81,6 +79,5 @@ workflow SHORTREAD_HOSTREMOVAL {
     emit:
     reads           = BBMAP_REPAIR_HOSTREMOVAL.out.repaired.mix(ch_unmapped.single_end) // channel: [ val(meta), [ reads ] ]
     read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], with the tool in meta.tool
-    versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }

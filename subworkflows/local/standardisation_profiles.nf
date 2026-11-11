@@ -16,7 +16,6 @@ workflow STANDARDISATION_PROFILES {
     databases
 
     main:
-    ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
 
     /*
@@ -47,7 +46,6 @@ workflow STANDARDISATION_PROFILES {
     ch_profiles_for_motus4 = groupProfiles(ch_input_profiles.motus4)
     ch_input_for_motus4merge = combineProfilesWithDatabase(ch_profiles_for_motus4, ch_input_databases.motus4)
     MOTUS4_MERGE(ch_input_for_motus4merge.profile, ch_input_for_motus4merge.db)
-    ch_versions = ch_versions.mix(MOTUS4_MERGE.out.versions)
     
     // mOTUs v3
     ch_profiles_for_motus3 = groupProfiles(ch_input_profiles.motus3)
@@ -56,25 +54,20 @@ workflow STANDARDISATION_PROFILES {
     // cayman
     ch_profiles_for_cayman = groupProfilesByCategory(ch_input_profiles.cayman)
     CAYMAN_MERGE(ch_profiles_for_cayman)
-    ch_versions = ch_versions.mix(CAYMAN_MERGE.out.versions.first())
 
     // gqlib, merged separately for each category (gene_counts, KEGG_ko, ...) of each database and annotation
     ch_profiles_for_gqlib = groupProfilesByCategory(ch_input_profiles.gqlib.transpose())
     GQLIB_MERGE(ch_profiles_for_gqlib)
-    ch_versions = ch_versions.mix(GQLIB_MERGE.out.versions.first())
 
     // IDTAXA, merged separately for each training set, one table per rank
     ch_profiles_for_idtaxa = groupProfiles(ch_input_profiles.idtaxa)
     IDTAXA_MERGE(ch_profiles_for_idtaxa)
-    ch_versions = ch_versions.mix(IDTAXA_MERGE.out.versions.first())
 
     // Kraken2, merged separately for each database. Kraken2 counts a pair as one fragment: the pairs are counted twice,
     // and added to the single reads of the same sample
     KRAKEN2_MERGE(groupProfilesByEndedness(ch_input_profiles.kraken2))
-    ch_versions = ch_versions.mix(KRAKEN2_MERGE.out.versions.first())
 
     emit:
-    versions = ch_versions
     mqc      = ch_multiqc_files
 }
 

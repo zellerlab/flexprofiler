@@ -38,7 +38,8 @@ process PATHSEQT2T_T2TFILTER {
     tuple val(meta), path("*.t2t.{paired,unpaired}.bam") , emit: bam     , optional: true
     // the reads before and after the filter, for the read counts
     tuple val(meta), path("*.t2tfilter.log")             , emit: log
-    path "versions.yml"                                  , emit: versions
+    tuple val("${task.process}"), val('bwa'), eval('bwa 2>&1 | sed -n "s/^Version: //p"'), emit: versions_bwa, topic: versions
+    tuple val("${task.process}"), val('samtools'), eval("samtools version | sed '1!d;s/.* //'"), emit: versions_samtools, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -135,12 +136,6 @@ process PATHSEQT2T_T2TFILTER {
     Dropped reads kept without their mate: \$dropped_mates
     Retained unpaired reads: \$retained_unpaired
     END_LOG
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bwa: \$(bwa 2>&1 | sed -n "s/^Version: //p")
-        samtools: \$(samtools version | sed '1!d;s/.* //')
-    END_VERSIONS
     """
 
     stub:
@@ -153,11 +148,5 @@ process PATHSEQT2T_T2TFILTER {
     fi
     echo "" | gzip > ${prefix}.t2tfilt_unpaired.fastq.gz
     touch ${prefix}.t2tfilter.log
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        bwa: \$(bwa 2>&1 | sed -n "s/^Version: //p")
-        samtools: \$(samtools version | sed '1!d;s/.* //')
-    END_VERSIONS
     """
 }

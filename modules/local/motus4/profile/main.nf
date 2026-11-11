@@ -16,7 +16,7 @@ process MOTUS4_PROFILE {
     tuple val(meta), path("*.bam"), optional: true, emit: bam
     tuple val(meta), path("*.mgc"), optional: true, emit: mgc
     tuple val(meta), path("*.log")                , emit: log
-    path "versions.yml"           , emit: versions
+    tuple val("${task.process}"), val('motus4'), eval('motus 2>&1 | sed -n "s/^.*Version: //p"'), emit: versions_motus4, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -42,14 +42,6 @@ process MOTUS4_PROFILE {
         cat ${prefix}.log >&2
         exit \$exit_code
     }
-    
-    # no way to get the version number without triggering an exit code 2
-    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        motus4: \$VERSION
-    END_VERSIONS
     """
 
     stub:
@@ -58,13 +50,5 @@ process MOTUS4_PROFILE {
     """
     touch ${prefix}.out
     touch ${prefix}.log
-
-    # no way to get the version number without triggering an exit code 2
-    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        motus4: \$VERSION
-    END_VERSIONS
     """
 }

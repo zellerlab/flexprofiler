@@ -9,8 +9,6 @@ workflow READ_COUNTING {
     logs // [ [ meta ], log ], the logs of the steps, with the tool in meta.tool (the kind of log for read_counts.py)
 
     main:
-    ch_versions = channel.empty()
-
     // The [ meta, log ] of each step are split into the logs and the rows of the read counts manifest. Logs of
     // different steps can have the same name, so each is renamed, the manifest giving the new name: a hash of its path,
     // unique, and stable with -resume, the work directories being kept.
@@ -44,10 +42,8 @@ workflow READ_COUNTING {
         .collect()
 
     READ_COUNTS(ch_read_count_files, ch_read_count_manifest)
-    ch_versions = ch_versions.mix(READ_COUNTS.out.versions)
 
     emit:
     tsv      = READ_COUNTS.out.tsv // channel: path(read_counts.tsv)
     mqc      = READ_COUNTS.out.mqc // channel: path(read_counts_mqc.tsv)
-    versions = ch_versions         // channel: [ versions.yml ]
 }

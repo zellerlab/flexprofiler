@@ -18,7 +18,7 @@ process KRAKEN2_MERGE {
     tuple val(meta), path("*.reads_clade.tsv"), emit: reads_clade
     tuple val(meta), path("*.reads_taxon.tsv"), emit: reads_taxon
     tuple val(meta), path("*.taxonomy.tsv")   , emit: taxonomy
-    path "versions.yml"                       , emit: versions
+    tuple val("${task.process}"), val('pandas'), eval('python -c "import pandas; print(pandas.__version__)"'), emit: versions_pandas, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -33,21 +33,11 @@ process KRAKEN2_MERGE {
         pairs \\
         single_reads \\
         ${prefix}
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
-    END_VERSIONS
     """
 
     stub:
     def prefix = task.ext.prefix ?: "kraken2_${meta.id}"
     """
     touch ${prefix}.reads_clade.tsv ${prefix}.reads_taxon.tsv ${prefix}.taxonomy.tsv
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
-    END_VERSIONS
     """
 }

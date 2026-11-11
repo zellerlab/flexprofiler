@@ -11,7 +11,6 @@ include { getPipelineCommit      } from './utils_zellerlab_flexprofiler_pipeline
 
 workflow MULTIQC_REPORTING {
     take:
-    versions      // channel: [ path(versions.yml) ], the versions not emitted to the versions topic
     multiqc_files // channel: [ path ], the reports of the steps for MultiQC
 
     main:
@@ -43,7 +42,7 @@ workflow MULTIQC_REPORTING {
     // re-indented with 2, so that the file is consistent and the added entry does not depend on the indentation of the
     // nf-core utils (a mismatched one would make the YAML invalid)
     def pipeline_commit = getPipelineCommit()
-    ch_collated_versions = softwareVersionsToYAML(versions.mix(topic_versions.versions_file))
+    ch_collated_versions = softwareVersionsToYAML(topic_versions.versions_file)
         .map { version ->
             if (!version.startsWith('Workflow:')) {
                 return version

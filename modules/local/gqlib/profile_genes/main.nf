@@ -17,7 +17,7 @@ process GQLIB_PROFILE_GENES {
     // all the profiles: one per functional category of the annotation database, plus the gene counts
     tuple val(meta), path("*.txt.gz"               ), emit: profiles
     tuple val(meta), path("*.gqlib.log"            ), emit: log
-    path "versions.yml" , emit: versions
+    tuple val("${task.process}"), val('gqlib'), eval('python -c "import gqlib; print(gqlib.__version__)"'), emit: versions_gqlib, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -38,13 +38,6 @@ process GQLIB_PROFILE_GENES {
     # moved to a subdirectory so that it is not captured with the profiles
     mkdir aln_stats
     mv ${prefix}.aln_stats.txt.gz aln_stats/
-
-    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gqlib: \$VERSION
-    END_VERSIONS
     """
 
     stub:
@@ -54,13 +47,6 @@ process GQLIB_PROFILE_GENES {
     mkdir aln_stats
     touch "aln_stats/${prefix}.aln_stats.txt.gz"
     touch "${prefix}.gqlib.log"
-
-    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gqlib: \$VERSION
-    END_VERSIONS
     """
 
 }

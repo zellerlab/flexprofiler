@@ -14,7 +14,7 @@ process VSEARCH_FASTQFILTER {
     output:
     tuple val(meta), path("*.filtered.fastq.gz")      , emit: reads
     tuple val(meta), path("*.vsearch_fastqfilter.log"), emit: log
-    path "versions.yml"                               , emit: versions
+    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed "s/vsearch //g;s/,.*//g;s/^v//;s/_.*//"'), emit: versions_vsearch, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -32,11 +32,6 @@ process VSEARCH_FASTQFILTER {
         2> ${prefix}.vsearch_fastqfilter.log
 
     gzip -n ${prefix}.filtered.fastq
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        vsearch: \$(vsearch --version 2>&1 | sed -n '1s/^vsearch v\\([0-9.]*\\).*/\\1/p')
-    END_VERSIONS
     """
 
     stub:
@@ -44,10 +39,5 @@ process VSEARCH_FASTQFILTER {
     """
     echo "" | gzip > ${prefix}.filtered.fastq.gz
     touch ${prefix}.vsearch_fastqfilter.log
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        vsearch: \$(vsearch --version 2>&1 | sed -n '1s/^vsearch v\\([0-9.]*\\).*/\\1/p')
-    END_VERSIONS
     """
 }

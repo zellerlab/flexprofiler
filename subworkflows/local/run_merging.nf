@@ -9,8 +9,6 @@ workflow RUN_MERGING {
     reads // [ [ meta ], [ reads ] ], the preprocessed reads of each run
 
     main:
-    ch_versions = channel.empty()
-
     if (params.perform_runmerging) {
         ch_reads_for_cat_branch = reads
             .map { meta, input_reads ->
@@ -46,5 +44,4 @@ workflow RUN_MERGING {
 
     emit:
     reads    = ch_reads_runmerged // channel: [ val(meta), [ reads ] ], one per sample and library strategy with --perform_runmerging, else per run
-    versions = ch_versions        // channel: [ versions.yml ]
 }

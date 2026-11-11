@@ -13,7 +13,7 @@ process VSEARCH_MERGEJOIN {
     output:
     tuple val(meta), path("*.mergejoin.fastq.gz"), emit: reads
     tuple val(meta), path("*.vsearch.log")       , emit: log
-    path "versions.yml"                          , emit: versions
+    tuple val("${task.process}"), val('vsearch'), eval('vsearch --version 2>&1 | head -n 1 | sed "s/vsearch //g;s/,.*//g;s/^v//;s/_.*//"'), emit: versions_vsearch, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -43,11 +43,6 @@ process VSEARCH_MERGEJOIN {
         2>> ${prefix}.vsearch.log
 
     cat merged.fastq joined.fastq | gzip -n > ${prefix}.mergejoin.fastq.gz
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        vsearch: \$(vsearch --version 2>&1 | sed -n '1s/^vsearch v\\([0-9.]*\\).*/\\1/p')
-    END_VERSIONS
     """
 
     stub:
@@ -55,10 +50,5 @@ process VSEARCH_MERGEJOIN {
     """
     echo "" | gzip > ${prefix}.mergejoin.fastq.gz
     touch ${prefix}.vsearch.log
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        vsearch: \$(vsearch --version 2>&1 | sed -n '1s/^vsearch v\\([0-9.]*\\).*/\\1/p')
-    END_VERSIONS
     """
 }

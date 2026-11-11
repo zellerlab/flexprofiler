@@ -10,7 +10,6 @@ workflow LONGREAD_PREPROCESSING {
     reads // [ [ meta ], [ reads ] ], long reads, PacBio
 
     main:
-    ch_versions = channel.empty()
     ch_multiqc_files = channel.empty()
     // logs of the steps, for the read counts, with the tool in meta.tool: [ meta, log ]
     ch_read_count_logs = channel.empty()
@@ -34,7 +33,6 @@ workflow LONGREAD_PREPROCESSING {
     // conf/modules.config) or with Ns are removed (vsearch), and then those with a base of quality below 3 (BBDuk, as
     // vsearch has no such filter) (ext.args)
     VSEARCH_FASTQFILTER(ch_reads_by_platform.pacbio)
-    ch_versions = ch_versions.mix(VSEARCH_FASTQFILTER.out.versions.first())
     ch_read_count_logs = ch_read_count_logs.mix(VSEARCH_FASTQFILTER.out.log.map { meta, log_file -> [meta + [tool: 'vsearch_fastqfilter'], log_file] })
 
     BBDUK_PACBIO(VSEARCH_FASTQFILTER.out.reads, [])
@@ -45,6 +43,5 @@ workflow LONGREAD_PREPROCESSING {
     emit:
     reads           = ch_processed_reads.mix(ch_reads_by_platform.other) // channel: [ val(meta), [ reads ] ]
     read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], with the tool in meta.tool
-    versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }

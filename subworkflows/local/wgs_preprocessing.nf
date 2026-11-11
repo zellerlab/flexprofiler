@@ -12,7 +12,6 @@ workflow WGS_PREPROCESSING {
     shortread_index        // the bowtie2 index of the host reference, [] if not given
 
     main:
-    ch_versions = channel.empty()
     ch_multiqc_files = channel.empty()
     // logs of the steps, for the read counts, with the tool in meta.tool: [ meta, log ]
     ch_read_count_logs = channel.empty()
@@ -24,7 +23,6 @@ workflow WGS_PREPROCESSING {
     if (params.perform_shortread_hostremoval) {
         SHORTREAD_HOSTREMOVAL(reads, reference, shortread_index)
         ch_reads_hostremoved = SHORTREAD_HOSTREMOVAL.out.reads
-        ch_versions = ch_versions.mix(SHORTREAD_HOSTREMOVAL.out.versions)
         ch_multiqc_files = ch_multiqc_files.mix(SHORTREAD_HOSTREMOVAL.out.mqc)
         ch_read_count_logs = ch_read_count_logs.mix(SHORTREAD_HOSTREMOVAL.out.read_count_logs)
     }
@@ -35,6 +33,5 @@ workflow WGS_PREPROCESSING {
     emit:
     reads           = ch_reads_hostremoved // channel: [ val(meta), [ reads ] ]
     read_count_logs = ch_read_count_logs   // channel: [ val(meta), log ], with the tool in meta.tool
-    versions        = ch_versions          // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }

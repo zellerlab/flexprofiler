@@ -48,7 +48,7 @@ Data flow in `workflows/flexprofiler.nf`:
 
 Conventions:
 
-- Subworkflows emit `reads`, `versions`, `mqc` and `read_count_logs`, which the main workflow mixes together.
+- Subworkflows emit `reads`, `mqc` and `read_count_logs`, which the main workflow mixes together. Software versions are not passed through channels: every module (nf-core and local) emits `tuple val("${task.process}"), val(<tool>), eval(<cmd>), emit: versions_<tool>, topic: versions`, collected by `MULTIQC_REPORTING` from `channel.topic("versions")`.
 - All process options (`ext.args`, `ext.prefix`, resources, `publishDir`) are in `conf/modules.config` via `withName`, not in the modules. The default publish dir is the first `_`-token of the process name, lowercased.
 - Databases ending in `.tar.gz` are untarred once per file, only if their tool is enabled.
 - `conf/zellerlab.config` and `assets/zellerlab_*_databases.csv` hold the lab's institutional profiles (e.g. `zellerlab_shark`). `utils/` has helper scripts (database download, SLURM launcher, samplesheet maker).

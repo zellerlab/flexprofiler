@@ -51,7 +51,6 @@ workflow FLEXPROFILER {
 
     main:
 
-    ch_versions = channel.empty()
     ch_multiqc_files = channel.empty()
 
     // Preprocessing auxiliary file input channel preperation
@@ -98,7 +97,6 @@ workflow FLEXPROFILER {
     if (params.perform_repair_pe_order) {
         BBMAP_REPAIR(ch_input.fastq_pe, Channel.value(false))
         ch_fastq_repaired = BBMAP_REPAIR.out.repaired.mix(ch_input.fastq_se)
-        ch_versions = ch_versions.mix(BBMAP_REPAIR.out.versions.first())
     }
     else {
         ch_fastq_repaired = ch_input.fastq_pe.mix(ch_input.fastq_se)
@@ -150,10 +148,8 @@ workflow FLEXPROFILER {
 
     // the preprocessing of each read type (short/long), whatever the library strategy
     SHORTREAD_PREPROCESSING(ch_fastq_repaired, adapterlist)
-    ch_versions = ch_versions.mix(SHORTREAD_PREPROCESSING.out.versions)
 
     LONGREAD_PREPROCESSING(ch_input.pacbio)
-    ch_versions = ch_versions.mix(LONGREAD_PREPROCESSING.out.versions)
 
     /*
         SUBWORKFLOW: LIBRARY STRATEGY PREPROCESSING
@@ -173,10 +169,8 @@ workflow FLEXPROFILER {
     }
 
     WGS_PREPROCESSING(ch_reads_by_strategy.wgs, ch_reference, ch_shortread_reference_index)
-    ch_versions = ch_versions.mix(WGS_PREPROCESSING.out.versions)
 
     AMPLICON_PREPROCESSING(ch_reads_by_strategy.amplicon, ch_amplicon_orient_reference)
-    ch_versions = ch_versions.mix(AMPLICON_PREPROCESSING.out.versions)
 
     ch_reads_preprocessed = WGS_PREPROCESSING.out.reads.mix(AMPLICON_PREPROCESSING.out.reads)
 
@@ -185,7 +179,6 @@ workflow FLEXPROFILER {
     */
 
     RUN_MERGING(ch_reads_preprocessed)
-    ch_versions = ch_versions.mix(RUN_MERGING.out.versions)
 
     /*
         SUBWORKFLOW: PATHSEQ-T2T HOST FILTERING
@@ -200,7 +193,6 @@ workflow FLEXPROFILER {
         ch_pathseq_host_dir,
         ch_pathseq_decoys_bed,
     )
-    ch_versions = ch_versions.mix(PATHSEQ_T2T.out.versions)
     ch_multiqc_files = ch_multiqc_files.mix(PATHSEQ_T2T.out.mqc.collect { it[1] }.ifEmpty([]))
     // the paired-end reads left without their mate, for the profilers that can use them
     ch_singletons = PATHSEQ_T2T.out.singletons
@@ -224,7 +216,6 @@ workflow FLEXPROFILER {
     */
 
     PROFILING(ch_reads_runmerged, ch_singletons, ch_final_dbs)
-    ch_versions = ch_versions.mix(PROFILING.out.versions)
 
     /*
         SUBWORKFLOW: READ COUNTS
@@ -239,14 +230,12 @@ workflow FLEXPROFILER {
             .mix(PATHSEQ_T2T.out.read_count_logs)
             .mix(PROFILING.out.read_count_logs)
     )
-    ch_versions = ch_versions.mix(READ_COUNTING.out.versions)
 
     /*
         SUBWORKFLOW: PROFILING STANDARDISATION
     */
     if (params.run_profile_standardisation) {
         STANDARDISATION_PROFILES(PROFILING.out.profiles, ch_final_dbs)
-        ch_versions = ch_versions.mix(STANDARDISATION_PROFILES.out.versions)
     }
 
     /*
@@ -265,10 +254,9 @@ workflow FLEXPROFILER {
         ch_multiqc_files = ch_multiqc_files.mix(STANDARDISATION_PROFILES.out.mqc.collect { it[1] }.ifEmpty([]))
     }
 
-    MULTIQC_REPORTING(ch_versions, ch_multiqc_files)
+    MULTIQC_REPORTING(ch_multiqc_files)
 
     emit:
     multiqc_report = MULTIQC_REPORTING.out.report // channel: /path/to/multiqc_report.html
-    versions       = ch_versions // channel: [ path(versions.yml) ]
 }
 

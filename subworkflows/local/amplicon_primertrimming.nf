@@ -15,7 +15,6 @@ workflow AMPLICON_PRIMERTRIMMING {
     orient_reference // the reference to orient the long reads with (FASTA), [] if not given
 
     main:
-    ch_versions = channel.empty()
     ch_read_count_logs = channel.empty()
     ch_primers_tsv = channel.empty()
 
@@ -36,7 +35,6 @@ workflow AMPLICON_PRIMERTRIMMING {
         // and end with the reverse complement of the reverse primer. The reads that cannot be oriented (not of the gene
         // of the reference) are dropped
         VSEARCH_ORIENT(ch_reads_by_type.longreads, orient_reference)
-        ch_versions = ch_versions.mix(VSEARCH_ORIENT.out.versions.first())
         ch_read_count_logs = ch_read_count_logs.mix(VSEARCH_ORIENT.out.log.map { meta, log_file -> [meta + [tool: 'vsearch_orient'], log_file] })
         ch_reads_for_detection = ch_reads_by_type.shortreads
             .mix(VSEARCH_ORIENT.out.reads.map { meta, oriented_reads -> [meta, [oriented_reads]] })
@@ -52,7 +50,6 @@ workflow AMPLICON_PRIMERTRIMMING {
             [input_reads].flatten().indexed(1).collect { mate, fastq -> [meta + [mate: mate], fastq, extra_primers] }
         }
         PIMENTO_STD(ch_mates)
-        ch_versions = ch_versions.mix(PIMENTO_STD.out.versions.first())
 
         // the primer files of the mates of a run, grouped again, in the order of the mates (<prefix>_<mate>_std_primers.fasta),
         // so that the primers, and the cutadapt arguments, are always in the same order
@@ -133,7 +130,6 @@ workflow AMPLICON_PRIMERTRIMMING {
     reads           = ch_trimmed_reads   // channel: [ val(meta), [ reads ] ]
     read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], with the tool in meta.tool
     primers         = ch_primers_tsv     // channel: path(primers.tsv), only with the primers found by PIMENTO
-    versions        = ch_versions        // channel: [ versions.yml ]
 }
 
 // Custom Functions

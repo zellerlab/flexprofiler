@@ -20,7 +20,6 @@ workflow PROFILING {
     databases  // [ [ meta ], path ]
 
     main:
-    ch_versions = Channel.empty()
     ch_multiqc_files = Channel.empty()
     // count tables
     ch_raw_profiles = Channel.empty()
@@ -144,7 +143,6 @@ workflow PROFILING {
             }
 
         MOTUS4_PROFILE(ch_input_for_motus4_profile.reads, ch_input_for_motus4_profile.db)
-        ch_versions = ch_versions.mix(MOTUS4_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(MOTUS4_PROFILE.out.out)
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS4_PROFILE.out.log)
         ch_read_count_logs = ch_read_count_logs.mix(MOTUS4_PROFILE.out.log)
@@ -192,7 +190,6 @@ workflow PROFILING {
             }
 
         CAYMAN_PROFILE(ch_input_for_cayman.bam, ch_input_for_cayman.annot)
-        ch_versions = ch_versions.mix(CAYMAN_PROFILE.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(CAYMAN_PROFILE.out.out)
         ch_read_count_logs = ch_read_count_logs.mix(CAYMAN_PROFILE.out.log.filter(is_first_annot_log))
     }
@@ -205,7 +202,6 @@ workflow PROFILING {
             }
 
         GQLIB_PROFILE_GENES(ch_input_for_gqlib.bam, ch_input_for_gqlib.annot)
-        ch_versions = ch_versions.mix(GQLIB_PROFILE_GENES.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(GQLIB_PROFILE_GENES.out.profiles)
         ch_read_count_logs = ch_read_count_logs.mix(GQLIB_PROFILE_GENES.out.log.filter(is_first_annot_log))
     }
@@ -218,7 +214,6 @@ workflow PROFILING {
             }
 
         IDTAXA_CLASSIFY(ch_input_for_idtaxa.reads, ch_input_for_idtaxa.db)
-        ch_versions = ch_versions.mix(IDTAXA_CLASSIFY.out.versions.first())
         ch_raw_profiles = ch_raw_profiles.mix(IDTAXA_CLASSIFY.out.profile)
         ch_read_count_logs = ch_read_count_logs.mix(IDTAXA_CLASSIFY.out.log)
     }
@@ -249,7 +244,6 @@ workflow PROFILING {
     emit:
     profiles        = ch_raw_profiles // channel: [ val(meta), [ reads ] ] - should be text files or biom
     read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], the logs of motus4, motus3, cayman, gqlib (of the first annotation of each gene catalogue) and idtaxa (with meta.db_name), with the tool in meta.tool
-    versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }
 

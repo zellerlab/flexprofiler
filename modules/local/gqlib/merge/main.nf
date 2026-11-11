@@ -14,7 +14,7 @@ process GQLIB_MERGE {
 
     output:
     tuple val(meta), path("*.txt.gz"), emit: txt
-    path "versions.yml" , emit: versions
+    tuple val("${task.process}"), val('gqlib'), eval('python -c "import gqlib; print(gqlib.__version__)"'), emit: versions_gqlib, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -28,26 +28,12 @@ process GQLIB_MERGE {
     # command line
     printf '%s\\n' profiles/* > profiles.txt
     gqlib_merge.py ${prefix}.${meta.category} _${meta.id}.${meta.category}.txt.gz profiles.txt
-
-    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gqlib: \$VERSION
-    END_VERSIONS
     """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch "${prefix}.${meta.category}.uniq_raw.txt.gz"
-
-    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gqlib: \$VERSION
-    END_VERSIONS
     """
 
 }

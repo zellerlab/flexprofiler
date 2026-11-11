@@ -28,7 +28,6 @@ workflow PATHSEQ_T2T {
     decoys_bed      // /path/to/bed of the viral decoy contigs of GRCh38, [] to not rescue the reads aligned to them
 
     main:
-    ch_versions = channel.empty()
     ch_multiqc_files = channel.empty()
 
     // without --pathseq_t2t the reads are passed through unchanged
@@ -58,7 +57,6 @@ workflow PATHSEQ_T2T {
         BWA_GRCH38(reads, ch_grch38_index, [[], []], false)
 
         PATHSEQT2T_PREFILTER(BWA_GRCH38.out.bam, decoys_bed)
-        ch_versions = ch_versions.mix(PATHSEQT2T_PREFILTER.out.versions.first())
 
         /*
             HOST FILTERING
@@ -70,7 +68,6 @@ workflow PATHSEQ_T2T {
             .map { meta, unaligned, decoys -> [meta, unaligned, decoys ?: []] }
 
         PATHSEQT2T_QCFILTER(ch_reads_for_qcfilter, host_dir)
-        ch_versions = ch_versions.mix(PATHSEQT2T_QCFILTER.out.versions.first())
 
         // PathSeqFilterSpark writes no paired or unpaired reads if none is left: the metrics are always written
         ch_reads_for_t2tfilter = PATHSEQT2T_QCFILTER.out.metrics
@@ -79,7 +76,6 @@ workflow PATHSEQ_T2T {
             .map { meta, _metrics, paired, unpaired -> [meta, paired ?: [], unpaired ?: []] }
 
         PATHSEQT2T_T2TFILTER(ch_reads_for_t2tfilter, ch_t2t_index, decoys_bed)
-        ch_versions = ch_versions.mix(PATHSEQT2T_T2TFILTER.out.versions.first())
 
         // paired-end reads: the pairs, the reads left without their mate (singletons) being kept apart for the profilers
         // that can use them; single-end reads: all the reads are unpaired
@@ -109,6 +105,5 @@ workflow PATHSEQ_T2T {
     reads           = ch_reads_filtered     // channel: [ val(meta), [ reads ] ], the pairs, or the single-end reads
     singletons      = ch_singletons         // channel: [ val(meta), fastq ], paired-end reads left without their mate
     read_count_logs = ch_read_count_logs    // channel: [ val(meta), log ], with the tool in meta.tool
-    versions        = ch_versions           // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
 }

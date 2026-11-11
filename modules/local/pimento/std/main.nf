@@ -16,7 +16,7 @@ process PIMENTO_STD {
     // empty if no primer was found
     tuple val(meta), path("*_std_primers.fasta"), emit: primers
     tuple val(meta), path("*_std_primer_out.txt"), emit: out
-    path "versions.yml", emit: versions
+    tuple val("${task.process}"), val('pimento'), eval("pimento --version 2>&1 | sed -n 's/.*version //p'"), emit: versions_pimento, topic: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -34,21 +34,11 @@ process PIMENTO_STD {
     """
     ${library_setup}
     pimento std -i ${reads} -o ${prefix} ${library} ${args}
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        pimento: \$(pimento --version 2>&1 | sed -n 's/.*version //p')
-    END_VERSIONS
     """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}_std_primers.fasta ${prefix}_std_primer_out.txt
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        pimento: \$(pimento --version 2>&1 | sed -n 's/.*version //p')
-    END_VERSIONS
     """
 }
