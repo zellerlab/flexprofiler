@@ -1,16 +1,22 @@
 #!/bin/bash
+#SBATCH --job-name=pull_images
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=8G
+#SBATCH --time=1-00:00:00
 # Pull all the container images of the pipeline into the apptainer cache of the zellerlab_shark profile (shared by the
-# lab), so that the runs find them there and do not download them. Run it on a login node of SHARK, once for each new
-# version of the pipeline:
+# lab), so that the runs find them there and do not download them. Run it once for each new version of the pipeline,
+# as a job:
 #
-#   bash utils/pull_images.sh
+#   sbatch utils/pull_images.sh
 #
-# The images already in the cache are skipped. The list of the images comes from the pipeline itself (nextflow
-# inspect), for all its processes, also those that a run does not use, and the cache from the zellerlab_shark profile.
+# (or with bash on a login node). The images already in the cache are skipped. The list of the images comes from the
+# pipeline itself (nextflow inspect), for all its processes, also those that a run does not use, and the cache from the
+# zellerlab_shark profile.
 set -euo pipefail
 
-# be sure that this points to the pipeline version you want to run (as VERSION in run_shark.sh)
-VERSION="0.0.5"
+# be sure that this points to the pipeline version you want to run (as VERSION in run_shark.sh): a release tag, a
+# branch or a commit
+VERSION="95cb6f1909b836fcba097e6c86f8924d6518c392"
 PROFILE="zellerlab_shark"
 
 # as in run_shark.sh
@@ -22,6 +28,10 @@ export NXF_VER="26.10.5"
 
 # the cache is shared by the lab: the images are made writable by the group
 umask 002
+
+# nextflow inspect writes a work directory and a log where it is run: keep them out of the submission directory
+RUN_DIR=$(mktemp -d)
+cd "$RUN_DIR"
 
 PIPELINE="zellerlab/flexprofiler"
 nextflow pull "$PIPELINE" -r "$VERSION"
@@ -40,27 +50,43 @@ if [ -z "$IMAGES" ]; then
     exit 1
 fi
 
-# a partly downloaded image is removed if the script stops
+# a partly downloaded image and the run directory are removed if the script stops, also when SLURM cancels the job or
+# it reaches its time limit (SIGTERM)
 TMP_IMAGE=""
-trap 'if [ -n "$TMP_IMAGE" ]; then rm -f "$CACHE_DIR/$TMP_IMAGE"; fi' EXIT
+cleanup() {
+    if [ -n "$TMP_IMAGE" ]; then rm -f "$CACHE_DIR/$TMP_IMAGE"; fi
+    rm -rf "$RUN_DIR"
+}
+trap cleanup EXIT
+trap 'exit 143' TERM
+trap 'exit 130' INT
 
 pulled=0
 cached=0
 for image in $IMAGES; do
     # the name Nextflow gives to the image in the cache (SingularityCache.simpleName): the URL without its scheme, with
-    # ':' and '/' replaced by '-', and the extension .img
+    # ':' and '/' replaced by '-', and the extension .img (.sif for the images named *.sif)
     name="${image#*://}"
+    ext=".img"
+    if [[ "$name" == *.sif:* ]]; then
+        ext=".sif"
+        name="${name/.sif:/-}"
+    elif [[ "$name" == *.sif ]]; then
+        ext=".sif"
+        name="${name%.sif}"
+    fi
     name="${name//:/-}"
-    name="${name//\//-}.img"
+    name="${name//\//-}$ext"
     if [ -s "$CACHE_DIR/$name" ]; then
         echo "cached:  $image"
         cached=$((cached + 1))
         continue
     fi
     echo "pulling: $image"
-    # pulled to a temporary name and renamed when complete, as Nextflow does, so that a run never finds a partial image
+    # pulled to a temporary name and renamed when complete, as Nextflow does, so that a run never finds a partial image;
+    # without the apptainer cache, which would keep a second copy of each image in the home
     TMP_IMAGE="$name.pulling.$$"
-    (cd "$CACHE_DIR" && apptainer pull --name "$TMP_IMAGE" "$image" > /dev/null)
+    (cd "$CACHE_DIR" && apptainer pull --disable-cache --name "$TMP_IMAGE" "$image" > /dev/null)
     mv "$CACHE_DIR/$TMP_IMAGE" "$CACHE_DIR/$name"
     TMP_IMAGE=""
     pulled=$((pulled + 1))

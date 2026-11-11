@@ -81,12 +81,12 @@ For more details and further functionality, please refer to the [usage documenta
 
 To use **zellerlab/flexprofiler** you need the databases that the profiling tools that you want to run require.
 These can be downloaded using [this script](utils/fetch_databases.sh), which requires as argument the path where the databases will be downloaded, and optionally the number of cpus.
-The gqlib database is built by annotating the gene catalogue with eggNOG-mapper, which takes long: set `SKIP_GQLIB=1` to skip it. This part of the script has not been tested.
+Each database is downloaded only on request, by setting its variable to 1: `FETCH_MOTUS4` (mOTUs 4.0.4), `FETCH_MOTUS3` (mOTUs 3.1), `FETCH_CAYMAN` (the GMGC10 human gut gene catalogue with its bwa index and the Cayman annotation), `FETCH_GQLIB` (the gqlib database, built by annotating the gene catalogue with eggNOG-mapper, which takes long; not tested), `FETCH_PATHSEQ_T2T` (the references of `--pathseq_t2t`, ~200 GB) and `FETCH_KRAKEN2` (the Kraken2 PlusPF 2024-12-28 database, ~75 GB).
 See the [database documentation](docs/databases.md) for the details.
 The script also generates a `flexprofiler_databases.csv` file in the local directory, which can be used in input for the pipeline.
 
 ```bash
-fetch_databases.sh <out_database_path> [cpus]
+FETCH_MOTUS4=1 FETCH_CAYMAN=1 fetch_databases.sh <out_database_path> [cpus]
 ```
 
 > [!IMPORTANT]

@@ -30,7 +30,7 @@ The following profiles are available:
 All the pipeline steps are set up to use appropriate Apptainer containers, so you need to have the apptainer profile enabled (see above; `zellerlab_shark` enables it) and the apptainer program should be available in your environment (for the SHARK cluster if you use [this script](../utils/run_shark.sh) the apptainer module is automatically loaded so you don't need to do anything).
 The newest Nextflow module of SHARK (25.04.6) is older than the version the pipeline requires: the script sets `NXF_VER`, so that the Nextflow launcher downloads the right version the first time (to `~/.nextflow/framework`).
 
-The images are kept in the apptainer cache shared by the lab (see `zellerlab_shark`). To download all of them at once, e.g. after a new version of the pipeline, so that the runs do not have to, run [this script](../utils/pull_images.sh) on a login node of SHARK (`bash utils/pull_images.sh`, with `VERSION` set as in `run_shark.sh`): it skips the images already in the cache.
+The images are kept in the apptainer cache shared by the lab (see `zellerlab_shark`). To download all of them at once, e.g. after a new version of the pipeline, so that the runs do not have to, submit [this script](../utils/pull_images.sh) on SHARK (`sbatch utils/pull_images.sh`, with `VERSION` set as in `run_shark.sh`): it skips the images already in the cache.
 
 For some steps Conda/mamba/micromamba is also required.
 This need to be installed in your system and available in the `$PATH`.
