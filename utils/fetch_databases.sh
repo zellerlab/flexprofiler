@@ -41,14 +41,22 @@ CPUS=${2:-8}
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "${TMPDIR}"' EXIT
 
-# bwa and gqlib, used for the gene catalogue, gqlib and PathSeq-T2T
-TOOLSDIR=${TMPDIR}/tools
+# bwa, for the indexes of the gene catalogue and of the PathSeq-T2T references, and gqlib, for its database: in
+# separate environments, as bwa 0.7.19 and gqlib 2.14.4 cannot be installed together (zlib versions)
+BWADIR=${TMPDIR}/bwa
 if [[ ${FETCH_CAYMAN} == 1 || ${FETCH_GQLIB} == 1 || ${FETCH_PATHSEQ_T2T} == 1 ]] ; then
     micromamba create -y \
-        -p ${TOOLSDIR} \
+        -p ${BWADIR} \
         -c bioconda \
         -c conda-forge \
-        'bwa=0.7.19' \
+        'bwa=0.7.19'
+fi
+GQLIBDIR=${TMPDIR}/gqlib
+if [[ ${FETCH_GQLIB} == 1 ]] ; then
+    micromamba create -y \
+        -p ${GQLIBDIR} \
+        -c bioconda \
+        -c conda-forge \
         'gqlib=2.14.4'
 fi
 
@@ -100,7 +108,7 @@ if [[ ${FETCH_CAYMAN} == 1 || ${FETCH_GQLIB} == 1 ]] ; then
     unzip gene_catalogues.zip
     mv gene_catalogues/${GMGC_NAME}.fna.gz ${GMGC_TO}
     mv annots/GMGC10.human-gut.95nr.no-rare.0.5.percent.prevalence_all_v3_FINAL.csv ${GMGC_TO}
-    micromamba run -p ${TOOLSDIR} bwa index -b 90000000000 ${GMGC_TO}/${GMGC_NAME}.fna.gz
+    micromamba run -p ${BWADIR} bwa index -b 90000000000 ${GMGC_TO}/${GMGC_NAME}.fna.gz
     cd - > /dev/null
     rm -rf ${TMPDIR}/cayman
 fi
@@ -133,7 +141,7 @@ if [[ ${FETCH_GQLIB} == 1 ]] ; then
         --dbmem \
         --temp_dir ${TMPDIR}/emapper_tmp
     # --emapper_version v2.1.2 is the parser for the output of eggNOG-mapper >= 2.1.2
-    micromamba run -p ${TOOLSDIR} python -m gqlib.bin.build_gene_database \
+    micromamba run -p ${GQLIBDIR} python -m gqlib.bin.build_gene_database \
         ${GQLIB_DB} \
         ${TMPDIR}/emapper_output.emapper.annotations \
         --initialise_db \
@@ -150,7 +158,7 @@ if [[ ${FETCH_PATHSEQ_T2T} == 1 ]] ; then
     wget -O ${TMPDIR}/GRCh38.d1.vd1.fa.tar.gz https://api.gdc.cancer.gov/data/254f697d-310d-4d7d-a27b-27fbf767a834
     tar -xzf ${TMPDIR}/GRCh38.d1.vd1.fa.tar.gz -C ${PATHSEQ_TO}/grch38_d1_vd1
     rm ${TMPDIR}/GRCh38.d1.vd1.fa.tar.gz
-    micromamba run -p ${TOOLSDIR} bwa index -p ${PATHSEQ_TO}/grch38_d1_vd1/bwa/GRCh38.d1.vd1 ${PATHSEQ_TO}/grch38_d1_vd1/GRCh38.d1.vd1.fa
+    micromamba run -p ${BWADIR} bwa index -p ${PATHSEQ_TO}/grch38_d1_vd1/bwa/GRCh38.d1.vd1 ${PATHSEQ_TO}/grch38_d1_vd1/GRCh38.d1.vd1.fa
     # T2T-CHM13v2.0, linked from T2T_FASTA if set (e.g. the one of the host removal) instead of downloaded, checked either way
     if [[ -n ${T2T_FASTA:-} ]] ; then
         ln -sfn $(realpath ${T2T_FASTA}) ${PATHSEQ_TO}/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz
@@ -159,7 +167,7 @@ if [[ ${FETCH_PATHSEQ_T2T} == 1 ]] ; then
             https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/009/914/755/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz
     fi
     echo "9e6bf6b586bc8954208d1cc1d5f2fc99  ${PATHSEQ_TO}/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz" | md5sum -c -
-    micromamba run -p ${TOOLSDIR} bwa index -p ${PATHSEQ_TO}/t2t_chm13v2/bwa/T2T-CHM13v2.0 ${PATHSEQ_TO}/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz
+    micromamba run -p ${BWADIR} bwa index -p ${PATHSEQ_TO}/t2t_chm13v2/bwa/T2T-CHM13v2.0 ${PATHSEQ_TO}/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz
     # the host files of GATK PathSeq (pathseq_host.bfi, pathseq_host.fa.img)
     wget -O ${TMPDIR}/pathseq_host.tar.gz ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/pathseq/pathseq_host.tar.gz
     mkdir -p ${TMPDIR}/pathseq_host
