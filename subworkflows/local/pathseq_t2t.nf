@@ -5,14 +5,20 @@
 // complexity, host k-mer and duplicate filtering with GATK PathSeqFilterSpark (qcfilter), and removal of the reads
 // aligned to T2T-CHM13 (t2tfilter). The differences from upstream are listed in docs/pathseq_t2t.md.
 //
-// The two stages are kept apart for a later RNA mode, which would change only the first:
-// - host pre-alignment: the reads not aligned to GRCh38, those aligned to its decoy contigs, and the primary reads
+// The two stages are kept apart, the aligner to GRCh38 changing only the first:
+// - host pre-alignment: the reads not aligned to GRCh38, those aligned to its decoy contigs, and the primary reads.
+//   The alignment is with bwa mem -T 0 (--pathseq_t2t_grch38_aligner bwa), or with STAR (star, for RNA-seq), which also
+//   counts the reads per host gene
 // - host filtering: PathSeqFilterSpark, then T2T-CHM13
 //
 
 include { BWA_INDEX as BWA_INDEX_GRCH38     } from '../../modules/nf-core/bwa/index/main'
 include { BWA_INDEX as BWA_INDEX_T2T        } from '../../modules/nf-core/bwa/index/main'
 include { BWA_MEM as BWA_GRCH38             } from '../../modules/nf-core/bwa/mem/main'
+include { GUNZIP as GUNZIP_GRCH38_FASTA     } from '../../modules/nf-core/gunzip/main'
+include { GUNZIP as GUNZIP_GRCH38_GTF       } from '../../modules/nf-core/gunzip/main'
+include { STAR_GENOMEGENERATE as STAR_GENOMEGENERATE_GRCH38 } from '../../modules/nf-core/star/genomegenerate/main'
+include { STAR_ALIGN as STAR_GRCH38         } from '../../modules/nf-core/star/align/main'
 include { PATHSEQT2T_PREFILTER              } from '../../modules/local/pathseqt2t/prefilter/main'
 include { PATHSEQT2T_QCFILTER               } from '../../modules/local/pathseqt2t/qcfilter/main'
 include { PATHSEQT2T_T2TFILTER              } from '../../modules/local/pathseqt2t/t2tfilter/main'
@@ -22,7 +28,8 @@ workflow PATHSEQ_T2T {
     take:
     reads           // [ [ meta ], [ reads ] ], short shotgun reads (passed through without --pathseq_t2t), as they were sequenced, per run or sample (run merging)
     grch38_fasta    // /path/to/fasta of GRCh38, [] if its index is given
-    grch38_index    // /path/to/directory of the bwa index of GRCh38, [] to build it
+    grch38_index    // /path/to/directory of the bwa (or STAR, see --pathseq_t2t_grch38_aligner) index of GRCh38, [] to build it
+    grch38_gtf      // /path/to/gtf of the genes of GRCh38, to build its STAR index ([] with bwa, or if the STAR index is given)
     t2t_fasta       // /path/to/fasta of T2T-CHM13, [] if its index is given
     t2t_index       // /path/to/directory of the bwa index of T2T-CHM13, [] to build it
     host_dir        // /path/to/directory of the PathSeq host files (pathseq_host.bfi, pathseq_host.fa.img)
@@ -38,8 +45,22 @@ workflow PATHSEQ_T2T {
     ch_published = channel.empty()
 
     if (params.pathseq_t2t) {
+        def aligner = params.pathseq_t2t_grch38_aligner
         if (grch38_index) {
             ch_grch38_index = channel.value([[id: 'grch38'], grch38_index])
+        }
+        else if (aligner == 'star') {
+            // STAR needs the FASTA and the GTF uncompressed
+            ch_grch38_fasta = grch38_fasta.name.endsWith('.gz')
+                ? GUNZIP_GRCH38_FASTA([[id: 'grch38'], grch38_fasta]).gunzip
+                : channel.value([[id: 'grch38'], grch38_fasta])
+            ch_grch38_gtf = grch38_gtf.name.endsWith('.gz')
+                ? GUNZIP_GRCH38_GTF([[id: 'grch38'], grch38_gtf]).gunzip
+                : channel.value([[id: 'grch38'], grch38_gtf])
+            ch_grch38_index = STAR_GENOMEGENERATE_GRCH38(ch_grch38_fasta, ch_grch38_gtf).index.first()
+            if (params.save_hostremoval_index) {
+                ch_published = ch_published.mix(publishFiles(STAR_GENOMEGENERATE_GRCH38.out.index, { meta -> "pathseq_t2t/index/${meta.id}" }, 'star'))
+            }
         }
         else {
             ch_grch38_index = BWA_INDEX_GRCH38([[id: 'grch38'], grch38_fasta]).index.first()
@@ -62,9 +83,22 @@ workflow PATHSEQ_T2T {
         */
 
         // not sorted: the mates stay together, and nothing downstream needs the coordinate order
-        BWA_GRCH38(reads, ch_grch38_index, [[], []], false)
+        if (aligner == 'star') {
+            // the genes are those of the index (built with the GTF), so the GTF is not given again
+            STAR_GRCH38(reads, ch_grch38_index, [[], []], true)
+            ch_grch38_bam = STAR_GRCH38.out.bam
+            ch_multiqc_files = ch_multiqc_files.mix(STAR_GRCH38.out.log_final)
+            // the reads per host gene, and the alignment summary, are always published
+            ch_published = ch_published
+                .mix(publishFiles(STAR_GRCH38.out.read_per_gene_tab, 'pathseq_t2t/grch38', '*.ReadsPerGene.out.tab'))
+                .mix(publishFiles(STAR_GRCH38.out.log_final, 'pathseq_t2t/grch38', '*.Log.final.out'))
+        }
+        else {
+            BWA_GRCH38(reads, ch_grch38_index, [[], []], false)
+            ch_grch38_bam = BWA_GRCH38.out.bam
+        }
 
-        PATHSEQT2T_PREFILTER(BWA_GRCH38.out.bam, decoys_bed)
+        PATHSEQT2T_PREFILTER(ch_grch38_bam, aligner, decoys_bed)
 
         /*
             HOST FILTERING
@@ -116,7 +150,7 @@ workflow PATHSEQ_T2T {
             .mix(publishFiles(PATHSEQT2T_T2TFILTER.out.log, 'pathseq_t2t/t2tfilter', '*.t2tfilter.log'))
         if (params.save_pathseq_t2t_bams) {
             ch_published = ch_published
-                .mix(publishFiles(BWA_GRCH38.out.bam, 'pathseq_t2t/grch38', '*.bam'))
+                .mix(publishFiles(ch_grch38_bam, 'pathseq_t2t/grch38', '*.bam'))
                 .mix(publishFiles(PATHSEQT2T_PREFILTER.out.unaligned.mix(PATHSEQT2T_PREFILTER.out.decoys), 'pathseq_t2t/prefilter', '*.bam'))
                 .mix(publishFiles(PATHSEQT2T_QCFILTER.out.paired.mix(PATHSEQT2T_QCFILTER.out.unpaired), 'pathseq_t2t/qcfilter', '*.bam'))
                 .mix(publishFiles(PATHSEQT2T_T2TFILTER.out.bam, 'pathseq_t2t/t2tfilter', '*.bam'))

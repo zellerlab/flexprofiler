@@ -9,6 +9,9 @@
 // - single-end reads are selected by their alignment score alone, as upstream does for the unpaired reads in
 //   t2tfilter.sh: upstream requires a proper pair here, which no single-end read is
 // - the decoy BAM is written only if it has reads
+// - the reads can also be aligned with STAR (aligner star, for RNA-seq), which upstream does not support: they are
+//   selected as upstream does for DRAGEN, by the proper pair flag alone (single-end: aligned), STAR reporting only the
+//   alignments that pass its own filters, with an alignment score (AS) of the pair
 process PATHSEQT2T_PREFILTER {
     tag "$meta.id"
     label 'process_medium'
@@ -19,8 +22,11 @@ process PATHSEQT2T_PREFILTER {
         'community.wave.seqera.io/library/bwa_htslib_samtools:83b50ff84ead50d0' }"
 
     input:
-    // the reads aligned to GRCh38 with bwa mem -T 0, with a read group (PathSeqFilterSpark drops the reads without one)
+    // the reads aligned to GRCh38 with bwa mem -T 0, or with STAR (one alignment per read, the unaligned reads included),
+    // with a read group (PathSeqFilterSpark drops the reads without one)
     tuple val(meta), path(bam)
+    // the aligner of the BAM: bwa or star
+    val aligner
     // the viral decoy contigs of the reference, [] to not rescue the reads aligned to them
     path decoys_bed
 
@@ -35,8 +41,14 @@ process PATHSEQT2T_PREFILTER {
 
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
-    // paired-end: properly paired (prefilter.sh, aligner bwa); single-end: aligned (the reads not aligned have no AS)
-    def host_aligned = meta.single_end ? "-e '[AS]>35'" : "-f 3 -e '[AS]>35'"
+    // bwa: paired-end, properly paired (prefilter.sh, aligner bwa); single-end, aligned (the reads not aligned have no
+    // AS). star: paired-end, properly paired (as prefilter.sh, aligner dragen); single-end, aligned
+    if (!(aligner in ['bwa', 'star'])) {
+        error("PATHSEQT2T_PREFILTER: unknown aligner '${aligner}', expected bwa or star")
+    }
+    def host_aligned = aligner == 'star'
+        ? (meta.single_end ? "-F 4" : "-f 3")
+        : (meta.single_end ? "-e '[AS]>35'" : "-f 3 -e '[AS]>35'")
     // no supplementary alignments, and none of the tags that depend on the alignment
     def clean = "-F 2048 -x SA -x OQ -x MD"
     def bed = decoys_bed ? "${decoys_bed}" : ''

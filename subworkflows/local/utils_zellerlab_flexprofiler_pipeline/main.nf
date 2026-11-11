@@ -444,7 +444,7 @@ def toolCitationText() {
     ].join(' ').trim()
 
     def text_pathseq_t2t = [
-        "Host reads were removed with PathSeq-T2T (Dohlman et al. 2026): the reads were aligned to GRCh38 with BWA-MEM (Li and Durbin 2009), the reads not aligned to it and those aligned to its viral decoy contigs selected with SAMtools (Danecek et al. 2021), filtered with GATK PathSeqFilterSpark (Walker et al. 2018), and the reads aligned to T2T-CHM13 (Nurk et al. 2022) removed."
+        "Host reads were removed with PathSeq-T2T (Dohlman et al. 2026): the reads were aligned to GRCh38 with " + (params.pathseq_t2t_grch38_aligner == 'star' ? "STAR (Dobin et al. 2013), which also counted the reads per host gene" : "BWA-MEM (Li and Durbin 2009)") + ", the reads not aligned to it and those aligned to its viral decoy contigs selected with SAMtools (Danecek et al. 2021), filtered with GATK PathSeqFilterSpark (Walker et al. 2018), and the reads aligned to T2T-CHM13 (Nurk et al. 2022) removed."
     ].join(' ').trim()
 
     def text_amplicon_primertrimming = [
@@ -520,6 +520,7 @@ def toolBibliographyText() {
         "<li>Dohlman, A. B., Mjelle, R., Wood, H. M., Jiang, K., Shumate, A., Lee, I., Piccinno, G., Serna, G., Yakubu, A.-R., Nuciforo, P., Quirke, P., Huttenhower, C., Segata, N., & Meyerson, M. (2026). Biodiversity and biogeography of the multi-kingdom cancer microbiome. Cell, 189, 3817–3837. <a href=\"https://doi.org/10.1016/j.cell.2026.04.015\">10.1016/j.cell.2026.04.015</a></li>",
         "<li>Walker, M. A., Pedamallu, C. S., Ojesina, A. I., Bullman, S., Sharpe, T., Whelan, C. W., & Meyerson, M. (2018). GATK PathSeq: a customizable computational tool for the discovery and identification of microbial sequences in libraries from eukaryotic hosts. Bioinformatics, 34(24), 4287–4289. <a href=\"https://doi.org/10.1093/bioinformatics/bty501\">10.1093/bioinformatics/bty501</a></li>",
         "<li>Li, H., & Durbin, R. (2009). Fast and accurate short read alignment with Burrows-Wheeler transform. Bioinformatics, 25(14), 1754–1760. <a href=\"https://doi.org/10.1093/bioinformatics/btp324\">10.1093/bioinformatics/btp324</a></li>",
+        params.pathseq_t2t_grch38_aligner == 'star' ? "<li>Dobin, A., Davis, C. A., Schlesinger, F., Drenkow, J., Zaleski, C., Jha, S., Batut, P., Chaisson, M., & Gingeras, T. R. (2013). STAR: ultrafast universal RNA-seq aligner. Bioinformatics, 29(1), 15–21. <a href=\"https://doi.org/10.1093/bioinformatics/bts635\">10.1093/bioinformatics/bts635</a></li>" : "",
         "<li>Nurk, S., Koren, S., Rhie, A., et al. (2022). The complete sequence of a human genome. Science, 376(6588), 44–53. <a href=\"https://doi.org/10.1126/science.abj6987\">10.1126/science.abj6987</a></li>",
     ].join(' ').trim()
 
@@ -616,7 +617,19 @@ def validatePathseqT2t(samplesheet_rows) {
         error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t cannot be used with ${unsupported_profilers.collect { name -> "--${name}" }.join(', ')}: please turn ${unsupported_profilers.size() > 1 ? 'them' : 'it'} off")
     }
 
-    if (!params.pathseq_t2t_grch38_reference && !params.pathseq_t2t_grch38_bwa_index) {
+    if (params.pathseq_t2t_grch38_aligner == 'star') {
+        if (params.pathseq_t2t_grch38_star_index) {
+            // the reads per gene need the genes in the index
+            def star_index = file(params.pathseq_t2t_grch38_star_index, checkIfExists: true)
+            if (!star_index.resolve('exonGeTrInfo.tab').exists()) {
+                error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t_grch38_star_index ${params.pathseq_t2t_grch38_star_index} has no exonGeTrInfo.tab: the STAR index must be built with a GTF (--sjdbGTFfile) to count the reads per gene, please rebuild it, or give the FASTA and GTF of GRCh38 (--pathseq_t2t_grch38_reference, --pathseq_t2t_grch38_gtf) to build it")
+            }
+        }
+        else if (!params.pathseq_t2t_grch38_reference || !params.pathseq_t2t_grch38_gtf) {
+            error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t with --pathseq_t2t_grch38_aligner star needs GRCh38: please give its STAR index (--pathseq_t2t_grch38_star_index), or its FASTA and GTF to build it (--pathseq_t2t_grch38_reference and --pathseq_t2t_grch38_gtf)")
+        }
+    }
+    else if (!params.pathseq_t2t_grch38_reference && !params.pathseq_t2t_grch38_bwa_index) {
         error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs GRCh38: please give its bwa index (--pathseq_t2t_grch38_bwa_index) or its FASTA to build it (--pathseq_t2t_grch38_reference)")
     }
     if (!params.pathseq_t2t_chm13_reference && !params.pathseq_t2t_chm13_bwa_index) {

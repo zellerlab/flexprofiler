@@ -286,12 +286,20 @@
                     "description": "Filter the host reads with PathSeq-T2T, for low-biomass human samples",
                     "help_text": "Replaces the short-read QC and host removal with the PathSeq-T2T host filtering of Dohlman et al., Cell 2026 (https://doi.org/10.1016/j.cell.2026.04.015): alignment to GRCh38 with `bwa mem -T 0`, selection of the reads not aligned to it (and of those aligned to its viral decoy contigs), GATK PathSeqFilterSpark (quality, complexity, host k-mer and duplicate filters), and removal of the reads aligned to T2T-CHM13. Only Illumina WGS FASTQ are accepted, and `--perform_shortread_qc` and `--perform_shortread_hostremoval` must be off, as well as `--run_cayman` and `--run_gqlib`. The differences from the upstream implementation (https://github.com/abdohlman/pathseq-t2t) are listed in docs/pathseq_t2t.md."
                 },
+                "pathseq_t2t_grch38_aligner": {
+                    "type": "string",
+                    "default": "bwa",
+                    "enum": ["bwa", "star"],
+                    "fa_icon": "fas fa-align-left",
+                    "description": "Aligner of the reads to GRCh38, before the PathSeq-T2T filtering: bwa (DNA) or star (RNA-seq, also counting the reads per host gene)",
+                    "help_text": "`bwa`: `bwa mem -T 0`, as in the paper, the proper pairs with an alignment score above 35 being host reads. `star`: STAR, for RNA-seq, the reads in a proper pair (single-end: aligned) being host reads, as upstream does for DRAGEN; the reads per gene of GRCh38 (`--quantMode GeneCounts`) are published in pathseq_t2t/grch38/. Not part of the paper."
+                },
                 "pathseq_t2t_grch38_reference": {
                     "type": "string",
                     "format": "file-path",
                     "exists": true,
                     "fa_icon": "fas fa-file-alt",
-                    "description": "FASTA of GRCh38, to build its bwa index if --pathseq_t2t_grch38_bwa_index is not given",
+                    "description": "FASTA of GRCh38, to build its bwa (or STAR) index if --pathseq_t2t_grch38_bwa_index (--pathseq_t2t_grch38_star_index) is not given",
                     "help_text": "The paper uses the GRCh38 of the NCI Genomic Data Commons, with its viral decoy contigs (GRCh38.d1.vd1): https://api.gdc.cancer.gov/data/254f697d-310d-4d7d-a27b-27fbf767a834"
                 },
                 "pathseq_t2t_grch38_bwa_index": {
@@ -300,6 +308,22 @@
                     "exists": true,
                     "fa_icon": "fas fa-address-book",
                     "description": "Directory of the bwa index of GRCh38 (the .amb, .ann, .bwt, .pac and .sa files)"
+                },
+                "pathseq_t2t_grch38_star_index": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "exists": true,
+                    "fa_icon": "fas fa-address-book",
+                    "description": "Directory of the STAR index of GRCh38 (--pathseq_t2t_grch38_aligner star), built with a GTF of its genes",
+                    "help_text": "The index must have been built with a GTF (`--sjdbGTFfile`), whose genes are those of the read counts (exonGeTrInfo.tab in the index, checked at startup)."
+                },
+                "pathseq_t2t_grch38_gtf": {
+                    "type": "string",
+                    "format": "file-path",
+                    "exists": true,
+                    "fa_icon": "fas fa-file-alt",
+                    "description": "GTF of the genes of GRCh38, to build its STAR index if --pathseq_t2t_grch38_star_index is not given",
+                    "help_text": "For GRCh38.d1.vd1, the GENCODE v36 annotation used by the NCI Genomic Data Commons (gencode.v36.annotation.gtf, https://gdc.cancer.gov/about-data/gdc-data-processing/gdc-reference-files). A gzipped FASTA or GTF is decompressed first."
                 },
                 "pathseq_t2t_chm13_reference": {
                     "type": "string",

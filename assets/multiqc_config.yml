@@ -39,6 +39,7 @@ run_modules:
   - fastp
   - bowtie2
   - samtools
+  - star
   - kraken
   - motus
   - custom_content
@@ -75,6 +76,11 @@ top_modules:
       name: "bowtie2"
   - "samtools":
       name: "Samtools Stats"
+  - "star":
+      name: "STAR"
+      path_filters:
+        # STAR_GRCH38 (--pathseq_t2t_grch38_aligner star): <sample>.grch38.Log.final.out
+        - "*.Log.final.out"
   - "kraken":
       name: "Kraken"
       path_filters:

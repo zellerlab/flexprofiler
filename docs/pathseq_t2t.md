@@ -19,7 +19,8 @@ The reads go through the pipeline as they were sequenced, and are filtered in th
    `bwa mem -T 0`, the parameters of the NCI Genomic Data Commons. The reads that are not in a proper pair with an
    alignment score above 35 (`samtools view -f 3 -e '[AS]>35'`) are kept. So are the proper pairs aligned to the viral
    decoy contigs of the reference (`--pathseq_decoys_bed`), which are not host reads. The primary reads of the
-   alignment (`samtools flagstat`) are the raw reads of the read counts.
+   alignment (`samtools flagstat`) are the raw reads of the read counts. With `--pathseq_t2t_grch38_aligner star`, the
+   reads are aligned with STAR instead, which also counts the reads per host gene (see [RNA-seq](#rna-seq-star)).
 2. **PathSeqFilterSpark** (`PATHSEQT2T_QCFILTER`): GATK PathSeqFilterSpark removes the reads still aligned to GRCh38,
    those of low quality (Phred < 15) or low complexity, those with k-mers of the host or aligned to it (the GRCh38,
    HLA, UniVec, Gencode and breakpoint sequences of the GATK PathSeq host bundle, `--pathseq_host_dir`), the
@@ -72,6 +73,27 @@ reads before the filtering are an error too, as PathSeqFilterSpark does the qual
 order of the read pairs (`--perform_repair_pe_order`) can be used. Cayman and gqlib (`--run_cayman`, `--run_gqlib`)
 are not supported, and are an error too.
 
+### RNA-seq (STAR)
+
+With `--pathseq_t2t_grch38_aligner star` (`STAR_GRCH38`), the reads are aligned to GRCh38 with STAR, a splice-aware
+aligner, in place of `bwa mem`, for RNA-seq. This is not part of the paper or of upstream, which takes BAMs of DRAGEN
+or bwa. STAR writes an unsorted BAM with all the reads, the unaligned ones included (`--outSAMunmapped Within
+KeepPairs`), one alignment per read (`--outSAMmultNmax 1`), and counts the reads per gene of its index
+(`--quantMode GeneCounts`). The prefilter then takes as host reads the proper pairs (single-end: the aligned reads),
+with no alignment score threshold, as upstream does for DRAGEN (`--aligner dragen`): STAR reports only the
+alignments that pass its own filters (by default, at least 66% of the bases of the pair matched), and its alignment
+score is of the pair. The reads aligned to more than 10 loci (`--outFilterMultimapNmax`) are left unaligned by STAR,
+and are left to the host k-mer filter of PathSeqFilterSpark. The rest of the filtering (PathSeqFilterSpark,
+T2T-CHM13) is unchanged; note that PathSeqFilterSpark removes the duplicates, which in RNA-seq are also those of the
+highly expressed transcripts.
+
+The STAR index (`--pathseq_t2t_grch38_star_index`) must have been built with a GTF of the genes, whose reads are
+counted. If it is not given, it is built from the FASTA (`--pathseq_t2t_grch38_reference`) and the GTF
+(`--pathseq_t2t_grch38_gtf`; for GRCh38.d1.vd1, the GENCODE v36 annotation of the
+[GDC reference files](https://gdc.cancer.gov/about-data/gdc-data-processing/gdc-reference-files)), decompressed first
+if gzipped (about 1 h, 48 GB), and saved with `--save_hostremoval_index`. The bwa index of GRCh38 is not needed then.
+`STAR_GRCH38` asks for 12 CPUs and 40 GB. The runs must still be `WGS` in the samplesheet.
+
 ### References
 
 | Parameter                                                         | Reference                                                                                                                                                                                                           |
@@ -80,6 +102,7 @@ are not supported, and are an error too.
 | `--pathseq_t2t_chm13_bwa_index` or `--pathseq_t2t_chm13_reference` | T2T-CHM13v2.0 ([GCF_009914755.1](https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/009/914/755/GCF_009914755.1_T2T-CHM13v2.0/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz)). |
 | `--pathseq_host_dir`                                              | The directory of `pathseq_host.bfi` and `pathseq_host.fa.img`, from the GATK PathSeq resource bundle (`ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/pathseq/pathseq_host.tar.gz`, 12 GB).            |
 | `--pathseq_decoys_bed`                                            | The viral decoy contigs of GRCh38.d1.vd1, by default `assets/pathseq_t2t/non_human_decoys.bed` (from upstream). Empty to remove the reads aligned to them as host reads.                                          |
+| `--pathseq_t2t_grch38_star_index` or `--pathseq_t2t_grch38_reference` and `--pathseq_t2t_grch38_gtf` | With `--pathseq_t2t_grch38_aligner star`, in place of the bwa index of GRCh38: see [RNA-seq](#rna-seq-star). |
 
 The indexes built by the pipeline are saved with `--save_hostremoval_index`.
 
@@ -91,6 +114,9 @@ PathSeqFilterSpark loads the BWA index image of the host bundle in memory: `PATH
 ## Output
 
 - `pathseq_t2t/prefilter/<sample>.flagstat.tsv`: `samtools flagstat` of the alignment to GRCh38
+- with `--pathseq_t2t_grch38_aligner star`, `pathseq_t2t/grch38/<sample>.grch38.ReadsPerGene.out.tab`: the reads per
+  host gene (STAR `GeneCounts`: after four summary lines, one line per gene, with the counts of unstranded, forward and
+  reverse stranded libraries), and `<sample>.grch38.Log.final.out`, the summary of the alignment (also in MultiQC)
 - `pathseq_t2t/qcfilter/<sample>.prefilter.{unaligned,decoys}.filter_metrics.txt`: the reads after each filter of
   PathSeqFilterSpark, for the reads not aligned to GRCh38 and for those aligned to its decoy contigs
 - `pathseq_t2t/t2tfilter/<sample>.t2tfilter.log`: the reads before and after the T2T-CHM13 filter

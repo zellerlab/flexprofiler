@@ -86,8 +86,11 @@ params {
     save_hostremoval_bam:            Boolean
     save_hostremoval_unmapped:       Boolean
     pathseq_t2t:                     Boolean
+    pathseq_t2t_grch38_aligner:      String
     pathseq_t2t_grch38_reference:    String?
     pathseq_t2t_grch38_bwa_index:    String?
+    pathseq_t2t_grch38_star_index:   String?
+    pathseq_t2t_grch38_gtf:          String?
     pathseq_t2t_chm13_reference:     String?
     pathseq_t2t_chm13_bwa_index:     String?
     pathseq_host_dir:                String?

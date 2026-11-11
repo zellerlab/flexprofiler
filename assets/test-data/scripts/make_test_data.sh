@@ -141,6 +141,8 @@ step_hostremoval() {
 
 step_pathseqt2t() {
     python3 scripts/make_pathseq_t2t_data.py data/hostremoval/NC_012920.1.fna.gz data/pathseq_t2t data/fastq/pathseq_t2t
+    # the GTF and the RNA-seq reads of the test with STAR, from the references above
+    python3 scripts/make_pathseq_t2t_rna_data.py data/pathseq_t2t data/fastq/pathseq_t2t
     # the k-mers and BWA index image of the PathSeq host, with the GATK of the pipeline
     docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD/data/pathseq_t2t/pathseq_host:/w" -w /w \
         quay.io/biocontainers/gatk4:4.6.2.0--py310hdfd78af_0 sh -c \

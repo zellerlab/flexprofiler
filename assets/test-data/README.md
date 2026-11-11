@@ -95,6 +95,12 @@ docker run --rm -v $PWD/data/pathseq_t2t/pathseq_host:/w -w /w quay.io/biocontai
     'gatk PathSeqBuildKmers --reference pathseq_host.fa --output pathseq_host.bfi --bloom-false-positive-probability 0.001 && gatk BwaMemIndexImageCreator -I pathseq_host.fa -O pathseq_host.fa.img'
 ```
 
+The test of the PathSeq-T2T host filtering with STAR (`tests/test_pathseq_t2t_star.nf.test`, `samplesheet_pathseq_t2t_rna.csv`, profile `test_pathseq_t2t_star`) uses the same references, with a GTF of two genes on the "GRCh38" host contig (`data/pathseq_t2t/grch38_test.gtf`): `gene_spliced`, with two exons and an intron, and `gene_unspliced`, on the minus strand. Its reads (`data/fastq/pathseq_t2t/lowbiomass_rna_{1,2,se}.fastq.gz`, a paired-end and a single-end sample of a reverse stranded library) are simulated from the transcripts of the two genes (those of `gene_spliced` spanning its exon junction), from the microbial genome, the decoy contig and the part of the host only in "T2T-CHM13", and named by what they are; see the docstring of the script. They were made, after the files above, with:
+
+```bash
+python3 scripts/make_pathseq_t2t_rna_data.py data/pathseq_t2t data/fastq/pathseq_t2t
+```
+
 `samplesheet_pathseq_t2t_empty.csv` (test `test_pathseq_t2t_empty_input`) has a paired-end and a single-end sample without reads, to check that every step of the filtering accepts empty inputs. Their FASTQs (`data/fastq/pathseq_t2t/empty_{1,2,se}.fastq.gz`) are empty gzip files, made with `gzip -n -c < /dev/null`.
 
 The Kraken2 database of the test (`data/kraken2/`, row `test_kraken2` of `databases.csv`) is built from the "microbial" genome and the decoy contig of these references (`data/pathseq_t2t/microbe_genomes.fna.gz`), with a made-up taxonomy of a species of bacteria (taxid 900002) and one of virus (900003), with `scripts/make_kraken2_db.sh`. Its files are not byte-identical from one build to the next.

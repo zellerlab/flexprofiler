@@ -1,0 +1,93 @@
+nextflow_pipeline {
+    name "Test the PathSeq-T2T host filtering with STAR (--pathseq_t2t_grch38_aligner star)"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_pathseq_t2t_star"
+    profile "test_pathseq_t2t_star"
+
+    // the reads of the fixture (assets/test-data/scripts/make_pathseq_t2t_rna_data.py) are named by what they are: the
+    // class of a read is its name without the numbers
+    def read_classes = { file ->
+        path( file.toString() ).linesGzip.withIndex()
+            .findAll { _line, i -> i % 4 == 0 }
+            .collect { line, _i -> line.substring( 1 ).split( /\s/ )[0].replaceAll( /(_\d+)+$/, '' ) }
+    }
+    // the reads of the host genes (aligned to "GRCh38" by STAR, the spliced ones across the intron) and of the part of
+    // the host only in "T2T-CHM13"
+    def removed_classes = [ "spliced_pair", "gene_pair", "t2t_pair", "spliced_single", "gene_single", "t2t_single" ]
+    // STAR ReadsPerGene.out.tab: [ gene: [ unstranded, forward, reverse ] ], without the four summary lines (N_*)
+    def gene_counts = { file ->
+        path( file.toString() ).readLines()
+            .collect { line -> line.split( "\t" ) as List }
+            .findAll { row -> !row[0].startsWith( "N_" ) }
+            .collectEntries { row -> [ ( row[0] ): row[1..3].collect { value -> value as int } ] }
+    }
+
+    test("test_pathseq_t2t_star") {
+        when {
+            params {
+                outdir                     = "${outputDir}"
+                save_analysis_ready_fastqs = true
+            }
+        }
+
+        then {
+            def stable_name = getAllFilesFromDir( params.outdir, includeDir: true, ignore: [ 'pipeline_info/*.{html,json,txt}', 'pipeline_info/*_versions.yml', 'multiqc/**', 'fastqc/**' ], relative: true )
+            def read_counts = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
+            def count = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] as int }
+            def out = "${params.outdir}/analysis_ready_fastqs"
+            def pe_1 = read_classes( "${out}/lowbiomass_rna.t2tfilt_1.fastq.gz" )
+            def pe_2 = read_classes( "${out}/lowbiomass_rna.t2tfilt_2.fastq.gz" )
+            def singletons = read_classes( "${out}/lowbiomass_rna.t2tfilt_unpaired.fastq.gz" )
+            def se = read_classes( "${out}/lowbiomass_rna_se.t2tfilt_unpaired.fastq.gz" )
+            def pe_genes = gene_counts( "${params.outdir}/pathseq_t2t/grch38/lowbiomass_rna.grch38.ReadsPerGene.out.tab" )
+            def se_genes = gene_counts( "${params.outdir}/pathseq_t2t/grch38/lowbiomass_rna_se.grch38.ReadsPerGene.out.tab" )
+            def tasks = workflow.trace.succeeded()*.name
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                // GRCh38: STAR, its index built from the FASTA and the GTF, instead of bwa
+                { assert tasks.any { name -> name.contains( "STAR_GENOMEGENERATE_GRCH38" ) } },
+                { assert tasks.count { name -> name.contains( "STAR_GRCH38" ) } == 2 },
+                { assert !tasks.any { name -> name =~ /BWA_GRCH38|BWA_INDEX_GRCH38/ } },
+                // the reads of the host are all removed, and the microbial and decoy reads kept
+                { assert ( pe_1 + pe_2 + singletons + se ).intersect( removed_classes ).isEmpty() },
+                { assert pe_1 == pe_2 },
+                { assert pe_1.contains( "microbe_pair" ) && se.contains( "microbe_single" ) },
+                { assert pe_1.contains( "decoy_pair" ) && se.contains( "decoy_single" ) },
+                // the reads per host gene: each read (pair) of a gene counted for it, on the reverse strand (read 1
+                // antisense), none on the forward strand
+                { assert pe_genes == [ gene_spliced: [ 100, 0, 100 ], gene_unspliced: [ 100, 0, 100 ] ] },
+                { assert se_genes == [ gene_spliced: [ 100, 0, 100 ], gene_unspliced: [ 100, 0, 100 ] ] },
+                { assert path( "${params.outdir}/pathseq_t2t/grch38/lowbiomass_rna.grch38.Log.final.out" ).exists() },
+                // the raw reads are the primary reads of the STAR BAM, all the reads, each mate counted
+                { assert count( "lowbiomass_rna", "raw_reads" ) == 2 * 550 },
+                { assert count( "lowbiomass_rna_se", "raw_reads" ) == 550 },
+                { assert count( "lowbiomass_rna", "t2t_filter_reads" ) == 2 * pe_1.size() + singletons.size() },
+                { assert count( "lowbiomass_rna_se", "t2t_filter_reads" ) == se.size() },
+                { assert snapshot (
+                    read_counts,
+                    path( "${params.outdir}/pathseq_t2t/grch38/lowbiomass_rna.grch38.ReadsPerGene.out.tab" ),
+                    path( "${params.outdir}/pathseq_t2t/grch38/lowbiomass_rna_se.grch38.ReadsPerGene.out.tab" ),
+                ).match( "read_counts" ) },
+            )
+        }
+    }
+
+    test("test_pathseq_t2t_star_missing_gtf") {
+        when {
+            params {
+                outdir                 = "${outputDir}"
+                pathseq_t2t_grch38_gtf = null
+            }
+        }
+
+        then {
+            assertAll(
+                { assert workflow.failed },
+                { assert workflow.stdout.any { line -> line.contains( "--pathseq_t2t with --pathseq_t2t_grch38_aligner star needs GRCh38" ) } },
+            )
+        }
+    }
+}

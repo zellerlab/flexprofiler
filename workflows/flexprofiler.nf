@@ -65,9 +65,12 @@ workflow FLEXPROFILER {
         ch_shortread_reference_index = []
     }
 
-    // PathSeq-T2T host filtering (--pathseq_t2t): a reference is needed only to build its bwa index
-    ch_pathseq_grch38_reference = params.pathseq_t2t && !params.pathseq_t2t_grch38_bwa_index ? file(params.pathseq_t2t_grch38_reference, checkIfExists: true) : []
-    ch_pathseq_grch38_index = params.pathseq_t2t && params.pathseq_t2t_grch38_bwa_index ? file(params.pathseq_t2t_grch38_bwa_index, checkIfExists: true) : []
+    // PathSeq-T2T host filtering (--pathseq_t2t): a reference (and for STAR its GTF) is needed only to build its index,
+    // of the aligner to GRCh38 (--pathseq_t2t_grch38_aligner)
+    def pathseq_grch38_index_param = params.pathseq_t2t_grch38_aligner == 'star' ? params.pathseq_t2t_grch38_star_index : params.pathseq_t2t_grch38_bwa_index
+    ch_pathseq_grch38_reference = params.pathseq_t2t && !pathseq_grch38_index_param ? file(params.pathseq_t2t_grch38_reference, checkIfExists: true) : []
+    ch_pathseq_grch38_index = params.pathseq_t2t && pathseq_grch38_index_param ? file(pathseq_grch38_index_param, checkIfExists: true) : []
+    ch_pathseq_grch38_gtf = params.pathseq_t2t && params.pathseq_t2t_grch38_aligner == 'star' && !pathseq_grch38_index_param ? file(params.pathseq_t2t_grch38_gtf, checkIfExists: true) : []
     ch_pathseq_chm13_reference = params.pathseq_t2t && !params.pathseq_t2t_chm13_bwa_index ? file(params.pathseq_t2t_chm13_reference, checkIfExists: true) : []
     ch_pathseq_chm13_index = params.pathseq_t2t && params.pathseq_t2t_chm13_bwa_index ? file(params.pathseq_t2t_chm13_bwa_index, checkIfExists: true) : []
     ch_pathseq_host_dir = params.pathseq_t2t ? file(params.pathseq_host_dir, checkIfExists: true) : []
@@ -192,6 +195,7 @@ workflow FLEXPROFILER {
         RUN_MERGING.out.reads,
         ch_pathseq_grch38_reference,
         ch_pathseq_grch38_index,
+        ch_pathseq_grch38_gtf,
         ch_pathseq_chm13_reference,
         ch_pathseq_chm13_index,
         ch_pathseq_host_dir,
