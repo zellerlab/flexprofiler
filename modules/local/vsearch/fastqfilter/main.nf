@@ -3,9 +3,9 @@ process VSEARCH_FASTQFILTER {
     label 'process_low'
 
     conda "${moduleDir}/environment.yml"
-    container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/vsearch:2.32.0--hd2be7a0_0'
-        : 'biocontainers/vsearch:2.32.0--hd2be7a0_0'}"
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/cb/cbf8de673c52a3310baca71b9cd912cd62fbfc24685899c4cafcb84f996303dc/data'
+        : 'community.wave.seqera.io/library/vsearch:2.32.0--bee2e68f4ccce807'}"
 
     input:
     // single-end reads

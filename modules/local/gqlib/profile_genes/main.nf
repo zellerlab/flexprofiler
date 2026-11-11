@@ -3,9 +3,9 @@ process GQLIB_PROFILE_GENES {
     label 'process_medium'
 
     conda "${moduleDir}/environment.yml"
-    container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/gqlib:2.14.4--pyhdfd78af_0'
-        : 'biocontainers/gqlib:2.14.4--pyhdfd78af_0'}"
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/b3/b36790ad56052b28ef374a2d230862b0d7dd9d0d599b820d2e6bca34d0be57c4/data'
+        : 'community.wave.seqera.io/library/gqlib:2.14.4--1a47e08f7db4071d'}"
 
     input:
     tuple val(meta), path(bam)

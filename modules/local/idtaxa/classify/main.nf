@@ -3,9 +3,9 @@ process IDTAXA_CLASSIFY {
     label 'process_medium'
 
     conda "${moduleDir}/environment.yml"
-    container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/bioconductor-decipher:3.6.0--r45h01b2380_0'
-        : 'biocontainers/bioconductor-decipher:3.6.0--r45h01b2380_0'}"
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/58/58630872068a0e2afac569fe03330f6f1b83209da57c5b9e01d38f2d8dbd51c7/data'
+        : 'community.wave.seqera.io/library/bioconductor-decipher:3.6.0--297c39bd2d9527b3'}"
 
     input:
     // one sequence per read pair (merged or joined) or single-end read

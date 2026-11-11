@@ -2,9 +2,9 @@ process READ_COUNTS {
     label 'process_single'
 
     conda "${moduleDir}/environment.yml"
-    container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/pandas:2.2.1'
-        : 'biocontainers/pandas:2.2.1'}"
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/84/84e799e45917de0293324e738f0c0b7d1fd0f85ac0536d39d1161d7ef372fbaa/data'
+        : 'community.wave.seqera.io/library/pandas:2.2.1--2558de69969e58b9'}"
 
     input:
     // named uniquely, as in the manifest

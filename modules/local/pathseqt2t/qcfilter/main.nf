@@ -12,10 +12,10 @@ process PATHSEQT2T_QCFILTER {
     label 'process_high'
 
     conda "${moduleDir}/environment.yml"
-    // the build _0 has Java 17: the Spark tools of GATK 4.6 do not run on the Java 24 of the build _1
-    container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/gatk4:4.6.2.0--py310hdfd78af_0'
-        : 'biocontainers/gatk4:4.6.2.0--py310hdfd78af_0'}"
+    // with Java 17 (environment.yml): the Spark tools of GATK 4.6 do not run on Java 24
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/33/33fdebc95eb14966914fe7294717b9e852dcd94beaed459d832f3693875a8c17/data'
+        : 'community.wave.seqera.io/library/gatk4_openjdk:cb0a04a09c5bc584'}"
     // Spark (Hadoop) needs the user to be known to the system, and the user set by docker.runOptions (-u) is not known to
     // the container: with Docker the task runs as root, the last -u being the one used, and gives its files back to the
     // owner of the task directory when it ends

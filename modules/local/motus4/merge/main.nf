@@ -3,9 +3,9 @@ process MOTUS4_MERGE {
     label 'process_single'
 
     conda "${moduleDir}/environment.yml"
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/motus:4.0.4--pyhdfd78af_0':
-        'biocontainers/motus:4.0.4--pyhdfd78af_0' }"
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/39/3930809d11a1016e5b92efcdb77a68678b63ec2a8ee0a1e0cf5656cc7efdce1a/data'
+        : 'community.wave.seqera.io/library/motus:4.0.4--79a63faa164322d2'}"
 
     input:
     // the profiles of all the samples for one database, staged in a folder, so that the command lists them with a glob,

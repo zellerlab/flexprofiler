@@ -29,7 +29,7 @@ nextflow run . -profile test_motus4,docker --outdir results
 - Pre-commit runs prettier, trailing-whitespace and end-of-file fixers (excluding nf-core components and `.snap` files).
 - `docs/parameters.md` is the rendered `nextflow_schema.json`. New params go in `nextflow.config` (defaults), the `params` block of `main.nf` (types: `Boolean`, `Integer`, `String?`, so that command-line values are converted), `nextflow_schema.json`, and the docs.
 - `CHANGELOG.md` (Keep a Changelog, `Unreleased` section) is updated with detailed entries for user-facing changes.
-- At every version bump (`manifest.version` in `nextflow.config`), also update `VERSION` in `utils/run_shark.sh` (the example SHARK launcher in `docs/zellerlab.md`) to the new release, and its Nextflow module if `nextflowVersion` was raised above it.
+- At every version bump (`manifest.version` in `nextflow.config`), also update `VERSION` in `utils/run_shark.sh` (the example SHARK launcher in `docs/zellerlab.md`) and in `utils/pull_images.sh` (pulls all the images into the shared apptainer cache) to the new release, and, if `nextflowVersion` was raised, their `NXF_VER` (the launcher of SHARK's Nextflow module downloads that version; SHARK has no module newer than 25.04.6), or its Nextflow module if SHARK gets one recent enough.
 
 ## Architecture
 

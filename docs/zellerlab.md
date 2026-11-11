@@ -15,26 +15,29 @@ These profiles are defined [here](../conf/zellerlab.config).
 You can load them by appending `-profile <profile name>` to your nextflow command.
 Multiple profiles can be specified with a comma (`-profile <profile1>,<profile2>`).
 
-For reproducibility, always use singularity to run the pipeline (by specifying the nextflow profile `-profile singularity`).
-Note that you need to have singularity installed for this to work.
+For reproducibility, always use apptainer to run the pipeline (by specifying the nextflow profile `-profile apptainer`; `zellerlab_shark` sets it already).
+Note that you need to have apptainer installed for this to work (`-profile singularity` also works, with Singularity).
 
 The following profiles are available:
-- `zellerlab_shark`: for use on the LUMC shark cluster, sets paths to databases etc.
+- `zellerlab_shark`: for use on the LUMC shark cluster, sets paths to databases etc., and runs the containers with apptainer (no need for `-profile apptainer`), with the images in the cache shared by the lab (`/exports/lucid-grpzeller-work/SOFTWARE_CACHE/flexprofiler/apptainer`)
 - `zellerlab_metagenomics`: for short read metagenomics profiling, sets defaults for preprocessing and collation
 - `zellerlab_amplicon`: for 16S amplicon profiling with IDTAXA, sets defaults for preprocessing (with primer trimming), run merging, collation and IDTAXA (turn it on with `--run_idtaxa`): the pairs not merged are joined with Ns (`--amplicon_pair_handling merged_plus_joined`), and classified against the `gtdb_r220_motus4.0` training set of the database CSV (GTDB R220, the taxonomy of mOTUs 4.0 used by `--run_motus4`, so that 16S and shotgun profiles share the taxon names; change with `--idtaxa_db_names`), with a merged table for the genus only besides the one of the whole lineages (`--idtaxa_ranks genus`)
 - `zellerlab_pathseq_t2t`: for low-biomass human samples (e.g. tumour WGS), the [PathSeq-T2T host filtering](pathseq_t2t.md) with Kraken2, run merging and collation; use it instead of `zellerlab_metagenomics`. The paths of its references are not set yet for the clusters: give them with `--pathseq_t2t_grch38_bwa_index`, `--pathseq_t2t_chm13_bwa_index` and `--pathseq_host_dir`
 - `zellerlab_minimal`: skip all non-essential QC steps, useful for large meta-analysis runs
-- `zellerlab_alice`: for testing only, on the ALICE cluster, sets paths to databases etc.
+- `zellerlab_alice`: **incomplete**, for testing only, on the ALICE cluster, sets paths to databases etc.: only the mOTUs v4 database is set, there is no reference to orient the long amplicon reads (`--amplicon_orient_reference`), and the container engine must be given (`-profile apptainer`)
 
 ## Containers and environments
-All the pipeline steps are set up to use appropriate Singularity containers, so you need to have the singularity profile enabled (see above) and the singularity program should be available in your environment (for the SHARK cluster if you use [this script](../utils/run_shark.sh) the singularity module is automatically loaded so you don't need to do anything).
+All the pipeline steps are set up to use appropriate Apptainer containers, so you need to have the apptainer profile enabled (see above; `zellerlab_shark` enables it) and the apptainer program should be available in your environment (for the SHARK cluster if you use [this script](../utils/run_shark.sh) the apptainer module is automatically loaded so you don't need to do anything).
+The newest Nextflow module of SHARK (25.04.6) is older than the version the pipeline requires: the script sets `NXF_VER`, so that the Nextflow launcher downloads the right version the first time (to `~/.nextflow/framework`).
+
+The images are kept in the apptainer cache shared by the lab (see `zellerlab_shark`). To download all of them at once, e.g. after a new version of the pipeline, so that the runs do not have to, run [this script](../utils/pull_images.sh) on a login node of SHARK (`bash utils/pull_images.sh`, with `VERSION` set as in `run_shark.sh`): it skips the images already in the cache.
 
 For some steps Conda/mamba/micromamba is also required.
 This need to be installed in your system and available in the `$PATH`.
 If you use micromamba or mamba instead than conda (as you should), you need to set the relevant flag in `~/.nextflow/config`.
 Copy [this config file](../utils/user.config) to `~/.nextflow/config` and adapt it as required to do it.
 
-It is good also if you set an appropriate cache directory for singularity and conda so that containers and environments are not downloaded again every time you run the pipeline.
+It is good also if you set an appropriate cache directory for apptainer and conda so that containers and environments are not downloaded again every time you run the pipeline (on SHARK, `zellerlab_shark` already uses the apptainer cache shared by the lab).
 If you use [this config file](../utils/user.config) this is also set up for you, you only need to set the right paths.
 
 ## Nextflow Tower / Seqera cloud
