@@ -6,7 +6,7 @@
 #SBATCH --output=fetch_flexprofiler_dbs_%j.log
 
 # Downloads the databases that are missing on SHARK (Kraken2 and the PathSeq-T2T references) to the shared database
-# directory with utils/fetch_databases.sh. Submit from the pipeline directory: sbatch utils/fetch_missing_databases_shark.sh
+# directory with utils/fetch_databases.sh. Submit from any directory: sbatch utils/fetch_missing_databases_shark.sh
 # The PathSeq-T2T paths are already set in the zellerlab_shark profile of conf/zellerlab.config. Afterwards, add the
 # kraken2 row of flexprofiler_databases.csv (written in WORKDIR) to assets/zellerlab_shark_databases.csv: it cannot be
 # added before, as the paths of the database sheet must exist.
@@ -22,7 +22,14 @@ export PATH=${HOME}/.local/bin:${PATH}
 export MAMBA_ROOT_PREFIX=${MAMBA_ROOT_PREFIX:-${HOME}/micromamba}
 command -v micromamba > /dev/null || { echo "micromamba not found" >&2 ; exit 1 ; }
 
-SCRIPT=$(realpath "${SLURM_SUBMIT_DIR:-.}/utils/fetch_databases.sh")
+# fetch_databases.sh is next to this script: under sbatch $0 is a copy in the spool directory of slurm, so the path of
+# the submitted script is taken from slurm
+if [[ -n ${SLURM_JOB_ID:-} ]] ; then
+    SELF=$(scontrol show job ${SLURM_JOB_ID} | grep -oP '^\s*Command=\K\S+')
+else
+    SELF=$0
+fi
+SCRIPT=$(realpath "$(dirname "${SELF}")/fetch_databases.sh")
 mkdir -p ${WORKDIR}/tmp
 export TMPDIR=${WORKDIR}/tmp
 cd ${WORKDIR}
