@@ -156,14 +156,11 @@ def parse_idtaxa(text, kind, db):
 
 
 def parse_kraken2(text, kind, db):
-    # the reads classified by Kraken2 (all but the unclassified line, U), each mate counted: a pair is one fragment
-    # for Kraken2 (kraken2_pairs), counted twice. An empty report is of no reads
-    classified = 0
-    for line in text.splitlines():
-        fields = line.split("\t")
-        if len(fields) >= 6 and fields[-2].strip() == "1":
-            classified = int(fields[1])
-    return {f"kraken2_{db}_reads": classified * (2 if kind == "kraken2_pairs" else 1)}
+    # the reads classified by Kraken2: the fragments of the clade of the root (taxid 1, the second column), each mate
+    # counted, as a pair is one fragment for Kraken2 (kraken2_pairs), counted twice. An empty report, or one with no
+    # root (no fragment classified), is of no reads
+    fragments = search_int(r"^[^\t\n]*\t *(\d+)\t(?:[^\t\n]*\t)*1\troot$", text) or 0
+    return {f"kraken2_{db}_reads": fragments * (2 if kind == "kraken2_pairs" else 1)}
 
 
 def parse_motus4(text, kind, db):

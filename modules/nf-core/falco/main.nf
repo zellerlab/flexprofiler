@@ -24,22 +24,25 @@ process FALCO {
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    if (reads.toList().size() == 1) {
-        """
-        falco ${args} --threads ${task.cpus} ${reads} -D ${prefix}_fastqc_data.txt -S ${prefix}_summary.txt -R ${prefix}_report.html
-        """
+    // Each file is linked to a name made from the prefix (<prefix>, or <prefix>_1 and <prefix>_2 for paired-end reads,
+    // as in the FastQC module) and run on its own, so that the outputs and the Filename line of the report, which
+    // MultiQC uses as sample name, are named after the prefix. Falco detects the format from the extension.
+    def files = reads instanceof Path ? [reads] : reads as List
+    def names = files.size() == 1 ? [prefix] : (1..files.size()).collect { index -> "${prefix}_${index}" }
+    def commands = [files, names].transpose().collect { read, name ->
+        def link = "${name}.${read.name.endsWith('.gz') ? 'fastq.gz' : 'fastq'}"
+        "[ -e ${link} ] || ln -s ${read} ${link}\n" +
+            "falco ${args} --threads ${task.cpus} ${link} -D ${name}_fastqc_data.txt -S ${name}_summary.txt -R ${name}_report.html"
     }
-    else {
-        """
-        falco ${args} --threads ${task.cpus} ${reads}
-        """
-    }
+    """
+    ${commands.join('\n')}
+    """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
+    def files = reads instanceof Path ? [reads] : reads as List
+    def names = files.size() == 1 ? [prefix] : (1..files.size()).collect { index -> "${prefix}_${index}" }
     """
-    touch ${prefix}_data.txt
-    touch ${prefix}_fastqc_data.html
-    touch ${prefix}_summary.txt
+    ${names.collect { name -> "touch ${name}_fastqc_data.txt ${name}_summary.txt ${name}_report.html" }.join('\n')}
     """
 }
