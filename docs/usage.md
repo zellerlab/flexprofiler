@@ -222,7 +222,7 @@ outdir: './results/'
 
 [`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your reads.
 It provides information about the quality score distribution across your reads, per base sequence content (%A/T/G/C), adapter contamination and overrepresented sequences.
-zellerlab/flexprofiler offers [`falco`](https://github.com/smithlabcode/falco) as a faster drop-in replacement.
+zellerlab/flexprofiler runs by default [`falco`](https://github.com/smithlabcode/falco), a faster drop-in replacement of FastQC with much lower memory use; FastQC can be used instead with `--preprocessing_qc_tool fastqc`.
 
 ### Preprocessing Steps
 

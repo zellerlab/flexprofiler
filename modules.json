@@ -48,7 +48,8 @@
                     "falco": {
                         "branch": "master",
                         "git_sha": "6d1e33fcc1aa589cb9973a5b135ca60e28a0d59a",
-                        "installed_by": ["modules"]
+                        "installed_by": ["modules"],
+                        "patch": "modules/nf-core/falco/falco.diff"
                     },
                     "fastp": {
                         "branch": "master",

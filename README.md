@@ -19,7 +19,7 @@ We plan to contribute to **nf-core** modules or other components of more general
 ## Pipeline simplified overview
 
 1. Optional repair of the order of PE reads ([BBMap repair](https://github.com/BioInfoTools/BBMap/blob/master/sh/repair.sh))
-2. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
+2. Read QC ([`Falco`](https://github.com/smithlabcode/falco) or [`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
 3. Read pre-processing
    - Adapter clipping and merging: [fastp](https://github.com/OpenGene/fastp)
    - Host-read removal: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/)

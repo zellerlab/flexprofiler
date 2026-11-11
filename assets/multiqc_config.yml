@@ -52,19 +52,22 @@ sp:
 top_modules:
   - "fastqc":
       name: "FastQC / Falco (pre-Trimming)"
+      # reports named <sample>_<run>[_singletons]_<stage>[_1|_2]_fastqc... (conf/modules.config)
       path_filters:
-        - "*raw*"
-      path_filters_exclude:
-        - "*processed*"
+        - "*_raw_fastqc.zip"
+        - "*_raw_[12]_fastqc.zip"
+        - "*_raw_fastqc_data.txt"
+        - "*_raw_[12]_fastqc_data.txt"
       extra: |
         If used in this run, Falco is a drop-in replacement for FastQC producing
         the same output, written by Guilherme de Sena Brandine and Andrew D. Smith.
   - "fastqc":
       name: "FastQC / Falco (post-Trimming)"
       path_filters:
-        - "*processed*"
-      path_filters_exclude:
-        - "*raw*"
+        - "*_processed_fastqc.zip"
+        - "*_processed_[12]_fastqc.zip"
+        - "*_processed_fastqc_data.txt"
+        - "*_processed_[12]_fastqc_data.txt"
       extra: |
         If used in this run, Falco is a drop-in replacement for FastQC producing
         the same output, written by Guilherme de Sena Brandine and Andrew D. Smith.
@@ -184,9 +187,13 @@ extra_fn_clean_exts:
   - ".bbduk"
   - ".unmapped"
   - "_filtered"
-  - "_processed"
-  - type: remove
-    pattern: "_falco"
+  # the stage of the FastQC/Falco reports, which are split by stage into two sections; the mates (_1/_2) are kept.
+  # These rules run before the default ones, so the name still ends in its extension (.gz, .fastq.gz)
+  - type: regex
+    pattern: "_(raw|processed)(?=(_[12])?\\.)"
+    module:
+      - fastqc
+      - fastqc-1
 
 section_comments:
   general_stats: |

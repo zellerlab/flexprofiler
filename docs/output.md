@@ -54,6 +54,8 @@ This directory will only be present if `--save_untarred_databases` is supplied. 
     - `*.txt`: FastQC or Falco report containing quality metrics in TXT format.
     - `*.zip`: Zip archive containing the FastQC report, tab-delimited data file and plot images (FastQC only).
 
+The reports are named `<sample>_<run_accession>[_singletons]_<stage>[_1|_2]`, with the stage (`raw` or `processed`) and the mate of the paired-end reads, one report per file, for both tools (e.g. `<prefix>_1_fastqc.zip` with FastQC, `<prefix>_1_fastqc_data.txt`, `<prefix>_1_summary.txt` and `<prefix>_1_report.html` with Falco). In MultiQC, the reports are split by stage into two sections, and the samples are named without the stage (`<sample>_<run_accession>[_singletons][_1|_2]`).
+
 </details>
 
 [FastQC](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your sequenced reads. It provides information about the quality score distribution across your reads, per base sequence content (%A/T/G/C), adapter contamination and overrepresented sequences. For further reading and documentation see the [FastQC help pages](http://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/).
