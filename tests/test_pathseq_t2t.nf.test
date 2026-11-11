@@ -101,6 +101,29 @@ nextflow_pipeline {
         }
     }
 
+    test("test_pathseq_t2t_empty_input") {
+        when {
+            params {
+                outdir                     = "${outputDir}"
+                input                      = "${baseDir}/assets/test-data/samplesheet_pathseq_t2t_empty.csv"
+                save_analysis_ready_fastqs = true
+            }
+        }
+
+        then {
+            def read_counts = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
+            def count = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] as int }
+            def out = "${params.outdir}/analysis_ready_fastqs"
+            def fastqs = [ "empty.t2tfilt_1.fastq.gz", "empty.t2tfilt_2.fastq.gz", "empty.t2tfilt_unpaired.fastq.gz", "empty_se.t2tfilt_unpaired.fastq.gz" ]
+            assertAll(
+                { assert workflow.success },
+                // samples without reads go through every step, and give empty FASTQs
+                { assert fastqs.every { name -> path( "${out}/${name}" ).exists() && path( "${out}/${name}" ).linesGzip.isEmpty() } },
+                { assert [ "empty", "empty_se" ].every { sample -> count( sample, "raw_reads" ) == 0 && count( sample, "t2t_filter_reads" ) == 0 } },
+            )
+        }
+    }
+
     test("test_pathseq_t2t_conflicting_steps") {
         when {
             params {

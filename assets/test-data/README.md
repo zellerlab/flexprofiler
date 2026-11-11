@@ -95,6 +95,8 @@ docker run --rm -v $PWD/data/pathseq_t2t/pathseq_host:/w -w /w quay.io/biocontai
     'gatk PathSeqBuildKmers --reference pathseq_host.fa --output pathseq_host.bfi --bloom-false-positive-probability 0.001 && gatk BwaMemIndexImageCreator -I pathseq_host.fa -O pathseq_host.fa.img'
 ```
 
+`samplesheet_pathseq_t2t_empty.csv` (test `test_pathseq_t2t_empty_input`) has a paired-end and a single-end sample without reads, to check that every step of the filtering accepts empty inputs. Their FASTQs (`data/fastq/pathseq_t2t/empty_{1,2,se}.fastq.gz`) are empty gzip files, made with `gzip -n -c < /dev/null`.
+
 The Kraken2 database of the test (`data/kraken2/`, row `test_kraken2` of `databases.csv`) is built from the "microbial" genome and the decoy contig of these references (`data/pathseq_t2t/microbe_genomes.fna.gz`), with a made-up taxonomy of a species of bacteria (taxid 900002) and one of virus (900003), with `scripts/make_kraken2_db.sh`. Its files are not byte-identical from one build to the next.
 
 ### Adapter-contaminated reads

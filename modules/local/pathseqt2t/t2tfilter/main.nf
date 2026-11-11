@@ -35,8 +35,8 @@ process PATHSEQT2T_T2TFILTER {
     // single-end reads, all the reads); empty if no read is left
     tuple val(meta), path("*.t2tfilt_{1,2}.fastq.gz")    , emit: paired  , optional: true
     tuple val(meta), path("*.t2tfilt_unpaired.fastq.gz") , emit: unpaired
-    // the alignments to T2T-CHM13, none if there were no reads to align
-    tuple val(meta), path("*.t2t.{paired,unpaired}.bam") , emit: bam     , optional: true
+    // the alignments to T2T-CHM13, of the pairs (paired-end reads only) and of the reads without their mate
+    tuple val(meta), path("*.t2t.{paired,unpaired}.bam") , emit: bam
     // the reads before and after the filter, for the read counts
     tuple val(meta), path("*.t2tfilter.log")             , emit: log
     tuple val("${task.process}"), val('bwa'), eval('bwa 2>&1 | sed -n "s/^Version: //p"'), emit: versions_bwa, topic: versions
@@ -83,20 +83,15 @@ process PATHSEQT2T_T2TFILTER {
             cat one_2.tmp.fastq >> in_2.tmp.fastq
         done
         input_pairs=\$(awk 'END { print NR / 4 }' in_1.tmp.fastq)
-        if [ "\$input_pairs" -gt 0 ]; then
-            bwa mem ${args} -t ${task.cpus} \$INDEX in_1.tmp.fastq in_2.tmp.fastq \\
-                | samtools view -@ ${task.cpus} -b -o ${prefix}.t2t.paired.bam -
-            # properly paired, with an alignment score above 35
-            not_aligned ${prefix}.t2t.paired.bam "-f 3" kept.tmp.bam
-            # a read kept without its mate (-s) is dropped
-            samtools collate -@ ${task.cpus} -u -O kept.tmp.bam collate.tmp \\
-                | samtools fastq -n -F 0xB00 -1 ${prefix}.t2tfilt_1.fastq.gz -2 ${prefix}.t2tfilt_2.fastq.gz -0 /dev/null -s dropped.tmp.fastq -
-            dropped_mates=\$(awk 'END { print NR / 4 }' dropped.tmp.fastq)
-        fi
-        # no reads: empty FASTQs (samtools fastq writes no file without reads for it)
-        for mate in 1 2; do
-            [ -e ${prefix}.t2tfilt_\$mate.fastq.gz ] || bgzip -c < /dev/null > ${prefix}.t2tfilt_\$mate.fastq.gz
-        done
+        # without reads, bwa mem writes only the header, and all the outputs are empty
+        bwa mem ${args} -t ${task.cpus} \$INDEX in_1.tmp.fastq in_2.tmp.fastq \\
+            | samtools view -@ ${task.cpus} -b -o ${prefix}.t2t.paired.bam -
+        # properly paired, with an alignment score above 35
+        not_aligned ${prefix}.t2t.paired.bam "-f 3" kept.tmp.bam
+        # a read kept without its mate (-s) is dropped
+        samtools collate -@ ${task.cpus} -u -O kept.tmp.bam collate.tmp \\
+            | samtools fastq -n -F 0xB00 -1 ${prefix}.t2tfilt_1.fastq.gz -2 ${prefix}.t2tfilt_2.fastq.gz -0 /dev/null -s dropped.tmp.fastq -
+        dropped_mates=\$(awk 'END { print NR / 4 }' dropped.tmp.fastq)
         retained_pairs=\$(count_fastq ${prefix}.t2tfilt_1.fastq.gz)
         if [ "\$retained_pairs" != "\$(count_fastq ${prefix}.t2tfilt_2.fastq.gz)" ]; then
             echo "The mates of the pairs not aligned to T2T-CHM13 are not the same number" >&2
@@ -110,16 +105,12 @@ process PATHSEQT2T_T2TFILTER {
         samtools fastq -n -F 0xB00 "\$bam" >> in_unpaired.tmp.fastq
     done
     input_unpaired=\$(awk 'END { print NR / 4 }' in_unpaired.tmp.fastq)
-    if [ "\$input_unpaired" -gt 0 ]; then
-        bwa mem ${args} -t ${task.cpus} \$INDEX in_unpaired.tmp.fastq \\
-            | samtools view -@ ${task.cpus} -b -o ${prefix}.t2t.unpaired.bam -
-        # with an alignment score above 35 (the reads not aligned have none)
-        not_aligned ${prefix}.t2t.unpaired.bam "" kept.tmp.bam
-        # aligned as single reads, so none is flagged as a mate (READ1 or READ2): all are written to -0
-        samtools fastq -@ ${task.cpus} -n -F 0xB00 -0 ${prefix}.t2tfilt_unpaired.fastq.gz kept.tmp.bam
-    fi
-    # no reads: an empty FASTQ (samtools fastq writes no file without reads for it)
-    [ -e ${prefix}.t2tfilt_unpaired.fastq.gz ] || bgzip -c < /dev/null > ${prefix}.t2tfilt_unpaired.fastq.gz
+    bwa mem ${args} -t ${task.cpus} \$INDEX in_unpaired.tmp.fastq \\
+        | samtools view -@ ${task.cpus} -b -o ${prefix}.t2t.unpaired.bam -
+    # with an alignment score above 35 (the reads not aligned have none)
+    not_aligned ${prefix}.t2t.unpaired.bam "" kept.tmp.bam
+    # aligned as single reads, so none is flagged as a mate (READ1 or READ2): all are written to -0
+    samtools fastq -@ ${task.cpus} -n -F 0xB00 -0 ${prefix}.t2tfilt_unpaired.fastq.gz kept.tmp.bam
     retained_unpaired=\$(count_fastq ${prefix}.t2tfilt_unpaired.fastq.gz)
 
     rm -f *.tmp.fastq *.tmp.bam
@@ -140,8 +131,10 @@ process PATHSEQT2T_T2TFILTER {
     if [ -n "${paired_end}" ]; then
         echo "" | gzip > ${prefix}.t2tfilt_1.fastq.gz
         echo "" | gzip > ${prefix}.t2tfilt_2.fastq.gz
+        touch ${prefix}.t2t.paired.bam
     fi
     echo "" | gzip > ${prefix}.t2tfilt_unpaired.fastq.gz
+    touch ${prefix}.t2t.unpaired.bam
     touch ${prefix}.t2tfilter.log
     """
 }
