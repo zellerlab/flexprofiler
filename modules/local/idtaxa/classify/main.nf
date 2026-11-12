@@ -18,7 +18,7 @@ process IDTAXA_CLASSIFY {
     tuple val(meta), path("*.idtaxa.profile.tsv"), emit: profile
     // the number of sequences and of assigned sequences, for the read counts
     tuple val(meta), path("*.idtaxa.log")        , emit: log
-    tuple val("${task.process}"), val('decipher'), eval('Rscript -e "cat(as.character(packageVersion(\\"DECIPHER\\")))"'), emit: versions_decipher, topic: versions
+    tuple val("${task.process}"), val('decipher'), eval('Rscript -e "cat(as.character(packageVersion(\'DECIPHER\')))"'), emit: versions_decipher, topic: versions
 
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
