@@ -210,10 +210,12 @@ if [[ ${FETCH_PATHSEQ_T2T_STAR} == 1 ]] ; then
     echo "c03931958d4572148650d62eb6dec41a  ${GRCH38_DIR}/gencode.v36.annotation.gtf.gz" | md5sum -c -
     gzip -cd ${GRCH38_DIR}/gencode.v36.annotation.gtf.gz > ${TMPDIR}/gencode.v36.annotation.gtf
     STARDIR=${TMPDIR}/star
+    # conda-forge first, as bioconda recommends: with bioconda first, strict channel priority picks its old libdeflate
+    # packages and the htslib needed by STAR cannot be solved (job 26006440)
     micromamba create -y \
         -p ${STARDIR} \
-        -c bioconda \
         -c conda-forge \
+        -c bioconda \
         'star=2.7.11b'
     # 90% of the memory of the slurm job (SLURM_MEM_PER_NODE is in MB) if not set, as the pipeline does
     if [[ -z ${STAR_RAM:-} ]] ; then
