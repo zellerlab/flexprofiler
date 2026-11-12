@@ -96,11 +96,18 @@ workflow PATHSEQ_T2T {
             // --pathseq_t2t_merge_gene_counts: the reads per host gene of all the samples (or runs, without run
             // merging), merged into tables, the samples named as in the read counts
             if (params.pathseq_t2t_merge_gene_counts) {
-                ch_gene_counts = STAR_GRCH38.out.read_per_gene_tab
-                    .map { meta, tab -> [params.perform_runmerging ? meta.id : "${meta.id}_${meta.run_accession}", tab] }
-                    .collect(flat: false, sort: { a, b -> a[0] <=> b[0] })
-                    // [ [name, tab], ... ] to [ meta, [names], [tabs] ]
-                    .map { sample_counts -> [[id: 'grch38']] + sample_counts.transpose() }
+                // a sheet of the sample names and the names of their ReadsPerGene.out.tab (staged in the work
+                // directory of the merge, unique as named after the sample), one per line, separated by a tab
+                ch_gene_counts_sheet = STAR_GRCH38.out.read_per_gene_tab
+                    .map { meta, tab -> "${params.perform_runmerging ? meta.id : "${meta.id}_${meta.run_accession}"}\t${tab.name}" }
+                    .collectFile(name: 'grch38_samples.tsv', newLine: true, sort: true)
+                ch_gene_counts_tabs = STAR_GRCH38.out.read_per_gene_tab
+                    .map { _meta, tab -> tab }
+                    .collect()
+                // [ meta, sheet, [tabs] ]
+                ch_gene_counts = ch_gene_counts_sheet
+                    .map { sheet -> [[id: 'grch38'], sheet] }
+                    .combine(ch_gene_counts_tabs.map { tabs -> [tabs] })
                 STAR_GENECOUNTSMERGE(ch_gene_counts)
                 ch_published = ch_published
                     .mix(publishFiles(STAR_GENECOUNTSMERGE.out.counts.mix(STAR_GENECOUNTSMERGE.out.summary), 'pathseq_t2t/grch38', '*.tsv'))

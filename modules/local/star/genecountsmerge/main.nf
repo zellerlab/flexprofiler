@@ -10,8 +10,9 @@ process STAR_GENECOUNTSMERGE {
         : 'community.wave.seqera.io/library/pandas:2.2.1--2558de69969e58b9'}"
 
     input:
-    // the sample names, and their ReadsPerGene.out.tab, in the same order
-    tuple val(meta), val(samples), path(counts, stageAs: 'counts/*')
+    // a sheet of the sample names and the names of their ReadsPerGene.out.tab, one per line, separated by a tab
+    // (bin/star_genecounts_merge.py), and the ReadsPerGene.out.tab
+    tuple val(meta), path(sheet), path(counts)
 
     output:
     tuple val(meta), path("*.{unstranded,forward,reverse}.tsv"), emit: counts
@@ -20,11 +21,10 @@ process STAR_GENECOUNTSMERGE {
 
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def inputs = [samples, counts instanceof List ? counts : [counts]].transpose().collect { sample, tab -> "'${sample}' ${tab}" }.join(' ')
     """
     star_genecounts_merge.py \\
         ${prefix} \\
-        ${inputs}
+        ${sheet}
     """
 
     stub:

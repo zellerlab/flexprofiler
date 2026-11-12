@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Merge the STAR reads per gene (--quantMode GeneCounts) of the samples into tables of genes by samples.
 
-usage: star_genecounts_merge.py <prefix> <sample> <ReadsPerGene.out.tab> [<sample> <ReadsPerGene.out.tab> ...]
+usage: star_genecounts_merge.py <prefix> <samples.tsv>
+
+<samples.tsv> has one line per sample, without a header: the sample name and the path of its ReadsPerGene.out.tab,
+separated by a tab.
 
 A ReadsPerGene.out.tab has four summary lines (N_unmapped, N_multimapping, N_noFeature, N_ambiguous), then one line per
 gene of the STAR index: the gene ID and its counts for three strandednesses of the library, unstranded, forward (the
@@ -35,9 +38,18 @@ def read_counts(path):
     return counts[: len(SUMMARY)], counts[len(SUMMARY) :]
 
 
-def main(prefix, args):
-    assert args and len(args) % 2 == 0, "expected pairs of sample name and ReadsPerGene.out.tab"
-    pairs = list(zip(args[::2], args[1::2]))
+def read_sheet(path):
+    """The [sample, ReadsPerGene.out.tab] pairs of the sample sheet."""
+    with open(path, newline="") as handle:
+        rows = [row for row in csv.reader(handle, delimiter="\t") if row]
+    for i, row in enumerate(rows, 1):
+        assert len(row) == 2, f"{path}:{i}: {len(row)} columns, expected 2 (sample name, ReadsPerGene.out.tab)"
+    assert rows, f"{path}: no samples"
+    return rows
+
+
+def main(prefix, sheet):
+    pairs = read_sheet(sheet)
     samples = [sample for sample, _ in pairs]
     duplicates = sorted({sample for sample in samples if samples.count(sample) > 1})
     assert not duplicates, f"duplicate sample names: {', '.join(duplicates)}"
@@ -68,6 +80,6 @@ def main(prefix, args):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
+    if len(sys.argv) != 3:
         sys.exit(__doc__)
-    main(sys.argv[1], sys.argv[2:])
+    main(sys.argv[1], sys.argv[2])
