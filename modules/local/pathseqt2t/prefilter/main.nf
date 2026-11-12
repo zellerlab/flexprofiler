@@ -41,8 +41,9 @@ process PATHSEQT2T_PREFILTER {
 
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
-    // bwa: paired-end, properly paired (prefilter.sh, aligner bwa); single-end, aligned (the reads not aligned have no
-    // AS). star: paired-end, properly paired (as prefilter.sh, aligner dragen); single-end, aligned
+    // bwa: paired-end, properly paired (prefilter.sh, aligner bwa); single-end, aligned. The score selects the aligned
+    // reads (bwa gives the reads not aligned AS:i:0). star: paired-end, properly paired (as prefilter.sh, aligner
+    // dragen); single-end, aligned (-F 4), there being no score to select them
     if (!(aligner in ['bwa', 'star'])) {
         error("PATHSEQT2T_PREFILTER: unknown aligner '${aligner}', expected bwa or star")
     }
