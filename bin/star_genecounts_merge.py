@@ -15,68 +15,66 @@ Writes:
 - <prefix>.{unstranded,forward,reverse}.tsv: the counts of each gene (rows, in the order of the index) in each sample
   (columns, sorted)
 - <prefix>.summary.tsv: for each strandedness, the four summary counts and the reads assigned to a gene (N_assigned),
-  in each sample. The strandedness of a library is the one with the most reads assigned
+  in each sample
 
 All the samples must have the same genes, in the same order (the same STAR index).
 """
 import csv
 import sys
 
+import pandas as pd
+
 STRANDEDNESS = ["unstranded", "forward", "reverse"]
 SUMMARY = ["N_unmapped", "N_multimapping", "N_noFeature", "N_ambiguous"]
 
 
+def read_tsv(path, columns):
+    """A headerless TSV of strings, checking that it has the given number of columns."""
+    table = pd.read_csv(path, sep="\t", header=None, dtype=str, keep_default_na=False, quoting=csv.QUOTE_NONE)
+    assert table.shape[1] == columns, f"{path}: {table.shape[1]} columns, expected {columns}"
+    return table
+
+
 def read_counts(path):
-    """The summary counts and the gene IDs and counts of a ReadsPerGene.out.tab, each a list of [id, c1, c2, c3]."""
-    with open(path, newline="") as handle:
-        rows = [row for row in csv.reader(handle, delimiter="\t")]
-    for i, row in enumerate(rows, 1):
-        assert len(row) == 4, f"{path}:{i}: {len(row)} columns, expected 4"
-    ids = [row[0] for row in rows[: len(SUMMARY)]]
-    assert ids == SUMMARY, f"{path}: summary lines {ids}, expected {SUMMARY}"
-    counts = [[row[0]] + [int(value) for value in row[1:]] for row in rows]
-    return counts[: len(SUMMARY)], counts[len(SUMMARY) :]
+    """The summary counts and the gene counts of a ReadsPerGene.out.tab, each a table indexed by ID, by strandedness.
 
-
-def read_sheet(path):
-    """The [sample, ReadsPerGene.out.tab] pairs of the sample sheet."""
-    with open(path, newline="") as handle:
-        rows = [row for row in csv.reader(handle, delimiter="\t") if row]
-    for i, row in enumerate(rows, 1):
-        assert len(row) == 2, f"{path}:{i}: {len(row)} columns, expected 2 (sample name, ReadsPerGene.out.tab)"
-    assert rows, f"{path}: no samples"
-    return rows
+    The summary has the four summary lines and the reads assigned to a gene (N_assigned), the sum of the gene counts.
+    """
+    table = read_tsv(path, 1 + len(STRANDEDNESS)).set_index(0).astype("int64")
+    table.columns = STRANDEDNESS
+    summary = table.iloc[: len(SUMMARY)].copy()
+    genes = table.iloc[len(SUMMARY) :]
+    summary_labels = list(summary.index)
+    assert summary_labels == SUMMARY, f"{path}: summary lines {summary_labels}, expected {SUMMARY}"
+    summary.loc["N_assigned"] = genes.sum()
+    return summary, genes
 
 
 def main(prefix, sheet):
-    pairs = read_sheet(sheet)
-    samples = [sample for sample, _ in pairs]
-    duplicates = sorted({sample for sample in samples if samples.count(sample) > 1})
+    pairs = read_tsv(sheet, 2).set_axis(["sample", "path"], axis=1)
+    assert not pairs.empty, f"{sheet}: no samples"
+    duplicates = sorted(pairs.loc[pairs["sample"].duplicated(), "sample"].unique())
     assert not duplicates, f"duplicate sample names: {', '.join(duplicates)}"
+    pairs = pairs.sort_values("sample")
 
-    tables = {sample: read_counts(path) for sample, path in pairs}
-    samples = sorted(tables)
-    genes = [row[0] for row in tables[samples[0]][1]]
-    for sample in samples[1:]:
-        assert [row[0] for row in tables[sample][1]] == genes, (
-            f"{sample}: the genes differ from those of {samples[0]}: were they aligned with the same STAR index?"
+    summaries, genes = {}, {}
+    for sample, path in zip(pairs["sample"], pairs["path"]):
+        summaries[sample], genes[sample] = read_counts(path)
+    first = pairs["sample"].iloc[0]
+    for sample, counts in genes.items():
+        assert counts.index.equals(genes[first].index), (
+            f"{sample}: the genes differ from those of {first}: were they aligned with the same STAR index?"
         )
 
-    for column, strandedness in enumerate(STRANDEDNESS, 1):
-        with open(f"{prefix}.{strandedness}.tsv", "w", newline="") as handle:
-            writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
-            writer.writerow(["gene_id"] + samples)
-            for i, gene in enumerate(genes):
-                writer.writerow([gene] + [tables[sample][1][i][column] for sample in samples])
+    # columns (sample, strandedness), in the order of the samples
+    counts = pd.concat(genes, axis=1).rename_axis("gene_id")
+    for strandedness in STRANDEDNESS:
+        counts.xs(strandedness, axis=1, level=1).to_csv(f"{prefix}.{strandedness}.tsv", sep="\t", lineterminator="\n")
 
-    with open(f"{prefix}.summary.tsv", "w", newline="") as handle:
-        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
-        writer.writerow(["strandedness", "metric"] + samples)
-        for column, strandedness in enumerate(STRANDEDNESS, 1):
-            for i, metric in enumerate(SUMMARY):
-                writer.writerow([strandedness, metric] + [tables[sample][0][i][column] for sample in samples])
-            assigned = [sum(row[column] for row in tables[sample][1]) for sample in samples]
-            writer.writerow([strandedness, "N_assigned"] + assigned)
+    # rows (strandedness, metric), columns the samples
+    summary = pd.concat({sample: table.T.stack() for sample, table in summaries.items()}, axis=1)
+    summary = summary.rename_axis(["strandedness", "metric"])
+    summary.to_csv(f"{prefix}.summary.tsv", sep="\t", lineterminator="\n")
 
 
 if __name__ == "__main__":

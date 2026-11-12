@@ -150,8 +150,7 @@ PathSeqFilterSpark loads the BWA index image of the host bundle in memory: `PATH
   the reads per host gene of all the samples merged (`bin/star_genecounts_merge.py`), one table per strandedness of the
   library, with the genes (rows, in the order of the STAR index) by samples (columns); and
   `grch38_gene_counts.summary.tsv`, for each strandedness, the four summary counts of STAR (`N_unmapped`,
-  `N_multimapping`, `N_noFeature`, `N_ambiguous`) and the reads assigned to a gene (`N_assigned`) of each sample: the
-  strandedness of a library is the one with the most reads assigned
+  `N_multimapping`, `N_noFeature`, `N_ambiguous`) and the reads assigned to a gene (`N_assigned`) of each sample
 - `pathseq_t2t/qcfilter/<sample>.prefilter.{unaligned,decoys}.filter_metrics.txt`: the reads after each filter of
   PathSeqFilterSpark, for the reads not aligned to GRCh38 and for those aligned to its decoy contigs
 - `pathseq_t2t/t2tfilter/<sample>.t2tfilter.log`: the reads before and after the T2T-CHM13 filter
