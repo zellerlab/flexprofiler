@@ -20,7 +20,7 @@ Both contain metadata and paths to the data of your input samples and databases.
 When running zellerlab/flexprofiler, every step and tool is 'opt in'.
 To run a given classifier or profiler you must make sure to supply both a database in your `<database>.csv` and supply `--run_<profiler>` flag to your command.
 Omitting either will result in the profiling tool not executing.
-zellerlab/flexprofiler also includes optional pre-processing (adapter clipping, merge running etc.) or post-processing (visualisation) steps.
+zellerlab/flexprofiler also includes optional pre-processing (adapter clipping, run merging etc.) and post-processing (merged profile tables) steps.
 These are also opt in with a `--perform_<step>` flag.
 In some cases, the pre- and post-processing steps may also require additional files. Please check the parameters tab of this documentation for more information.
 Please see the rest of this page for information about how to prepare input samplesheets and databases and how to run Nextflow pipelines.
@@ -63,7 +63,7 @@ Therefore ensure that each `run_accession` ID is unique, even if from the same s
 :::
 
 :::warning
-Runs of the same sample sequenced on Illumina platforms with a combination of single and paired-end data can only be concatenated if read pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`), otherwise the pipeline stops with an error.
+Runs of the same sample sequenced on Illumina platforms with a combination of single and paired-end data can only be concatenated if read pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`, or, for `AMPLICON` runs, `--amplicon_pair_handling` other than `none`), otherwise the pipeline stops with an error.
 :::
 
 ### Full samplesheet
@@ -186,7 +186,7 @@ See below for more information about profiles.
 When running zellerlab/flexprofiler, every step and tool is 'opt in'.
 To run a given classifier/profiler you must make sure to supply both a database in your `<database>.csv` and supply `--run_<profiler>` flag to your command.
 Omitting either will result in the classification/profiling tool not executing.
-If you wish to perform pre-processing (adapter clipping, merge running etc.) or post-processing (visualisation) steps, these are also opt in with a `--perform_<step>` flag.
+If you wish to perform pre-processing (adapter clipping, run merging etc.) steps, these are also opt in with a `--perform_<step>` flag (the amplicon primer trimming is on by default), and the merged profile tables with `--run_profile_standardisation`.
 In some cases, the pre- and post-processing steps may also require additional files. Please check the parameters tab of this documentation for more information.
 
 Note that the pipeline will create the following files in your working directory:
@@ -262,7 +262,7 @@ In this case paired-end 'alignment' against the reference databases is performed
 If paired-end merging is activated you can also specify whether to include unmerged reads in the reads sent for classification/profiling (`--shortread_qc_mergepairs` and `--shortread_qc_includeunmerged`).
 You can also turn off clipping and only perform paired-end merging, if requested.
 This can be useful when processing data downloaded from the ENA, SRA, or DDBJ (`--shortread_qc_skipadaptertrim`).
-Both tools support length filtering of reads and can be tuned with `--shortread_qc_minlength`.
+fastp filters the reads by length, as set by `--shortread_qc_minlength`.
 Performing length filtering can be useful to remove short (often low sequencing complexity) sequences that result in unspecific classification and therefore slow down runtime during classification/profiling, with minimal gain.
 
 You can optionally save the resulting processed reads with `--save_preprocessed_reads`.
@@ -290,7 +290,7 @@ If you have multiple taxa or sequences you wish to remove (e.g., the host genome
 
 For human samples with few microbial reads, such as tumour or blood whole-genome sequencing, a single alignment to the host genome leaves enough human reads to cause false microbial calls.
 `--pathseq_t2t` replaces the QC and host removal with the PathSeq-T2T host filtering of [Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015): alignment to GRCh38, GATK PathSeqFilterSpark (quality, complexity, host k-mer and duplicate filters), and alignment to T2T-CHM13.
-It needs the bwa indexes (or FASTAs) of GRCh38 and T2T-CHM13 and the GATK PathSeq host files, accepts only Illumina `WGS` FASTQ, and cannot be combined with `--perform_shortread_qc` or `--perform_shortread_hostremoval`, nor with `--run_cayman` or `--run_gqlib`.
+It needs the bwa indexes (or FASTAs) of GRCh38 and T2T-CHM13 (for RNA-seq, the STAR index of GRCh38 instead of its bwa index, with `--pathseq_t2t_grch38_aligner star`) and the GATK PathSeq host files, accepts only Illumina `WGS` FASTQ, and cannot be combined with `--perform_shortread_qc` or `--perform_shortread_hostremoval`, nor with `--run_cayman` or `--run_gqlib`.
 It runs after run merging, so that with `--perform_runmerging` the duplicates are removed over the whole sample.
 See [the PathSeq-T2T page](pathseq_t2t.md) for the references, the outputs, and the differences from the upstream implementation.
 
@@ -299,7 +299,7 @@ See [the PathSeq-T2T page](pathseq_t2t.md) for the references, the outputs, and 
 For samples that may have been sequenced over multiple runs, or for FASTQ files split into multiple chunks, you can activate the ability to merge across all runs or chunks with `--perform_runmerging`.
 For more information how to set up your input samplesheet, see [Multiple runs of the same sample](#multiple-runs-of-the-same-sample).
 Activating this functionality will concatenate the FASTQ files with the same sample name _after_ the optional preprocessing steps and _before_ classification/profiling.
-All runs of a sample must have the same pairing type (single- or paired-end), unless pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`), otherwise the pipeline stops with an error.
+All runs of a sample must have the same pairing type (single- or paired-end), unless pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`, or, for `AMPLICON` runs, `--amplicon_pair_handling` other than `none`), otherwise the pipeline stops with an error.
 The `WGS` and `AMPLICON` runs of a sample (`library_strategy` column) are never merged together: they are merged separately, into the runs `merged_WGS` and `merged_AMPLICON` of the sample, and a sample with a single run of a strategy keeps its `run_accession`.
 
 You can optionally save the FASTQ output of the run merging with the `--save_runmerged_reads`.

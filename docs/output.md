@@ -11,9 +11,13 @@ The directories listed below will be created in the results directory after the 
 The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes data using the following steps:
 
 - [UNTAR](#untar) - Optionally saved decompressed input databases
+- [BBMap repair](#bbmap-repair) - Optional repair of the order of paired-end reads
 - [Falco or FastQC](#fastqc-or-falco) - QC of the raw reads and of the reads given to the profilers
 - [fastp](#fastp) - Adapter trimming for Illumina data
 - [Bowtie2](#bowtie2) - Host removal for Illumina reads
+- [Amplicon primers](#amplicon-primers) - Primer detection (PIMENTO), orientation of the long reads and primer trimming (cutadapt) of the amplicon reads
+- [PacBio QC](#pacbio-qc) - Quality filtering of the PacBio amplicon reads
+- [Amplicon pair handling](#amplicon-pair-handling) - Merging (or joining) of the read pairs of the amplicon reads
 - [SAMtools stats](#samtools-stats) - Statistics from host removal
 - [PathSeq-T2T](pathseq_t2t.md#output) - Host filtering of low-biomass samples (`--pathseq_t2t`)
 - [Analysis Ready Reads](#analysis-ready-reads) - Optional results directory containing the final processed reads used as input for classification/profiling.
@@ -22,7 +26,8 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 - [cayman](#cayman) - Profiling of carbohydrate-active enzymes from a gene catalogue
 - [gqlib](#gqlib) - Functional profiling from the annotation of a gene catalogue
 - [Kraken2](#kraken2) - Taxonomic classification of the reads, with merged tables of reads
-- [Read counts](#read-counts) - Per-run read counts after QC, host removal and alignment to each profiling database
+- [IDTAXA](#idtaxa) - Taxonomic classification of the amplicon reads, with merged tables per rank
+- [Read counts](#read-counts) - Per-run read counts after each preprocessing step and for each profiler and database
 - [MultiQC](#multiqc) - Aggregate report describing results and QC from the whole pipeline
 - [Pipeline information](#pipeline-information) - Report metrics generated during the workflow execution
 
@@ -34,12 +39,26 @@ untar is used in zellerlab/flexprofiler to decompress various input files ending
 <summary>Output files</summary>
 
 - `untar/`
-  - `database/`
+  - `databases/`
     - `<database_file_name>`: directory containing contents of the decompressed archive
 
 </details>
 
 This directory will only be present if `--save_untarred_databases` is supplied. The contained directories can be useful for moving the decompressed directories to a central 'cache' location allowing users to re-use the same databases. This is useful to save unnecessary computational time of decompressing the archives on every run.
+
+### BBMap repair
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `bbmap/`
+  - `<sample_id>_{1,2}_repaired.fastq.gz`: the paired-end reads with their order repaired
+  - `<sample_id>_singleton.fastq.gz`: the reads whose mate was not found
+  - `<sample_id>.repair.sh.log`: the log of repair.sh
+
+</details>
+
+This directory is only present with `--perform_repair_pe_order`.
 
 ### FastQC or Falco
 
@@ -75,15 +94,15 @@ It is used in zellerlab/flexprofiler for adapter trimming of short-reads.
 <summary>Output files</summary>
 
 - `fastp/`
-  - `<sample_id>[_R1|_R2].fastp.fastq.gz`: File with the trimmed unmerged fastq reads (`_R1` and `_R2` for the mates of paired-end reads).
-  - `<sample_id>.merged.fastq.gz`: File with the reads that were successfully merged.
-  - `<sample_id>.*{log,html,json}`: Log files in different formats.
+  - `<sample_id>_<run_accession>[_R1|_R2].fastp.fastq.gz`: File with the trimmed unmerged fastq reads (`_R1` and `_R2` for the mates of paired-end reads).
+  - `<sample_id>_<run_accession>.merged.fastq.gz`: File with the reads that were successfully merged.
+  - `<sample_id>_<run_accession>.fastp.{log,html,json}`: Log files in different formats.
 
 </details>
 
-By default zellerlab/flexprofiler will only provide the `<sample_id>[_R1|_R2].fastp.fastq.gz` files. The file `<sample_id>.merged.fastq.gz` will be available in the output folder if you provide the argument ` --shortread_qc_mergepairs` (optionally retaining un-merged pairs when in combination with `--shortread_qc_includeunmerged`).
+By default zellerlab/flexprofiler will only provide the log files. The file `<sample_id>_<run_accession>.merged.fastq.gz` will be available in the output folder if you provide the argument ` --shortread_qc_mergepairs` (optionally retaining un-merged pairs when in combination with `--shortread_qc_includeunmerged`).
 
-You will only find the `.fastq` files in the results directory if you provide ` --save_preprocessed_reads`. If this is selected, you may receive different combinations of `.fastq` files for each sample depending on the input types - e.g. whether you have merged or not, or if you're supplying both single- and paired-end reads. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
+You will only find the `.fastq` files in the results directory if you provide ` --save_preprocessed_reads`. If this is selected, you may receive different combinations of `.fastq` files for each sample depending on the input types - e.g. whether you have merged or not, or if you're supplying both single- and paired-end reads. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_fastqs`.
 
 :::warning
 The resulting `.fastq` files may _not_ always be the 'final' reads that go into taxprofiling, if you also run other steps such as host removal, run merging etc..
@@ -112,11 +131,7 @@ The two mates of paired-end reads are aligned separately, as single-end reads, a
 
 </details>
 
-By default zellerlab/flexprofiler will only provide the `.log` file if host removal is turned on. You will only have a `.bam` file if you specify `--save_hostremoval_bam`. This will contain _both_ mapped and unmapped reads. You will only get FASTQ files if you specify to save `--save_hostremoval_unmapped` - these contain only unmapped reads. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
-
-:::info
-Unmapped reads in FASTQ are only found in this directory for short-reads, for long-reads see [`samtools/fastq/`](#samtools-fastq).
-:::
+By default zellerlab/flexprofiler will only provide the `.log` file if host removal is turned on. You will only have a `.bam` file if you specify `--save_hostremoval_bam`. This will contain _both_ mapped and unmapped reads. You will only get FASTQ files if you specify to save `--save_hostremoval_unmapped` - these contain only unmapped reads. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_fastqs`.
 
 :::info
 The resulting `.fastq` files may _not_ always be the 'final' reads that go into taxprofiling, if you also run other steps such as run merging etc..
@@ -153,6 +168,20 @@ While there is a dedicated section in the MultiQC HTML for Bowtie2, these values
 
 </details>
 
+### Amplicon pair handling
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `vsearch/`
+  - `<sample>_<run>.vsearch.log`: with `--amplicon_pair_handling merged_plus_joined` (default), the pairs merged and joined by vsearch.
+- `fastp_amplicon_merge/`
+  - `<sample>_<run>_amplicon_merge.fastp.{log,html,json}`: with `--amplicon_pair_handling merged_plus_unmerged`, the reports of the merging by fastp.
+
+</details>
+
+The merged (or joined) reads are the analysis-ready reads of the `AMPLICON` runs (see below).
+
 ### Analysis Ready Reads
 
 :::info
@@ -173,7 +202,7 @@ The results directory will contain the 'final' processed reads used as input for
 The reads of the `AMPLICON` runs are those at the end of the amplicon preprocessing (primer trimming and pair handling), named `<sample_id>_<run_accession>.fastq.gz`, or `<sample_id>_<run_accession>_{1,2}.fastq.gz` for the pairs kept with `--amplicon_pair_handling none`; with `--perform_runmerging`, those of the samples with more than one run are the merged reads.
 
 :::warning
-If you turn off all preprocessing steps, then no results will be present in this directory. This happens independently for short- and long-reads. I.e. you will only have FASTQ files for short reads in this directory if you skip all long-read preprocessing.
+If you turn off all preprocessing steps, then no results will be present in this directory, except for the `AMPLICON` runs, whose analysis-ready reads are published also when no step changed them (they are then the input FASTQs).
 :::
 
 ### SAMtools stats
@@ -206,7 +235,7 @@ This is the last possible preprocessing step, so if you have multiple runs or li
 
 Note that you will only find samples that went through the run merging step in this directory. For samples that had a single run or library will not go through this step of the pipeline and thus will not be present in this directory.
 
-This directory and its FASTQ files will only be present if you supply `--save_runmerged_reads`. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
+This directory and its FASTQ files will only be present if you supply `--save_runmerged_reads`. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_fastqs`.
 
 ### mOTUs
 
@@ -347,6 +376,23 @@ With paired-end reads, the same holds for each pair: a pair with both mates alig
 
 `<sample>` is the sample, or `<sample>_<run_accession>` without run merging. The reports are also in the MultiQC report. The reads per million of PathSeq-T2T are not computed: with `--pathseq_t2t` they are `reads_clade` times 10^6 divided by the `raw_reads` of the [read counts](#read-counts), except that here the singletons are counted once instead of twice (see [the PathSeq-T2T page](pathseq_t2t.md#differences-from-upstream-pathseq-t2t)); the paper takes 0.1 reads per million as the background level of contamination.
 
+### IDTAXA
+
+[IDTAXA](https://doi.org/10.1186/s40168-018-0521-5) (DECIPHER) classifies the amplicon sequences against a training set (`--run_idtaxa`).
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `idtaxa/`
+  - `<db_name>/<sample>_<db_name>.idtaxa.profile.tsv`: the sequences assigned to each lineage in a sample
+  - `<db_name>/<sample>_<db_name>.idtaxa.log`: the log, with the sequences classified and assigned
+  - `merge/<db_name>/<db_name>.lineage.tsv` (`--run_profile_standardisation`): the counts of each lineage (rows), from the domain down to the deepest rank assigned, in all the samples (columns)
+  - `merge/<db_name>/<db_name>.<rank>.tsv`: the counts of the lineages cut at a rank (e.g. `genus`), the sequences not assigned down to that rank being in the row `unassigned`, one table per rank (`--idtaxa_ranks` to choose the ranks)
+
+</details>
+
+`<sample>` is the sample, or `<sample>_<run_accession>` without run merging.
+
 ### Read counts
 
 <details markdown="1">
@@ -357,12 +403,15 @@ With paired-end reads, the same holds for each pair: a pair with both mates alig
 
 </details>
 
-The counts are parsed from the logs of the tools. There is one row per sample and run (columns `sample` and `run_accession`): with `--perform_runmerging`, the runs of a sample with more than one run are summed into its merged run (`merged_WGS` or `merged_AMPLICON`), and a sample with a single run keeps its `run_accession`. The table is also in the MultiQC report, in the section Read counts. A column is present only if its step was run: the raw and QC reads only with `--shortread_qc_tool fastp`, the pairs retained by host removal only with `--perform_shortread_hostremoval`, and one column per profiler and database.
+The counts are parsed from the logs of the tools. There is one row per sample and run (columns `sample` and `run_accession`): with `--perform_runmerging`, the runs of a sample with more than one run are summed into its merged run (`merged_WGS` or `merged_AMPLICON`), and a sample with a single run keeps its `run_accession`. The table is also in the MultiQC report, in the section Read counts. A column is present only if its step was run: the raw and QC reads only with `--perform_shortread_qc` (fastp) or, for the PacBio reads, `--perform_longread_qc` (vsearch and BBDuk), the pairs retained by host removal only with `--perform_shortread_hostremoval`, the amplicon columns only for `AMPLICON` runs, and one column per profiler and database.
 
 | Column                      | Unit                                     | Source                                                                                                     |
 | --------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `raw_reads`                 | reads, each mate counted                 | fastp, reads before filtering                                                                              |
-| `qc_reads`                  | reads, each mate counted                 | fastp, reads after filtering                                                                               |
+| `raw_reads`                 | reads, each mate counted                 | fastp (PacBio: vsearch), reads before filtering                                                            |
+| `qc_reads`                  | reads, each mate counted                 | fastp (PacBio: BBDuk, after vsearch), reads after filtering                                                |
+| `oriented_reads`            | reads                                    | vsearch `--orient`, long amplicon reads oriented as the reference sequences (`--amplicon_orient_reference`), the others dropped |
+| `primer_trimmed_reads`      | reads, each mate counted                 | cutadapt, amplicon reads with a primer trimmed at their start; long reads: with both primers trimmed, and in the length window |
+| `readthrough_trimmed_reads` | reads, each mate counted                 | cutadapt, short amplicon reads with the opposite primer trimmed at their end                              |
 | `hostremoval_retained_pairs` | read pairs (single-end: reads)           | repair.sh, pairs with neither mate aligned to the host genome (single-end: bowtie2, reads not aligned), i.e. the reads given to the profilers |
 | `grch38_unaligned_reads`    | reads, each mate counted                 | PathSeq-T2T: reads not aligned to GRCh38 and reads of its viral decoy contigs, given to PathSeqFilterSpark (`PRIMARY_READS` of its metrics); with `--pathseq_t2t`, `raw_reads` is the primary reads aligned to GRCh38 (`samtools flagstat`) |
 | `prealigned_host_filter_reads` | reads, each mate counted              | PathSeq-T2T: PathSeqFilterSpark, `READS_AFTER_PREALIGNED_HOST_FILTER`                                     |
@@ -370,16 +419,19 @@ The counts are parsed from the logs of the tools. There is one row per sample an
 | `host_kmer_filter_reads`    | reads, each mate counted                 | PathSeq-T2T: PathSeqFilterSpark, `READS_AFTER_HOST_FILTER`                                                 |
 | `deduplication_filter_reads` | reads, each mate counted                | PathSeq-T2T: PathSeqFilterSpark, `READS_AFTER_DEDUPLICATION`                                               |
 | `t2t_filter_reads`          | reads, each mate counted                 | PathSeq-T2T: reads not aligned to T2T-CHM13 (pairs and singletons), i.e. the reads given to the profilers |
+| `merged_pairs`              | read pairs                               | vsearch or fastp (`--amplicon_pair_handling`), amplicon read pairs merged into one sequence                 |
+| `joined_pairs`              | read pairs                               | vsearch (`--amplicon_pair_handling merged_plus_joined`), amplicon read pairs not merged, joined with Ns      |
 | `motus4_<db_name>_pairs`    | read pairs                               | mOTUs v4, inserts aligned to the database and passing the mOTUs filters (`Read N aligned inserts`); with `--pathseq_t2t`, each singleton counts as one insert |
 | `motus3_<db_name>_pairs`    | read pairs                               | mOTUs v3, inserts aligned to the database and passing the mOTUs filters (`Total number of inserts`); with `--pathseq_t2t`, each singleton counts as one insert |
 | `cayman_<db_name>_pairs`    | read pairs                               | cayman, reads aligned to the gene catalogue and passing the filters (`Reads passing filters`)              |
 | `gqlib_<db_name>_pairs`     | read pairs                               | gqlib, reads aligned to the gene catalogue and passing the filters (`Reads passing filters`)               |
 | `kraken2_<db_name>_reads`   | reads, each mate counted                 | Kraken2, reads classified (the `root` line of the report; pairs counted twice, with the singletons of `--pathseq_t2t`) |
+| `idtaxa_<db_name>_pairs`    | sequences                                | IDTAXA, amplicon sequences (merged or joined pairs, mates of unmerged pairs, or single-end reads) assigned to a taxon |
 
 For cayman and gqlib, the alignment and its filters are the same for all the annotations of a gene catalogue, so there is one column per gene catalogue. A count that could not be found in a log is reported as `NA`, with a warning in the log of the task.
 
 :::note
-With `--shortread_qc_mergepairs`, fastp merges the overlapping pairs into single reads, so the columns after QC count fragments (merged pairs and unmerged reads) rather than pairs. Long reads have no QC and host removal counts.
+With `--shortread_qc_mergepairs`, fastp merges the overlapping pairs into single reads, so the columns after QC count fragments (merged pairs and unmerged reads) rather than pairs. Long reads have no host removal counts.
 :::
 
 ### MultiQC
@@ -406,13 +458,15 @@ You can expect in the MultiQC reports either sections and/or general stats colum
 - fastp
 - bowtie2
 - samtools (stats)
+- STAR (with `--pathseq_t2t_grch38_aligner star`)
 - kraken
 - motus
+- the read counts (custom content)
 
 :::info
 The 'General Stats' table by default will only show statistics referring to pre-processing steps, and will not display possible values from each classifier/profiler, unless turned on by the user within the 'Configure Columns' menu or via a custom MultiQC config file (`--multiqc_config`).
 
-To show the columns of a profiler in the general stats table, copy the zellerlab/flexprofiler [MultiQC config](https://github.com/zellerlab/flexprofiler/blob/master/assets/multiqc_config.yml) and change its entry in `table_columns_visible:` (e.g. `Kraken`) to True.
+To show the columns of a profiler in the general stats table, copy the zellerlab/flexprofiler [MultiQC config](https://github.com/zellerlab/flexprofiler/blob/main/assets/multiqc_config.yml) and change its entry in `table_columns_visible:` (e.g. `Kraken`) to True.
 :::
 
 ### Pipeline information
@@ -421,10 +475,9 @@ To show the columns of a profiler in the general stats table, copy the zellerlab
 <summary>Output files</summary>
 
 - `pipeline_info/`
-  - Reports generated by Nextflow: `execution_report.html`, `execution_timeline.html`, `execution_trace.txt` and `pipeline_dag.dot`/`pipeline_dag.svg`.
-  - Reports generated by the pipeline: `pipeline_report.html`, `pipeline_report.txt` and `software_versions.yml`. The `pipeline_report*` files will only be present if the `--email` / `--email_on_fail` parameter's are used when running the pipeline.
-  - Reformatted samplesheet files used as input to the pipeline: `samplesheet.valid.csv`.
-  - Parameters used by the pipeline run: `params.json`.
+  - Reports generated by Nextflow: `execution_report_<timestamp>.html`, `execution_timeline_<timestamp>.html`, `execution_trace_<timestamp>.txt` and `pipeline_dag_<timestamp>.html` (the suffix is set by `--trace_report_suffix`).
+  - Reports generated by the pipeline: `pipeline_report.html`, `pipeline_report.txt` and `zellerlab_flexprofiler_software_mqc_versions.yml` (the software versions). The `pipeline_report*` files will only be present if the `--email` / `--email_on_fail` parameter's are used when running the pipeline.
+  - Parameters used by the pipeline run: `params_<timestamp>.json`.
 
 </details>
 

@@ -33,12 +33,9 @@ The newest Nextflow module of SHARK (25.04.6) is older than the version the pipe
 
 The images are kept in the apptainer cache shared by the lab (see `zellerlab_shark`). To download all of them at once, e.g. after a new version of the pipeline, so that the runs do not have to, submit [this script](../utils/pull_images.sh) on SHARK (`sbatch utils/pull_images.sh`, with `VERSION` set as in `run_shark.sh`): it skips the images already in the cache.
 
-For some steps Conda/mamba/micromamba is also required.
-This need to be installed in your system and available in the `$PATH`.
-If you use micromamba or mamba instead than conda (as you should), you need to set the relevant flag in `~/.nextflow/config`.
-Copy [this config file](../utils/user.config) to `~/.nextflow/config` and adapt it as required to do it.
+All the steps run in containers, so Conda is not needed (`zellerlab_shark` turns it off).
 
-It is good also if you set an appropriate cache directory for apptainer and conda so that containers and environments are not downloaded again every time you run the pipeline (on SHARK, `zellerlab_shark` already uses the apptainer cache shared by the lab).
+Off SHARK, it is good to set an apptainer cache directory so that containers are not downloaded again every time you run the pipeline (on SHARK, `zellerlab_shark` already uses the apptainer cache shared by the lab).
 If you use [this config file](../utils/user.config) this is also set up for you, you only need to set the right paths.
 
 ## Nextflow Tower / Seqera cloud

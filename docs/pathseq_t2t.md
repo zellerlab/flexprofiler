@@ -41,7 +41,7 @@ With `--run_kraken2` and `--run_profile_standardisation`, the Kraken2 reports ar
 (see [the output documentation](output.md#kraken2)). The reads per million of the paper are not computed: they are the
 reads of `reads_clade` times 10^6 divided by the `raw_reads` of the read counts.
 
-FastQC (or Falco) is run on the raw reads, and on the filtered reads, as the reads given to the profilers (`fastqc/processed/`, with the reads left without their mate as `*_singletons_*`). The reads left after
+Falco (or FastQC) is run on the raw reads, and on the filtered reads, as the reads given to the profilers (`falco/processed/`, or `fastqc/processed/`, with the reads left without their mate as `*_singletons_*`). The reads left after
 each step are in the [read counts](output.md#read-counts), as in Figure 1C of the paper.
 
 The steps are run after [run merging](usage.md#run-merging): with `--perform_runmerging`, the runs of a sample are
