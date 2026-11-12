@@ -9,6 +9,62 @@
             "nextflow": "26.10.5"
         }
     },
+    "software_versions": {
+        "content": [
+            {
+                "BWA_INDEX_T2T": {
+                    "bwa": "0.7.19-r1273"
+                },
+                "FALCO": {
+                    "falco": "1.2.5"
+                },
+                "GUNZIP_GRCH38_FASTA": {
+                    "gunzip": 1.13
+                },
+                "KRAKEN2_KRAKEN2": {
+                    "kraken2": "2.1.6",
+                    "pigz": 2.8
+                },
+                "KRAKEN2_MERGE": {
+                    "pandas": "2.2.1"
+                },
+                "PATHSEQT2T_PREFILTER": {
+                    "samtools": "1.22.1"
+                },
+                "PATHSEQT2T_QCFILTER": {
+                    "gatk4": "4.6.2.0"
+                },
+                "PATHSEQT2T_T2TFILTER": {
+                    "bwa": "0.7.19-r1273",
+                    "samtools": "1.22.1"
+                },
+                "READ_COUNTS": {
+                    "pandas": "2.2.1"
+                },
+                "STAR_GENECOUNTSMERGE": {
+                    "python": "3.12.16"
+                },
+                "STAR_GENOMEGENERATE_GRCH38": {
+                    "gawk": "5.1.0",
+                    "samtools": 1.21,
+                    "star": "2.7.11b"
+                },
+                "STAR_GRCH38": {
+                    "gawk": "5.1.0",
+                    "samtools": 1.21,
+                    "star": "2.7.11b"
+                },
+                "Workflow": {
+                    "zellerlab/flexprofiler": "v0.1.0"
+                }
+            }
+        ],
+        "timestamp": "2026-11-12T14:23:16.311517",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
+        }
+    },
     "filenames": {
         "content": [
             [
@@ -18,37 +74,14 @@
                 "analysis_ready_fastqs/lowbiomass_rna.t2tfilt_unpaired.fastq.gz",
                 "analysis_ready_fastqs/lowbiomass_rna_se.t2tfilt_unpaired.fastq.gz",
                 "falco",
-                "falco/processed",
-                "falco/processed/lowbiomass_rna_run1_processed_1_fastqc_data.txt",
-                "falco/processed/lowbiomass_rna_run1_processed_1_report.html",
-                "falco/processed/lowbiomass_rna_run1_processed_1_summary.txt",
-                "falco/processed/lowbiomass_rna_run1_processed_2_fastqc_data.txt",
-                "falco/processed/lowbiomass_rna_run1_processed_2_report.html",
-                "falco/processed/lowbiomass_rna_run1_processed_2_summary.txt",
-                "falco/processed/lowbiomass_rna_run1_singletons_processed_fastqc_data.txt",
-                "falco/processed/lowbiomass_rna_run1_singletons_processed_report.html",
-                "falco/processed/lowbiomass_rna_run1_singletons_processed_summary.txt",
-                "falco/processed/lowbiomass_rna_se_run1_processed_fastqc_data.txt",
-                "falco/processed/lowbiomass_rna_se_run1_processed_report.html",
-                "falco/processed/lowbiomass_rna_se_run1_processed_summary.txt",
-                "falco/raw",
-                "falco/raw/lowbiomass_rna_run1_raw_1_fastqc_data.txt",
-                "falco/raw/lowbiomass_rna_run1_raw_1_report.html",
-                "falco/raw/lowbiomass_rna_run1_raw_1_summary.txt",
-                "falco/raw/lowbiomass_rna_run1_raw_2_fastqc_data.txt",
-                "falco/raw/lowbiomass_rna_run1_raw_2_report.html",
-                "falco/raw/lowbiomass_rna_run1_raw_2_summary.txt",
-                "falco/raw/lowbiomass_rna_se_run1_raw_fastqc_data.txt",
-                "falco/raw/lowbiomass_rna_se_run1_raw_report.html",
-                "falco/raw/lowbiomass_rna_se_run1_raw_summary.txt",
                 "kraken2",
-                "kraken2/kraken2_test_kraken2.reads_clade.tsv",
-                "kraken2/kraken2_test_kraken2.reads_taxon.tsv",
-                "kraken2/kraken2_test_kraken2.taxonomy.tsv",
-                "kraken2/test_kraken2",
-                "kraken2/test_kraken2/lowbiomass_rna_se_test_kraken2.kraken2.report.txt",
-                "kraken2/test_kraken2/lowbiomass_rna_test_kraken2.kraken2.report.txt",
-                "kraken2/test_kraken2/lowbiomass_rna_test_kraken2_singletons.kraken2.report.txt",
+                "kraken2/kraken2_test_kraken2_pathseq.reads_clade.tsv",
+                "kraken2/kraken2_test_kraken2_pathseq.reads_taxon.tsv",
+                "kraken2/kraken2_test_kraken2_pathseq.taxonomy.tsv",
+                "kraken2/test_kraken2_pathseq",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_se_test_kraken2_pathseq.kraken2.report.txt",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq.kraken2.report.txt",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq_singletons.kraken2.report.txt",
                 "multiqc",
                 "pathseq_t2t",
                 "pathseq_t2t/grch38",
@@ -76,7 +109,7 @@
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-11-12T12:40:39.117063",
+        "timestamp": "2026-11-12T14:23:16.296072",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -95,37 +128,37 @@
                     "host_kmer_filter_reads",
                     "deduplication_filter_reads",
                     "t2t_filter_reads",
-                    "kraken2_test_kraken2_reads"
+                    "kraken2_test_kraken2_pathseq_reads"
                 ],
                 [
                     "lowbiomass_rna",
                     "run1",
-                    "1100",
+                    "1020",
                     "700",
                     "700",
-                    "668",
-                    "645",
-                    "643",
-                    "468",
-                    "468"
+                    "664",
+                    "631",
+                    "630",
+                    "458",
+                    "456"
                 ],
                 [
                     "lowbiomass_rna_se",
                     "run1",
-                    "550",
+                    "510",
                     "350",
                     "350",
-                    "331",
-                    "314",
-                    "314",
-                    "228",
-                    "228"
+                    "333",
+                    "322",
+                    "319",
+                    "232",
+                    "232"
                 ]
             ],
-            "lowbiomass_rna.grch38.ReadsPerGene.out.tab:md5,7cd87bcdb2fcfb532f50333991b0451b",
-            "lowbiomass_rna_se.grch38.ReadsPerGene.out.tab:md5,7cd87bcdb2fcfb532f50333991b0451b"
+            "lowbiomass_rna.grch38.ReadsPerGene.out.tab:md5,56745f1df44b919a21c0a872a1b17875",
+            "lowbiomass_rna_se.grch38.ReadsPerGene.out.tab:md5,56745f1df44b919a21c0a872a1b17875"
         ],
-        "timestamp": "2026-11-11T17:08:27.210601",
+        "timestamp": "2026-11-12T14:23:16.341979",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"

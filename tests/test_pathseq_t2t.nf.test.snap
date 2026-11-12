@@ -102,11 +102,11 @@
     },
     "kraken2_tables": {
         "content": [
-            "kraken2_test_kraken2_pathseq.reads_clade.tsv:md5,e3a57ef267d130c1a5304877285e54fc",
-            "kraken2_test_kraken2_pathseq.reads_taxon.tsv:md5,11331f35e7ad9f00e711a6b54d2ecb47",
-            "kraken2_test_kraken2_pathseq.taxonomy.tsv:md5,9ec8f4df1acd94c21db251f4da9e67f0"
+            "kraken2_test_kraken2_pathseq.reads_clade.tsv:md5,814a9f5cda3210e823daca92ab333947",
+            "kraken2_test_kraken2_pathseq.reads_taxon.tsv:md5,74a242d669771847ee6d15b0c131b0f8",
+            "kraken2_test_kraken2_pathseq.taxonomy.tsv:md5,c2e026817bf814d6dc2468cdc3102d0d"
         ],
-        "timestamp": "2026-11-12T14:19:29.90269",
+        "timestamp": "2026-11-12T15:01:28.504534",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -133,10 +133,10 @@
                     "2220",
                     "1780",
                     "1630",
-                    "1431",
-                    "1370",
-                    "1312",
-                    "929",
+                    "1419",
+                    "1353",
+                    "1294",
+                    "921",
                     "921"
                 ],
                 [
@@ -145,15 +145,15 @@
                     "840",
                     "640",
                     "640",
-                    "576",
-                    "549",
-                    "541",
+                    "575",
+                    "554",
+                    "540",
                     "369",
                     "369"
                 ]
             ]
         ],
-        "timestamp": "2026-11-12T14:19:29.882542",
+        "timestamp": "2026-11-12T15:01:28.479625",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
