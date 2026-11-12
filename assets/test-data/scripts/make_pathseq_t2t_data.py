@@ -15,7 +15,8 @@ removes. Writes to <out_reference_dir>:
 - microbe_genomes.fna.gz: the genomes the other reads are from, microbe_genome (a random sequence of 20000 bp) and
   decoy_virus, for the test database of the profilers
 
-and to <out_fastq_dir> error-free reads of 151 bp from fragments of 350 bp, named by what they are, shuffled:
+and to <out_fastq_dir> error-free reads of 151 bp from fragments of 300 to 400 bp (so that bwa estimates an insert size
+distribution with some spread, as in real data, and calls the pairs proper), named by what they are, shuffled:
 - lowbiomass_run1_{1,2}.fastq.gz, paired-end reads:
   - microbe_pair_<i> (300): from the microbe genome, kept as pairs
   - decoy_pair_<i> (100): from the decoy contig, aligned to "GRCh38" and kept as pairs (decoy rescue)
@@ -49,7 +50,8 @@ import sys
 
 GRCH38_END, T2T_START = 8000, 8100
 MICROBE_LENGTH, DECOY_LENGTH = 20000, 5000
-READ, SHORT_READ, FRAGMENT = 151, 50, 350
+READ, SHORT_READ = 151, 50
+MIN_FRAGMENT, MAX_FRAGMENT = 300, 400
 SEED = 42
 
 
@@ -63,8 +65,8 @@ def revcomp(seq):
 
 
 def fragment_reads(genome, start, rng, length=READ):
-    # the two mates of the fragment starting at start, read from a random strand
-    fragment = genome[start:start + FRAGMENT]
+    # the two mates of the fragment starting at start, of a random length, read from a random strand
+    fragment = genome[start:start + rng.randint(MIN_FRAGMENT, MAX_FRAGMENT)]
     if rng.random() < 0.5:
         fragment = revcomp(fragment)
     return fragment[:length], revcomp(fragment[-length:])
@@ -114,8 +116,8 @@ def main(host, reference_dir, fastq_dir):
     write_fasta(reference_dir / "microbe_genomes.fna.gz", [("microbe_genome", microbe), ("decoy_virus", decoy)])
 
     # fragment starts: unique for the microbe genome and the decoy contig, taken in order from a shuffled list
-    microbe_starts = iter(rng.sample(range(MICROBE_LENGTH - FRAGMENT), 1500))
-    decoy_starts = iter(rng.sample(range(DECOY_LENGTH - FRAGMENT), 300))
+    microbe_starts = iter(rng.sample(range(MICROBE_LENGTH - MAX_FRAGMENT), 1500))
+    decoy_starts = iter(rng.sample(range(DECOY_LENGTH - MAX_FRAGMENT), 300))
 
     def from_microbe(length=READ):
         return fragment_reads(microbe, next(microbe_starts), rng, length)
@@ -124,10 +126,10 @@ def main(host, reference_dir, fastq_dir):
         return fragment_reads(decoy, next(decoy_starts), rng)
 
     def from_grch38():
-        return fragment_reads(host_grch38, rng.randrange(GRCH38_END - FRAGMENT), rng)
+        return fragment_reads(host_grch38, rng.randrange(GRCH38_END - MAX_FRAGMENT), rng)
 
     def from_t2t():
-        return fragment_reads(host_genome, rng.randrange(T2T_START, len(host_genome) - FRAGMENT), rng)
+        return fragment_reads(host_genome, rng.randrange(T2T_START, len(host_genome) - MAX_FRAGMENT), rng)
 
     def low_complexity():
         unit = "".join(rng.choice("ACGT") for _ in range(rng.randint(1, 3)))

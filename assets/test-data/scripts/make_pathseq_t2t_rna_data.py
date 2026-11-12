@@ -21,7 +21,8 @@ microbe_genomes.fna.gz (microbe_genome), and writes:
   gene_single_<i> (60), counted for their gene and removed, microbe_single_<i> (200) and decoy_single_<i> (50), kept,
   t2t_single_<i> (100), removed
 
-Error-free reads of 151 bp from fragments of 350 bp. The fragments of each class of a sample all start at different
+Error-free reads of 151 bp from fragments of 300 to 400 bp (so that bwa, at the T2T-CHM13 step, estimates an insert
+size distribution with some spread, as in real data, and calls the pairs proper). The fragments of each class of a sample all start at different
 positions, so that no read is a duplicate. The two genes have different numbers of reads, so that the counts per gene
 show that the reads of each are counted for it.
 """
@@ -30,7 +31,8 @@ import pathlib
 import random
 import sys
 
-READ, FRAGMENT = 151, 350
+READ = 151
+MIN_FRAGMENT, MAX_FRAGMENT = 300, 400
 T2T_START = 8100
 SEED = 7
 # 0-based, end-exclusive
@@ -99,22 +101,23 @@ def main(reference_dir, fastq_dir):
     unspliced = revcomp(host_grch38[UNSPLICED_EXON[0]:UNSPLICED_EXON[1]])
 
     def sense_fragments(seq, starts, n):
-        # n fragments in the sense orientation, from distinct starts
-        return [seq[start:start + FRAGMENT] for start in rng.sample(starts, n)]
+        # n fragments in the sense orientation, from distinct starts, of random lengths
+        return [seq[start:start + rng.randint(MIN_FRAGMENT, MAX_FRAGMENT)] for start in rng.sample(starts, n)]
 
     def random_strand_fragments(seq, starts, n):
         return [frag if rng.random() < 0.5 else revcomp(frag) for frag in sense_fragments(seq, starts, n)]
 
     def classes(n_host, n_gene, n_microbe, n_decoy):
         # the fragments of each class, as [ (class, fragment) ], in the sense orientation for the genes
-        # the fragments of the spliced transcript span the junction, at least 20 bases on each side
-        spliced_starts = list(range(junction - FRAGMENT + 20, junction - 20))
+        # the fragments of the spliced transcript span the junction, at least 20 bases on each side (whatever their
+        # length)
+        spliced_starts = list(range(junction - MIN_FRAGMENT + 20, junction - 20))
         return (
             [("spliced", frag) for frag in sense_fragments(spliced, spliced_starts, n_host)]
-            + [("gene", frag) for frag in sense_fragments(unspliced, range(len(unspliced) - FRAGMENT), n_gene)]
-            + [("microbe", frag) for frag in random_strand_fragments(microbe, range(len(microbe) - FRAGMENT), n_microbe)]
-            + [("decoy", frag) for frag in random_strand_fragments(decoy, range(len(decoy) - FRAGMENT), n_decoy)]
-            + [("t2t", frag) for frag in random_strand_fragments(host_genome, range(T2T_START, len(host_genome) - FRAGMENT), n_host)]
+            + [("gene", frag) for frag in sense_fragments(unspliced, range(len(unspliced) - MAX_FRAGMENT), n_gene)]
+            + [("microbe", frag) for frag in random_strand_fragments(microbe, range(len(microbe) - MAX_FRAGMENT), n_microbe)]
+            + [("decoy", frag) for frag in random_strand_fragments(decoy, range(len(decoy) - MAX_FRAGMENT), n_decoy)]
+            + [("t2t", frag) for frag in random_strand_fragments(host_genome, range(T2T_START, len(host_genome) - MAX_FRAGMENT), n_host)]
         )
 
     def numbered(fragments, kind):

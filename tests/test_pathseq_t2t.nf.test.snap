@@ -9,6 +9,56 @@
             "nextflow": "26.04.2"
         }
     },
+    "software_versions": {
+        "content": [
+            {
+                "BWA_GRCH38": {
+                    "bwa": "0.7.19-r1273",
+                    "samtools": "1.22.1"
+                },
+                "BWA_INDEX_GRCH38": {
+                    "bwa": "0.7.19-r1273"
+                },
+                "BWA_INDEX_T2T": {
+                    "bwa": "0.7.19-r1273"
+                },
+                "FALCO": {
+                    "falco": "1.2.5"
+                },
+                "KRAKEN2_KRAKEN2": {
+                    "kraken2": "2.1.6",
+                    "pigz": 2.8
+                },
+                "KRAKEN2_MERGE": {
+                    "pandas": "2.2.1"
+                },
+                "MERGE_RUNS": {
+                    "cat": 9.5
+                },
+                "PATHSEQT2T_PREFILTER": {
+                    "samtools": "1.22.1"
+                },
+                "PATHSEQT2T_QCFILTER": {
+                    "gatk4": "4.6.2.0"
+                },
+                "PATHSEQT2T_T2TFILTER": {
+                    "bwa": "0.7.19-r1273",
+                    "samtools": "1.22.1"
+                },
+                "READ_COUNTS": {
+                    "pandas": "2.2.1"
+                },
+                "Workflow": {
+                    "zellerlab/flexprofiler": "v0.1.0"
+                }
+            }
+        ],
+        "timestamp": "2026-11-12T14:19:29.86452",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
+        }
+    },
     "filenames": {
         "content": [
             [
@@ -18,43 +68,14 @@
                 "analysis_ready_fastqs/lowbiomass.t2tfilt_unpaired.fastq.gz",
                 "analysis_ready_fastqs/lowbiomass_se.t2tfilt_unpaired.fastq.gz",
                 "falco",
-                "falco/processed",
-                "falco/processed/lowbiomass_merged_WGS_processed_1_fastqc_data.txt",
-                "falco/processed/lowbiomass_merged_WGS_processed_1_report.html",
-                "falco/processed/lowbiomass_merged_WGS_processed_1_summary.txt",
-                "falco/processed/lowbiomass_merged_WGS_processed_2_fastqc_data.txt",
-                "falco/processed/lowbiomass_merged_WGS_processed_2_report.html",
-                "falco/processed/lowbiomass_merged_WGS_processed_2_summary.txt",
-                "falco/processed/lowbiomass_merged_WGS_singletons_processed_fastqc_data.txt",
-                "falco/processed/lowbiomass_merged_WGS_singletons_processed_report.html",
-                "falco/processed/lowbiomass_merged_WGS_singletons_processed_summary.txt",
-                "falco/processed/lowbiomass_se_run1_processed_fastqc_data.txt",
-                "falco/processed/lowbiomass_se_run1_processed_report.html",
-                "falco/processed/lowbiomass_se_run1_processed_summary.txt",
-                "falco/raw",
-                "falco/raw/lowbiomass_run1_raw_1_fastqc_data.txt",
-                "falco/raw/lowbiomass_run1_raw_1_report.html",
-                "falco/raw/lowbiomass_run1_raw_1_summary.txt",
-                "falco/raw/lowbiomass_run1_raw_2_fastqc_data.txt",
-                "falco/raw/lowbiomass_run1_raw_2_report.html",
-                "falco/raw/lowbiomass_run1_raw_2_summary.txt",
-                "falco/raw/lowbiomass_run2_raw_1_fastqc_data.txt",
-                "falco/raw/lowbiomass_run2_raw_1_report.html",
-                "falco/raw/lowbiomass_run2_raw_1_summary.txt",
-                "falco/raw/lowbiomass_run2_raw_2_fastqc_data.txt",
-                "falco/raw/lowbiomass_run2_raw_2_report.html",
-                "falco/raw/lowbiomass_run2_raw_2_summary.txt",
-                "falco/raw/lowbiomass_se_run1_raw_fastqc_data.txt",
-                "falco/raw/lowbiomass_se_run1_raw_report.html",
-                "falco/raw/lowbiomass_se_run1_raw_summary.txt",
                 "kraken2",
-                "kraken2/kraken2_test_kraken2.reads_clade.tsv",
-                "kraken2/kraken2_test_kraken2.reads_taxon.tsv",
-                "kraken2/kraken2_test_kraken2.taxonomy.tsv",
-                "kraken2/test_kraken2",
-                "kraken2/test_kraken2/lowbiomass_se_test_kraken2.kraken2.report.txt",
-                "kraken2/test_kraken2/lowbiomass_test_kraken2.kraken2.report.txt",
-                "kraken2/test_kraken2/lowbiomass_test_kraken2_singletons.kraken2.report.txt",
+                "kraken2/kraken2_test_kraken2_pathseq.reads_clade.tsv",
+                "kraken2/kraken2_test_kraken2_pathseq.reads_taxon.tsv",
+                "kraken2/kraken2_test_kraken2_pathseq.taxonomy.tsv",
+                "kraken2/test_kraken2_pathseq",
+                "kraken2/test_kraken2_pathseq/lowbiomass_se_test_kraken2_pathseq.kraken2.report.txt",
+                "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq.kraken2.report.txt",
+                "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq_singletons.kraken2.report.txt",
                 "multiqc",
                 "pathseq_t2t",
                 "pathseq_t2t/prefilter",
@@ -73,7 +94,7 @@
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-11-12T12:36:54.507208",
+        "timestamp": "2026-11-12T14:19:29.861122",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -81,14 +102,14 @@
     },
     "kraken2_tables": {
         "content": [
-            "kraken2_test_kraken2.reads_clade.tsv:md5,e3a57ef267d130c1a5304877285e54fc",
-            "kraken2_test_kraken2.reads_taxon.tsv:md5,11331f35e7ad9f00e711a6b54d2ecb47",
-            "kraken2_test_kraken2.taxonomy.tsv:md5,9ec8f4df1acd94c21db251f4da9e67f0"
+            "kraken2_test_kraken2_pathseq.reads_clade.tsv:md5,e3a57ef267d130c1a5304877285e54fc",
+            "kraken2_test_kraken2_pathseq.reads_taxon.tsv:md5,11331f35e7ad9f00e711a6b54d2ecb47",
+            "kraken2_test_kraken2_pathseq.taxonomy.tsv:md5,9ec8f4df1acd94c21db251f4da9e67f0"
         ],
-        "timestamp": "2026-11-10T13:34:26.580146",
+        "timestamp": "2026-11-12T14:19:29.90269",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
         }
     },
     "read_counts": {
@@ -104,7 +125,7 @@
                     "host_kmer_filter_reads",
                     "deduplication_filter_reads",
                     "t2t_filter_reads",
-                    "kraken2_test_kraken2_reads"
+                    "kraken2_test_kraken2_pathseq_reads"
                 ],
                 [
                     "lowbiomass",
@@ -132,10 +153,10 @@
                 ]
             ]
         ],
-        "timestamp": "2026-11-10T13:34:26.564679",
+        "timestamp": "2026-11-12T14:19:29.882542",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
         }
     }
 }
