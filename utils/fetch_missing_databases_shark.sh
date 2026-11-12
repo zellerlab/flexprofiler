@@ -5,11 +5,13 @@
 #SBATCH --time=2-00:00:00
 #SBATCH --output=fetch_flexprofiler_dbs_%j.log
 
-# Downloads the databases that are missing on SHARK (Kraken2 and the PathSeq-T2T references) to the shared database
-# directory with utils/fetch_databases.sh. Submit from any directory: sbatch utils/fetch_missing_databases_shark.sh
-# The PathSeq-T2T paths are already set in the zellerlab_shark profile of conf/zellerlab.config. Afterwards, add the
-# kraken2 row of flexprofiler_databases.csv (written in WORKDIR) to assets/zellerlab_shark_databases.csv: it cannot be
-# added before, as the paths of the database sheet must exist.
+# Downloads the database that is missing on SHARK (Kraken2) to the shared database directory with
+# utils/fetch_databases.sh. Submit from any directory: sbatch utils/fetch_missing_databases_shark.sh
+# The bwa indexes and host files of PathSeq-T2T are already there (FETCH_PATHSEQ_T2T=1, job 25996578). The STAR index
+# of GRCh38.d1.vd1 (FETCH_PATHSEQ_T2T_STAR=1, for --pathseq_t2t_grch38_aligner star) is not built yet: add it to the
+# command below when needed, with --cpus-per-task=8 and --mem=64G (STAR needs ~40 GB). The PathSeq-T2T paths are
+# already set in the zellerlab_shark profile of conf/zellerlab.config. Afterwards, add the kraken2 row of flexprofiler_databases.csv (written in WORKDIR) to
+# assets/zellerlab_shark_databases.csv: it cannot be added before, as the paths of the database sheet must exist.
 
 set -euo pipefail
 
@@ -34,11 +36,12 @@ mkdir -p ${WORKDIR}/tmp
 export TMPDIR=${WORKDIR}/tmp
 cd ${WORKDIR}
 
-# bwa index is single-threaded, so 1 cpu is enough
-# the T2T-CHM13v2.0 FASTA of the host removal is the same file as the one of PathSeq-T2T (same md5): it is linked, and
-# only its bwa index is built
-T2T_FASTA=${DBPATH}/host_genome/t2t_chm13v2/GCF_009914755.1_T2T-CHM13v2.0_genomic.fna.gz \
-FETCH_KRAKEN2=1 FETCH_PATHSEQ_T2T=1 bash ${SCRIPT} ${DBPATH} ${SLURM_CPUS_PER_TASK:-1}
+# fetch_databases.sh is run from a copy: bash reads a script as it runs it, so a change of the repository during the
+# job (e.g. a git pull) would otherwise change the rest of the run (this stopped job 25996578 after PathSeq-T2T)
+cp ${SCRIPT} ${WORKDIR}/fetch_databases.${SLURM_JOB_ID:-$$}.sh
+
+FETCH_KRAKEN2=1 bash ${WORKDIR}/fetch_databases.${SLURM_JOB_ID:-$$}.sh ${DBPATH} ${SLURM_CPUS_PER_TASK:-1}
+rm ${WORKDIR}/fetch_databases.${SLURM_JOB_ID:-$$}.sh
 
 echo "Database sheet rows in ${WORKDIR}/flexprofiler_databases.csv:"
 cat ${WORKDIR}/flexprofiler_databases.csv

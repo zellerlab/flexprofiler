@@ -6,3 +6,4 @@ gqlib,GMGC10.human-gut.95nr.0.5.percent.prevalence,,/exports/archive/lucid-grpze
 idtaxa,gtdb_r207_motus3,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/idtaxa/gtdb_r207/GTDB_r207-mod_April2022.RData,,
 idtaxa,gtdb_r220_motus4.0,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/idtaxa/gtdb_r220/GTDB_r220-mod_April2024.RData,,
 idtaxa,gtdb_r232,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/idtaxa/gtdb_r232/GTDB_r232_classifier.RData,,
+kraken2,k2_pluspf_20241228,,/exports/archive/lucid-grpzeller-primary/SHARED/DATA/flexprofiler_databases/kraken2/k2_pluspf_20241228,,

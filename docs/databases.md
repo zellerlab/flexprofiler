@@ -4,7 +4,7 @@ Flexprofiler expects a csv file with the relevant database paths.
 Refer to the [usage documentation](usage.md) for details on how to set this up.
 These instruction explain how databases for the different profiling tools can be generated.
 The relevant tools are assumed to be installed and in your path for the following instructions.
-The script [`utils/fetch_databases.sh`](../utils/fetch_databases.sh) runs them and writes the corresponding database sheet: each database is downloaded only when asked, with `FETCH_MOTUS4=1`, `FETCH_MOTUS3=1`, `FETCH_CAYMAN=1`, `FETCH_GQLIB=1`, `FETCH_PATHSEQ_T2T=1` and `FETCH_KRAKEN2=1`.
+The script [`utils/fetch_databases.sh`](../utils/fetch_databases.sh) runs them and writes the corresponding database sheet: each database is downloaded only when asked, with `FETCH_MOTUS4=1`, `FETCH_MOTUS3=1`, `FETCH_CAYMAN=1`, `FETCH_GQLIB=1`, `FETCH_PATHSEQ_T2T=1`, `FETCH_PATHSEQ_T2T_STAR=1` (the STAR index of GRCh38.d1.vd1 with the GENCODE v36 genes, for `--pathseq_t2t_grch38_aligner star`) and `FETCH_KRAKEN2=1`.
 
 ## mOTUs v4
 
