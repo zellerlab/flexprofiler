@@ -190,9 +190,10 @@ fi
 
 # STAR index of GRCh38.d1.vd1 for PathSeq-T2T on RNA-seq (--pathseq_t2t_grch38_aligner star, see docs/pathseq_t2t.md),
 # only with FETCH_PATHSEQ_T2T_STAR=1. Built as STAR_GENOMEGENERATE_GRCH38 of the pipeline would: the same STAR version
-# (2.7.11b), the GTF (needed for --quantMode GeneCounts), --genomeSAindexNbases 14 (min(14, log2(genome length)/2 - 1))
-# and the default --sjdbOverhang (100). The GTF is GENCODE v36 of the GDC reference files, the annotation of
-# GRCh38.d1.vd1 used by the GDC (https://gdc.cancer.gov/about-data/gdc-data-processing/gdc-reference-files).
+# (2.7.11b), the GTF (needed for --quantMode GeneCounts), and the defaults of --genomeSAindexNbases (14, what the
+# pipeline computes for GRCh38: min(14, log2(genome length)/2 - 1)) and --sjdbOverhang (100). The GTF is GENCODE v36
+# of the GDC reference files, the annotation of GRCh38.d1.vd1 used by the GDC
+# (https://gdc.cancer.gov/about-data/gdc-data-processing/gdc-reference-files).
 PATHSEQ_STAR_TO=${DBPATH}/pathseq_t2t/grch38_d1_vd1/star
 if [[ ${FETCH_PATHSEQ_T2T_STAR} == 1 ]] ; then
     GRCH38_DIR=${DBPATH}/pathseq_t2t/grch38_d1_vd1
@@ -228,7 +229,6 @@ if [[ ${FETCH_PATHSEQ_T2T_STAR} == 1 ]] ; then
         --genomeDir ${PATHSEQ_STAR_TO} \
         --genomeFastaFiles ${GRCH38_DIR}/GRCh38.d1.vd1.fa \
         --sjdbGTFfile ${TMPDIR}/gencode.v36.annotation.gtf \
-        --genomeSAindexNbases 14 \
         --runThreadN ${CPUS} \
         --limitGenomeGenerateRAM ${STAR_RAM} \
         --outTmpDir ${TMPDIR}/star_tmp \
