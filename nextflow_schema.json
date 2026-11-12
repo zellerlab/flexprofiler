@@ -441,6 +441,13 @@
                     "description": "Classify the WGS reads with Kraken2, against the kraken2 databases of the database sheet",
                     "help_text": "The options of a database (db_params) default to `--report-minimizer-data`, with `--confidence 0.15` added with --pathseq_t2t (which does not accept db_params for Kraken2), as in PathSeq-T2T (Dohlman et al., Cell 2026, https://doi.org/10.1016/j.cell.2026.04.015), which used the PlusPF database of 2024-06-05 (https://benlangmead.github.io/aws-indexes/k2). With --pathseq_t2t, the reads left without their mate are classified too. The reports are merged into tables of reads per taxon (--run_profile_standardisation)."
                 },
+                "kraken2_db_names": {
+                    "type": "string",
+                    "pattern": "^[^,\\s]+(,[^,\\s]+)*$",
+                    "description": "Comma-separated db_name of the kraken2 rows of the database CSV to classify against. All kraken2 rows if not set",
+                    "help_text": "The database CSV can list several Kraken2 databases (e.g. PlusPF and Standard, or different releases), and this chooses among them by their db_name, e.g. `--kraken2_db_names pluspf` or `--kraken2_db_names pluspf,standard`. The other kraken2 rows are ignored. A name not among the kraken2 rows of the database CSV is an error.",
+                    "fa_icon": "fas fa-database"
+                },
                 "run_idtaxa": {
                     "type": "boolean",
                     "description": "Turn on taxonomic classification of amplicon reads with IDTAXA. Requires database CSV file passed to --databases",

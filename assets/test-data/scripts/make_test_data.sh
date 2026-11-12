@@ -20,7 +20,7 @@
 #   mixed        symbolic links in data/fastq/mixed/
 #   hostref      data/hostremoval/NC_012920.1.fna.gz
 #   hostremoval  data/fastq/hostremoval/ (from hostref)
-#   pathseqt2t   data/pathseq_t2t/, data/fastq/pathseq_t2t/ and data/kraken2/ (from hostref)
+#   pathseqt2t   data/pathseq_t2t/, data/fastq/pathseq_t2t/ and data/kraken2_pathseq/ (from hostref)
 #   adapters     data/fastq/adapters/adapters_*.fastq.gz (from hostref)
 #   ref16s       data/idtaxa/reference_16s.fasta.gz
 #   amplicon     data/fastq/amplicon/ (from ref16s)
@@ -148,7 +148,7 @@ step_pathseqt2t() {
         quay.io/biocontainers/gatk4:4.6.2.0--py310hdfd78af_0 sh -c \
         'gatk PathSeqBuildKmers --reference pathseq_host.fa --output pathseq_host.bfi --bloom-false-positive-probability 0.001 && gatk BwaMemIndexImageCreator -I pathseq_host.fa -O pathseq_host.fa.img'
     # the Kraken2 database of the microbial and decoy genomes
-    bash scripts/make_kraken2_db.sh
+    bash scripts/make_kraken2_pathseq_db.sh
 }
 
 step_adapters() {

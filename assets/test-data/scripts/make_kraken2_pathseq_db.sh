@@ -1,11 +1,11 @@
 #!/bin/bash
-# Build the Kraken2 database of the PathSeq-T2T test, data/kraken2/, from the genomes of make_pathseq_t2t_data.py
+# Build the Kraken2 database of the PathSeq-T2T test, data/kraken2_pathseq/, from the genomes of make_pathseq_t2t_data.py
 # (data/pathseq_t2t/microbe_genomes.fna.gz), with a taxonomy of a few made-up taxa:
 #   1 root > 2 Bacteria (superkingdom) > 900001 Testella (genus) > 900002 Testella microbica (species): microbe_genome
 #   1 root > 10239 Viruses (superkingdom) > 900003 Decoyvirus testi (species): decoy_virus
 # Run from assets/test-data, with docker. The database is not byte-identical from one build to the next.
 set -euo pipefail
-OUT=data/kraken2
+OUT=data/kraken2_pathseq
 BUILD=$(mktemp -d)
 trap 'rm -rf "$BUILD"' EXIT
 mkdir -p "$BUILD/db/taxonomy" "$OUT"

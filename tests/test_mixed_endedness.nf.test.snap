@@ -70,12 +70,11 @@
                     "samtools": 1.25
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.5",
-                    "zellerlab/flexprofiler_commit": "c2e6fba314b28acd0f81a31d78cf3a857b48c0df-dirty"
+                    "zellerlab/flexprofiler": "v0.1.0"
                 }
             }
         ],
-        "timestamp": "2026-11-12T12:10:27.208188",
+        "timestamp": "2026-11-12T13:48:33.34722",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -241,11 +240,10 @@
                 "gqlib/profile_genes/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7/2612_mixed_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.KEGG_ko.txt.gz",
                 "gqlib/profile_genes/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7/2612_mixed_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.KEGG_rclass.txt.gz",
                 "gqlib/profile_genes/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7/2612_mixed_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.PFAMs.txt.gz",
+                "gqlib/profile_genes/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7/2612_mixed_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.aln_stats.txt.gz",
                 "gqlib/profile_genes/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7/2612_mixed_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.eggNOG_OGs.txt.gz",
                 "gqlib/profile_genes/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7/2612_mixed_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.gene_counts.txt.gz",
                 "gqlib/profile_genes/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7/2612_mixed_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.gqlib.log",
-                "gqlib/profile_genes/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7/aln_stats",
-                "gqlib/profile_genes/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7/aln_stats/2612_mixed_GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7.aln_stats.txt.gz",
                 "motus3",
                 "motus3/merge",
                 "motus3/merge/motus3_db_mOTU_combined_reports.txt",
@@ -320,7 +318,7 @@
                 "samtools/stats/2612_mixed_ERR5766180.stats"
             ]
         ],
-        "timestamp": "2026-11-12T12:10:27.247725",
+        "timestamp": "2026-11-12T13:48:33.393748",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"

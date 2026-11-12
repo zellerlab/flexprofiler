@@ -106,6 +106,7 @@ params {
     run_gqlib:                       Boolean
     save_bwa_alignments:             Boolean
     run_kraken2:                     Boolean
+    kraken2_db_names:                String?
     run_idtaxa:                      Boolean
     idtaxa_db_names:                 String?
     idtaxa_threshold:                Integer

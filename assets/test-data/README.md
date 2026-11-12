@@ -103,7 +103,9 @@ python3 scripts/make_pathseq_t2t_rna_data.py data/pathseq_t2t data/fastq/pathseq
 
 `samplesheet_pathseq_t2t_empty.csv` (test `test_pathseq_t2t_empty_input`) has a paired-end and a single-end sample without reads, to check that every step of the filtering accepts empty inputs. Their FASTQs (`data/fastq/pathseq_t2t/empty_{1,2,se}.fastq.gz`) are empty gzip files, made with `gzip -n -c < /dev/null`.
 
-The Kraken2 database of the test (`data/kraken2/`, row `test_kraken2` of `databases.csv`) is built from the "microbial" genome and the decoy contig of these references (`data/pathseq_t2t/microbe_genomes.fna.gz`), with a made-up taxonomy of a species of bacteria (taxid 900002) and one of virus (900003), with `scripts/make_kraken2_db.sh`. Its files are not byte-identical from one build to the next.
+The Kraken2 database of the test (`data/kraken2_pathseq/`, row `test_kraken2_pathseq` of `databases.csv`) is built from the "microbial" genome and the decoy contig of these references (`data/pathseq_t2t/microbe_genomes.fna.gz`), with a made-up taxonomy of a species of bacteria (taxid 900002) and one of virus (900003), with `scripts/make_kraken2_pathseq_db.sh`. Its files are not byte-identical from one build to the next.
+
+The Kraken2 test on WGS reads (`tests/test_kraken2.nf.test`, profile `test_kraken2`) runs the WGS test reads (`samplesheet.csv`) through the short-read QC and host removal, then Kraken2 with its own database (`data/kraken2_wgs/`, row `test_kraken2_wgs` of `databases.csv`; each test selects its own Kraken2 database with `--kraken2_db_names`). It is built with `scripts/make_kraken2_wgs_db.sh` from the NCBI RefSeq reference genomes of two species found in the reads, Methanobrevibacter smithii ATCC 35061 (`GCF_000016525.1`, taxid 2173) and Collinsella aerofaciens ATCC 25986 (`GCF_010509075.1`, taxid 74426), with the NCBI taxonomy cut down to their lineages (~7.8 MB). About 3-6% of the reads are classified, at least 1% to each species in every sample. Its files are not byte-identical from one build to the next either.
 
 ### Adapter-contaminated reads
 

@@ -37,7 +37,7 @@ nextflow_pipeline {
             def singletons = read_classes( "${out}/lowbiomass.t2tfilt_unpaired.fastq.gz" )
             def se = read_classes( "${out}/lowbiomass_se.t2tfilt_unpaired.fastq.gz" )
             def tasks = workflow.trace.succeeded()*.name
-            def kraken2_table = { name -> path( "${params.outdir}/kraken2/kraken2_test_kraken2.${name}.tsv" ).readLines().collect { line -> line.split( "\t" ) as List } }
+            def kraken2_table = { name -> path( "${params.outdir}/kraken2/kraken2_test_kraken2_pathseq.${name}.tsv" ).readLines().collect { line -> line.split( "\t" ) as List } }
             def kraken2_clade = { taxid, sample ->
                 def table = kraken2_table( "reads_clade" )
                 table.find { row -> row[0] == taxid }[table[0].indexOf( sample )] as int
@@ -72,14 +72,14 @@ nextflow_pipeline {
                 // classified and unclassified reads add up to the filtered reads
                 { assert kraken2_clade( "0", "lowbiomass" ) + kraken2_clade( "1", "lowbiomass" ) == count( "lowbiomass", "t2t_filter_reads" ) },
                 { assert kraken2_clade( "0", "lowbiomass_se" ) + kraken2_clade( "1", "lowbiomass_se" ) == count( "lowbiomass_se", "t2t_filter_reads" ) },
-                { assert kraken2_clade( "1", "lowbiomass" ) == count( "lowbiomass", "kraken2_test_kraken2_reads" ) },
+                { assert kraken2_clade( "1", "lowbiomass" ) == count( "lowbiomass", "kraken2_test_kraken2_pathseq_reads" ) },
                 // the reads of the decoy contig are classified as the virus, and those of the microbial genome as it
                 { assert kraken2_clade( "900003", "lowbiomass" ) == 2 * pe_1.count( "decoy_pair" ) + singletons.count( "decoy_pair" ) },
                 { assert kraken2_clade( "900003", "lowbiomass_se" ) == se.count( "decoy_single" ) },
                 { assert snapshot (
-                    path( "${params.outdir}/kraken2/kraken2_test_kraken2.reads_clade.tsv" ),
-                    path( "${params.outdir}/kraken2/kraken2_test_kraken2.reads_taxon.tsv" ),
-                    path( "${params.outdir}/kraken2/kraken2_test_kraken2.taxonomy.tsv" ),
+                    path( "${params.outdir}/kraken2/kraken2_test_kraken2_pathseq.reads_clade.tsv" ),
+                    path( "${params.outdir}/kraken2/kraken2_test_kraken2_pathseq.reads_taxon.tsv" ),
+                    path( "${params.outdir}/kraken2/kraken2_test_kraken2_pathseq.taxonomy.tsv" ),
                 ).match( "kraken2_tables" ) },
             )
         }

@@ -121,7 +121,11 @@ workflow PIPELINE_INITIALISATION {
     //
     // Validate and create channel from databases file provided through params.databases
     //
-    def database_rows = selectIdtaxaDatabases(samplesheetToList(databases, "assets/schema_database.json"), params.idtaxa_db_names)
+    def database_rows = selectDatabases(
+        selectDatabases(samplesheetToList(databases, "assets/schema_database.json"), 'idtaxa', params.idtaxa_db_names),
+        'kraken2',
+        params.kraken2_db_names,
+    )
     validateDatabaseSheet(database_rows)
     validateDatabaseMatching(samplesheet_rows, database_rows)
     ch_databases = channel.fromList(database_rows)
@@ -318,20 +322,21 @@ def validateAmpliconPrimers(rows) {
 }
 
 //
-// Keep only the idtaxa rows of the database sheet named in --idtaxa_db_names (comma-separated), all of them if not set
+// Keep only the rows of a tool in the database sheet named in --<tool>_db_names (comma-separated, db_names), all of them
+// if not set; the rows of the other tools are kept
 //
-def selectIdtaxaDatabases(rows, db_names) {
+def selectDatabases(rows, tool, db_names) {
     // rows: [ meta, db_path ]
     if (!db_names) {
         return rows
     }
     def selected = db_names.tokenize(',')
-    def available = rows.findAll { meta, _db_path -> meta.tool == 'idtaxa' }.collect { meta, _db_path -> meta.db_name }
+    def available = rows.findAll { meta, _db_path -> meta.tool == tool }.collect { meta, _db_path -> meta.db_name }
     def missing = selected - available
     if (missing) {
-        error("Please check --idtaxa_db_names -> ${missing.join(', ')} not among the idtaxa rows of the database sheet. Available: ${available.join(', ') ?: 'none'}")
+        error("Please check --${tool}_db_names -> ${missing.join(', ')} not among the ${tool} rows of the database sheet. Available: ${available.join(', ') ?: 'none'}")
     }
-    return rows.findAll { meta, _db_path -> meta.tool != 'idtaxa' || meta.db_name in selected }
+    return rows.findAll { meta, _db_path -> meta.tool != tool || meta.db_name in selected }
 }
 
 //
