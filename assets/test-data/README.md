@@ -17,7 +17,7 @@ scripts/make_test_data.sh \
     databases                        # the subsets of the full databases
 ```
 
-The downloaded files can change over time, and with them the files made from them, so they are regenerated only when asked. The original reads and fastas from nf-core/taxprofiler and the hand-written files (`data/fastq/adapters/adapters.fasta`, `data/gmgc10/genes.txt`) are not regenerated. The reads are simulated with fixed seeds and compressed without timestamps, so regenerating them gives identical files.
+The downloaded files can change over time, and with them the files made from them, so they are regenerated only when asked. The original reads from nf-core/taxprofiler and the hand-written files (`data/fastq/adapters/adapters.fasta`, `data/gmgc10/genes.txt`) are not regenerated. The reads are simulated with fixed seeds and compressed without timestamps, so regenerating them gives identical files.
 
 ### FASTQ
 
@@ -26,7 +26,6 @@ The following selected libraries were all sequenced on an Illumina MiSeq, and we
 
 - ERX5474937
 - ERX5474932
-- ERX5474930
 - ERX5474936
 
 Data was downloaded with nf-core/fetchNGS 1.5 (with Nextflow 21.10.06) (from the nf-core/taxprofiler documentation, not re-run):
@@ -36,12 +35,6 @@ nextflow run nf-core/fetchngs --input maixner2021_acc_codes.txt --input_type sra
 ```
 
 FASTQ files are stored under `data/fastq/`
-
-Test data for long reads with ENA project accession ID: PRJEB29152. They were subsampled with seqtk 1.3-r106 (from the nf-core/taxprofiler documentation, not re-run):
-
-```bash
-seqtk sample ERR3201952.fastq.gz 10000 > ERR3201952.fastq.gz
-```
 
 #### Read names with /1 and /2 suffixes
 
@@ -69,16 +62,6 @@ gzip -cd ERX5474937_ERR5766181_2.fastq.gz \
 
 `samplesheet_mixed.csv` combines in one run the reads of ERX5474937 as they are, with the suffixes and with the pairs in a different order, the last two also as two runs of one sample (`2613_mixed`), and the single-end reads of ERX5474936. `samplesheet_mixed_endedness.csv` has a sample with a paired-end run (ERX5474932) and a single-end run (ERX5474936), `2612_mixed`, which can be merged only with `--shortread_qc_mergepairs`. As the samplesheet does not allow the same file in two rows, the files used more than once are symbolic links in `data/fastq/mixed/`.
 
-### FASTA
-
-One of the files was converted to FASTA file with seqtk 1.3-r106 (from the nf-core/taxprofiler documentation, not re-run):
-
-```bash
-seqtk seq -a  ERX5474930_ERR5766174_1.fastq.gz > ERX5474930_ERR5766174_1.fa.gz
-```
-
-FASTA files are stored under `data/fasta/`
-
 ### Host removal reference
 
 The tests use the human mitochondrial genome (revised Cambridge Reference Sequence, [NC_012920.1](https://www.ncbi.nlm.nih.gov/nuccore/NC_012920.1)) as host reference instead of a full human genome, so that building its bowtie2 index (done by the pipeline) and the host removal are fast. The test data are not expected to have many human reads, and most tests only check that host removal runs.
@@ -102,6 +85,28 @@ curl -s "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id
 
 The reference is stored under `data/hostremoval/`.
 
+### PathSeq-T2T
+
+The test of the PathSeq-T2T host filtering (`tests/test_pathseq_t2t.nf.test`, `samplesheet_pathseq_t2t.csv`, profile `test_pathseq_t2t`) uses references made from the host reference above, so that each filter has reads that only it removes: the first 8000 bp of the mitochondrial genome and a random "viral decoy" contig stand for GRCh38 (`data/pathseq_t2t/grch38_test.fna.gz`, `decoys_test.bed`), the first 8000 bp alone for the PathSeq host files (`data/pathseq_t2t/pathseq_host/`), and the whole mitochondrial genome for T2T-CHM13 (`t2t_test.fna.gz`). The reads (`data/fastq/pathseq_t2t/`, two runs of a paired-end sample and a single-end sample) are simulated from these and from a random "microbial" genome, and named by what they are (host, decoy, microbial, duplicate, low quality or complexity, short, chimeric pairs); see the docstring of the script. They were made with:
+
+```bash
+python3 scripts/make_pathseq_t2t_data.py data/hostremoval/NC_012920.1.fna.gz data/pathseq_t2t data/fastq/pathseq_t2t
+docker run --rm -v $PWD/data/pathseq_t2t/pathseq_host:/w -w /w quay.io/biocontainers/gatk4:4.6.2.0--py310hdfd78af_0 sh -c \
+    'gatk PathSeqBuildKmers --reference pathseq_host.fa --output pathseq_host.bfi --bloom-false-positive-probability 0.001 && gatk BwaMemIndexImageCreator -I pathseq_host.fa -O pathseq_host.fa.img'
+```
+
+The test of the PathSeq-T2T host filtering with STAR (`tests/test_pathseq_t2t_star.nf.test`, `samplesheet_pathseq_t2t_rna.csv`, profile `test_pathseq_t2t_star`) uses the same references, with a GTF of two genes on the "GRCh38" host contig (`data/pathseq_t2t/grch38_test.gtf`): `gene_spliced`, with two exons and an intron, and `gene_unspliced`, on the minus strand. Its reads (`data/fastq/pathseq_t2t/lowbiomass_rna_{1,2,se}.fastq.gz`, a paired-end and a single-end sample of a reverse stranded library) are simulated from the transcripts of the two genes (those of `gene_spliced` spanning its exon junction), from the microbial genome, the decoy contig and the part of the host only in "T2T-CHM13", and named by what they are; see the docstring of the script. They were made, after the files above, with:
+
+```bash
+python3 scripts/make_pathseq_t2t_rna_data.py data/pathseq_t2t data/fastq/pathseq_t2t
+```
+
+`samplesheet_pathseq_t2t_empty.csv` (test `test_pathseq_t2t_empty_input`) has a paired-end and a single-end sample without reads, to check that every step of the filtering accepts empty inputs. Their FASTQs (`data/fastq/pathseq_t2t/empty_{1,2,se}.fastq.gz`) are empty gzip files, made with `gzip -n -c < /dev/null`.
+
+The Kraken2 database of the test (`data/kraken2_pathseq/`, row `test_kraken2_pathseq` of `databases.csv`) is built from the "microbial" genome and the decoy contig of these references (`data/pathseq_t2t/microbe_genomes.fna.gz`), with a made-up taxonomy of a species of bacteria (taxid 900002) and one of virus (900003), with `scripts/make_kraken2_pathseq_db.sh`. Its files are not byte-identical from one build to the next.
+
+The Kraken2 test on WGS reads (`tests/test_kraken2.nf.test`, profile `test_kraken2`) runs the WGS test reads (`samplesheet.csv`) through the short-read QC and host removal, then Kraken2 with its own database (`data/kraken2_wgs/`, row `test_kraken2_wgs` of `databases.csv`; each test selects its own Kraken2 database with `--kraken2_db_names`). It is built with `scripts/make_kraken2_wgs_db.sh` from the NCBI RefSeq reference genomes of two species found in the reads, Methanobrevibacter smithii ATCC 35061 (`GCF_000016525.1`, taxid 2173) and Collinsella aerofaciens ATCC 25986 (`GCF_010509075.1`, taxid 74426), with the NCBI taxonomy cut down to their lineages (~7.8 MB). About 3-6% of the reads are classified, at least 1% to each species in every sample. Its files are not byte-identical from one build to the next either.
+
 ### Adapter-contaminated reads
 
 To test that adapter removal removes the adapters and keeps the inserts (`tests/test_adapter_removal.nf.test`, `samplesheet_adapters.csv`), error-free 2x150 reads were simulated from the host reference (see above) for two library kits, TruSeq and Nextera, in `data/fastq/adapters/`. For each kit, `adapters_<kit>_{1,2}.fastq.gz` have 1000 pairs, shuffled:
@@ -119,7 +124,7 @@ python3 scripts/make_adapter_reads.py data/hostremoval/NC_012920.1.fna.gz data/f
 
 ### 16S amplicon reads and IDtaxa training set
 
-The amplicon tests (`tests/test_primer_removal.nf.test`, `tests/test_idtaxa.nf.test`) use 16S V3-V4 reads simulated from a small set of 16S reference sequences, and an IDtaxa training set trained on the same sequences, so that the genus of each read is known.
+The amplicon tests (`tests/test_primer_removal.nf.test`, `tests/test_idtaxa.nf.test`, `tests/test_pacbio.nf.test`) use 16S V3-V4 reads (and full-length PacBio reads) simulated from a small set of 16S reference sequences, and an IDtaxa training set trained on the same sequences, so that the genus of each read is known.
 
 #### 16S reference sequences
 
@@ -143,7 +148,11 @@ python3 scripts/make_amplicon_reads.py data/idtaxa/reference_16s.fasta.gz data/f
 - `amplicon_primers_{1,2}.fastq.gz`: 2x250 pairs of the whole amplicon, starting with 341F (R1) and 805R (R2), per reference sequence 5 starting with the primer (`pr_`), 2 after a 1-7 base spacer (`spacer_`), and 1 with a 120 bp region, reading through the end of the amplicon into the reverse complement of the other primer and the adapter (`rt_`). `amplicon_primers_se.fastq.gz` has their R1.
 - `amplicon_mixed_{1,2}.fastq.gz`: as `amplicon_primers`, with a quarter of the pairs flipped (`flip_`: R1 starting with 805R and R2 with 341F), as in libraries ligated in both orientations.
 
-The last two are used in `samplesheet_primers.csv` (primer removal test), with `amplicon_clean` as a sample without primers.
+- `amplicon_pacbio.fastq.gz`: PacBio (HiFi, base qualities Q93) reads of the full-length 16S amplicon (27F `AGAGTTTGATCMTGGCTCAG` - 1492R `TACGGYTACCTTGTTACGACTT`), per reference sequence 3 from 27F to the reverse complement of 1492R (`fwd_`) and 2 of its reverse complement, from 1492R to the reverse complement of 27F (`rev_`), as PacBio reads are sequenced from either end of the amplicon. Most reference sequences are cut inside or before the primer sites (only 13 of 69 have both), so each amplicon is made of the two primers around the reference between the primer sites, found with up to 10% mismatches as by cutadapt (also partial at the ends of the reference), or, without a site, up to the end of the reference. The ambiguous bases of the primers and of the reference are resolved at random in each read. Besides, one read per reference sequence, in either orientation, to be removed by the preprocessing, in turn: with 100 bases of quality Q5 (`lowq_`, 18), with an N (`n_`, 17), cut 200 bases before its end, so without the primer at its end (`trunc_`, 17), or with only 800 bases between the primers (`short_`, 17); 10 reads with a single base of quality Q2 (`lowbase_`, passing the expected-errors filter but not the minimum base quality); and 10 reads of random sequence, not 16S (`other_`). The reads are made with another random generator than the files above, which are then unchanged.
+- `amplicon_pacbio_kinnex.fastq.gz`: PacBio reads of the full-length 16S amplicon with the primers of PacBio (PN 101-599-700, also used for Kinnex 16S, not in the PIMENTO standard library): the degenerate 27F `AGRGTTYGATYMTGGCTCAG` and 1492R `RGYTACCTTGTTACGACTT` (1492R without the 3 bases at its 5' end, so the region between the primers is the same as above), one per reference sequence from 27F (`fwd_`) and one from 1492R (`rev_`), 138 reads. Made with another random generator, so the files above are unchanged.
+- `orient_16s.fasta`: the first Escherichia reference sequence, to orient the PacBio reads with (`--amplicon_orient_reference`).
+
+`amplicon_primers` and `amplicon_mixed` are used in `samplesheet_primers.csv` (primer removal test), with `amplicon_clean` as a sample without primers. `amplicon_pacbio` is used in `samplesheet_pacbio.csv` (PacBio test, `tests/test_pacbio.nf.test`, with `orient_16s.fasta`), with `amplicon_clean` as Illumina paired-end reads in the same run.
 
 #### IDtaxa training set
 

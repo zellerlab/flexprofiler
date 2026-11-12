@@ -1,12 +1,49 @@
 {
     "number_of_tasks": {
         "content": [
-            15
+            17
         ],
-        "timestamp": "2026-10-28T09:31:54.727846",
+        "timestamp": "2026-11-12T13:46:41.853047",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
+        }
+    },
+    "software_versions": {
+        "content": [
+            {
+                "BBMAP_REPAIR_HOSTREMOVAL": {
+                    "bbmap": 39.18
+                },
+                "BOWTIE2_ALIGN": {
+                    "bowtie2": "2.5.5",
+                    "pigz": 2.8,
+                    "samtools": 1.24
+                },
+                "BOWTIE2_BUILD": {
+                    "bowtie2": "2.5.5"
+                },
+                "FALCO": {
+                    "falco": "1.2.5"
+                },
+                "READ_COUNTS": {
+                    "pandas": "2.2.1"
+                },
+                "SAMTOOLS_INDEX": {
+                    "samtools": 1.25
+                },
+                "SAMTOOLS_STATS": {
+                    "samtools": 1.25
+                },
+                "Workflow": {
+                    "zellerlab/flexprofiler": "v0.1.0"
+                }
+            }
+        ],
+        "timestamp": "2026-11-12T13:46:41.868888",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
         }
     },
     "filenames": {
@@ -22,26 +59,39 @@
                 "bowtie2/align/host_contaminated_ERR5766181_1.bowtie2.log",
                 "bowtie2/align/host_contaminated_ERR5766181_2.bowtie2.log",
                 "bowtie2/align/host_contaminated_se_ERR5766181.bowtie2.log",
-                "fastqc",
-                "fastqc/raw",
-                "fastqc/raw/host_contaminated_ERR5766181_raw_1_fastqc.html",
-                "fastqc/raw/host_contaminated_ERR5766181_raw_1_fastqc.zip",
-                "fastqc/raw/host_contaminated_ERR5766181_raw_2_fastqc.html",
-                "fastqc/raw/host_contaminated_ERR5766181_raw_2_fastqc.zip",
-                "fastqc/raw/host_contaminated_se_ERR5766181_raw_fastqc.html",
-                "fastqc/raw/host_contaminated_se_ERR5766181_raw_fastqc.zip",
+                "falco",
+                "falco/processed",
+                "falco/processed/host_contaminated_ERR5766181_processed_1_fastqc_data.txt",
+                "falco/processed/host_contaminated_ERR5766181_processed_1_report.html",
+                "falco/processed/host_contaminated_ERR5766181_processed_1_summary.txt",
+                "falco/processed/host_contaminated_ERR5766181_processed_2_fastqc_data.txt",
+                "falco/processed/host_contaminated_ERR5766181_processed_2_report.html",
+                "falco/processed/host_contaminated_ERR5766181_processed_2_summary.txt",
+                "falco/processed/host_contaminated_se_ERR5766181_processed_fastqc_data.txt",
+                "falco/processed/host_contaminated_se_ERR5766181_processed_report.html",
+                "falco/processed/host_contaminated_se_ERR5766181_processed_summary.txt",
+                "falco/raw",
+                "falco/raw/host_contaminated_ERR5766181_raw_1_fastqc_data.txt",
+                "falco/raw/host_contaminated_ERR5766181_raw_1_report.html",
+                "falco/raw/host_contaminated_ERR5766181_raw_1_summary.txt",
+                "falco/raw/host_contaminated_ERR5766181_raw_2_fastqc_data.txt",
+                "falco/raw/host_contaminated_ERR5766181_raw_2_report.html",
+                "falco/raw/host_contaminated_ERR5766181_raw_2_summary.txt",
+                "falco/raw/host_contaminated_se_ERR5766181_raw_fastqc_data.txt",
+                "falco/raw/host_contaminated_se_ERR5766181_raw_report.html",
+                "falco/raw/host_contaminated_se_ERR5766181_raw_summary.txt",
                 "multiqc",
                 "multiqc/multiqc_data",
                 "multiqc/multiqc_data/bowtie2_se_plot.txt",
-                "multiqc/multiqc_data/fastqc-status-check-heatmap.txt",
-                "multiqc/multiqc_data/fastqc_adapter_content_plot.txt",
-                "multiqc/multiqc_data/fastqc_per_base_n_content_plot.txt",
-                "multiqc/multiqc_data/fastqc_per_base_sequence_quality_plot.txt",
-                "multiqc/multiqc_data/fastqc_per_sequence_gc_content_plot_Counts.txt",
-                "multiqc/multiqc_data/fastqc_per_sequence_gc_content_plot_Percentages.txt",
-                "multiqc/multiqc_data/fastqc_per_sequence_quality_scores_plot.txt",
-                "multiqc/multiqc_data/fastqc_sequence_counts_plot.txt",
-                "multiqc/multiqc_data/fastqc_sequence_duplication_levels_plot.txt",
+                "multiqc/multiqc_data/falco-status-check-heatmap.txt",
+                "multiqc/multiqc_data/falco_adapter_content_plot.txt",
+                "multiqc/multiqc_data/falco_per_base_n_content_plot.txt",
+                "multiqc/multiqc_data/falco_per_base_sequence_quality_plot.txt",
+                "multiqc/multiqc_data/falco_per_sequence_gc_content_plot_Counts.txt",
+                "multiqc/multiqc_data/falco_per_sequence_gc_content_plot_Percentages.txt",
+                "multiqc/multiqc_data/falco_per_sequence_quality_scores_plot.txt",
+                "multiqc/multiqc_data/falco_sequence_counts_plot.txt",
+                "multiqc/multiqc_data/falco_sequence_duplication_levels_plot.txt",
                 "multiqc/multiqc_data/llms-full.txt",
                 "multiqc/multiqc_data/multiqc.log",
                 "multiqc/multiqc_data/multiqc.parquet",
@@ -49,6 +99,7 @@
                 "multiqc/multiqc_data/multiqc_citations.txt",
                 "multiqc/multiqc_data/multiqc_data.json",
                 "multiqc/multiqc_data/multiqc_fastqc.txt",
+                "multiqc/multiqc_data/multiqc_fastqc_fastqc-1.txt",
                 "multiqc/multiqc_data/multiqc_general_stats.txt",
                 "multiqc/multiqc_data/multiqc_read_counts_table.txt",
                 "multiqc/multiqc_data/multiqc_samtools_stats.txt",
@@ -56,55 +107,6 @@
                 "multiqc/multiqc_data/multiqc_sources.txt",
                 "multiqc/multiqc_data/samtools-stats-dp.txt",
                 "multiqc/multiqc_data/samtools_alignment_plot.txt",
-                "multiqc/multiqc_plots",
-                "multiqc/multiqc_plots/pdf",
-                "multiqc/multiqc_plots/pdf/bowtie2_se_plot-cnt.pdf",
-                "multiqc/multiqc_plots/pdf/bowtie2_se_plot-pct.pdf",
-                "multiqc/multiqc_plots/pdf/fastqc_adapter_content_plot.pdf",
-                "multiqc/multiqc_plots/pdf/fastqc_per_base_n_content_plot.pdf",
-                "multiqc/multiqc_plots/pdf/fastqc_per_base_sequence_quality_plot.pdf",
-                "multiqc/multiqc_plots/pdf/fastqc_per_sequence_gc_content_plot_Counts.pdf",
-                "multiqc/multiqc_plots/pdf/fastqc_per_sequence_gc_content_plot_Percentages.pdf",
-                "multiqc/multiqc_plots/pdf/fastqc_per_sequence_quality_scores_plot.pdf",
-                "multiqc/multiqc_plots/pdf/fastqc_sequence_counts_plot-cnt.pdf",
-                "multiqc/multiqc_plots/pdf/fastqc_sequence_counts_plot-pct.pdf",
-                "multiqc/multiqc_plots/pdf/fastqc_sequence_duplication_levels_plot.pdf",
-                "multiqc/multiqc_plots/pdf/read_counts_table.pdf",
-                "multiqc/multiqc_plots/pdf/samtools-stats-dp.pdf",
-                "multiqc/multiqc_plots/pdf/samtools_alignment_plot-cnt.pdf",
-                "multiqc/multiqc_plots/pdf/samtools_alignment_plot-pct.pdf",
-                "multiqc/multiqc_plots/png",
-                "multiqc/multiqc_plots/png/bowtie2_se_plot-cnt.png",
-                "multiqc/multiqc_plots/png/bowtie2_se_plot-pct.png",
-                "multiqc/multiqc_plots/png/fastqc_adapter_content_plot.png",
-                "multiqc/multiqc_plots/png/fastqc_per_base_n_content_plot.png",
-                "multiqc/multiqc_plots/png/fastqc_per_base_sequence_quality_plot.png",
-                "multiqc/multiqc_plots/png/fastqc_per_sequence_gc_content_plot_Counts.png",
-                "multiqc/multiqc_plots/png/fastqc_per_sequence_gc_content_plot_Percentages.png",
-                "multiqc/multiqc_plots/png/fastqc_per_sequence_quality_scores_plot.png",
-                "multiqc/multiqc_plots/png/fastqc_sequence_counts_plot-cnt.png",
-                "multiqc/multiqc_plots/png/fastqc_sequence_counts_plot-pct.png",
-                "multiqc/multiqc_plots/png/fastqc_sequence_duplication_levels_plot.png",
-                "multiqc/multiqc_plots/png/read_counts_table.png",
-                "multiqc/multiqc_plots/png/samtools-stats-dp.png",
-                "multiqc/multiqc_plots/png/samtools_alignment_plot-cnt.png",
-                "multiqc/multiqc_plots/png/samtools_alignment_plot-pct.png",
-                "multiqc/multiqc_plots/svg",
-                "multiqc/multiqc_plots/svg/bowtie2_se_plot-cnt.svg",
-                "multiqc/multiqc_plots/svg/bowtie2_se_plot-pct.svg",
-                "multiqc/multiqc_plots/svg/fastqc_adapter_content_plot.svg",
-                "multiqc/multiqc_plots/svg/fastqc_per_base_n_content_plot.svg",
-                "multiqc/multiqc_plots/svg/fastqc_per_base_sequence_quality_plot.svg",
-                "multiqc/multiqc_plots/svg/fastqc_per_sequence_gc_content_plot_Counts.svg",
-                "multiqc/multiqc_plots/svg/fastqc_per_sequence_gc_content_plot_Percentages.svg",
-                "multiqc/multiqc_plots/svg/fastqc_per_sequence_quality_scores_plot.svg",
-                "multiqc/multiqc_plots/svg/fastqc_sequence_counts_plot-cnt.svg",
-                "multiqc/multiqc_plots/svg/fastqc_sequence_counts_plot-pct.svg",
-                "multiqc/multiqc_plots/svg/fastqc_sequence_duplication_levels_plot.svg",
-                "multiqc/multiqc_plots/svg/read_counts_table.svg",
-                "multiqc/multiqc_plots/svg/samtools-stats-dp.svg",
-                "multiqc/multiqc_plots/svg/samtools_alignment_plot-cnt.svg",
-                "multiqc/multiqc_plots/svg/samtools_alignment_plot-pct.svg",
                 "multiqc/multiqc_report.html",
                 "pipeline_info",
                 "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml",
@@ -116,10 +118,10 @@
                 "samtools/stats/host_contaminated_se_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-10-28T18:54:38.370916",
+        "timestamp": "2026-11-12T13:46:41.866808",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
         }
     },
     "read_counts": {

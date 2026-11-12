@@ -8,3 +8,4 @@ testing*
 null/
 .nf-test*
 nf-*-reports.tsv
+fetch_flexprofiler_dbs_*.log

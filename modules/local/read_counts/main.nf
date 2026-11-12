@@ -2,9 +2,9 @@ process READ_COUNTS {
     label 'process_single'
 
     conda "${moduleDir}/environment.yml"
-    container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/pandas:2.2.1'
-        : 'biocontainers/pandas:2.2.1'}"
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/84/84e799e45917de0293324e738f0c0b7d1fd0f85ac0536d39d1161d7ef372fbaa/data'
+        : 'community.wave.seqera.io/library/pandas:2.2.1--2558de69969e58b9'}"
 
     input:
     // named uniquely, as in the manifest
@@ -15,10 +15,7 @@ process READ_COUNTS {
     output:
     path "read_counts.tsv"    , emit: tsv
     path "read_counts_mqc.tsv", emit: mqc
-    path "versions.yml"       , emit: versions
-
-    when:
-    task.ext.when == null || task.ext.when
+    tuple val("${task.process}"), val('pandas'), eval('python -c "import pandas; print(pandas.__version__)"'), emit: versions_pandas, topic: versions
 
     script:
     """
@@ -27,21 +24,11 @@ process READ_COUNTS {
         inputs \\
         read_counts.tsv \\
         read_counts_mqc.tsv
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
-    END_VERSIONS
     """
 
     stub:
     """
     touch read_counts.tsv
     touch read_counts_mqc.tsv
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
-    END_VERSIONS
     """
 }

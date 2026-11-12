@@ -1,0 +1,190 @@
+//
+// PathSeq-T2T host filtering of the short shotgun reads (--pathseq_t2t), for low-biomass samples, after
+// Dohlman et al., Cell 2026 (https://doi.org/10.1016/j.cell.2026.04.015) and https://github.com/abdohlman/pathseq-t2t
+// (v0.3.0, commit 51d74430): alignment to GRCh38, selection of the reads not aligned to it (prefilter), quality,
+// complexity, host k-mer and duplicate filtering with GATK PathSeqFilterSpark (qcfilter), and removal of the reads
+// aligned to T2T-CHM13 (t2tfilter). The differences from upstream are listed in docs/pathseq_t2t.md.
+//
+// The two stages are kept apart, the aligner to GRCh38 changing only the first:
+// - host pre-alignment: the reads not aligned to GRCh38, those aligned to its decoy contigs, and the primary reads.
+//   The alignment is with bwa mem -T 0 (--pathseq_t2t_grch38_aligner bwa), or with STAR (star, for RNA-seq), which also
+//   counts the reads per host gene
+// - host filtering: PathSeqFilterSpark, then T2T-CHM13
+//
+
+include { BWA_INDEX as BWA_INDEX_GRCH38     } from '../../modules/nf-core/bwa/index/main'
+include { BWA_INDEX as BWA_INDEX_T2T        } from '../../modules/nf-core/bwa/index/main'
+include { BWA_MEM as BWA_GRCH38             } from '../../modules/nf-core/bwa/mem/main'
+include { GUNZIP as GUNZIP_GRCH38_FASTA     } from '../../modules/nf-core/gunzip/main'
+include { GUNZIP as GUNZIP_GRCH38_GTF       } from '../../modules/nf-core/gunzip/main'
+include { STAR_GENOMEGENERATE as STAR_GENOMEGENERATE_GRCH38 } from '../../modules/nf-core/star/genomegenerate/main'
+include { STAR_ALIGN as STAR_GRCH38         } from '../../modules/nf-core/star/align/main'
+include { PATHSEQT2T_PREFILTER              } from '../../modules/local/pathseqt2t/prefilter/main'
+include { PATHSEQT2T_QCFILTER               } from '../../modules/local/pathseqt2t/qcfilter/main'
+include { PATHSEQT2T_T2TFILTER              } from '../../modules/local/pathseqt2t/t2tfilter/main'
+include { STAR_GENECOUNTSMERGE              } from '../../modules/local/star/genecountsmerge/main'
+include { publishFiles                      } from './utils_zellerlab_flexprofiler_pipeline'
+
+workflow PATHSEQ_T2T {
+    take:
+    reads           // [ [ meta ], [ reads ] ], short shotgun reads (passed through without --pathseq_t2t), as they were sequenced, per run or sample (run merging)
+    grch38_fasta    // /path/to/fasta of GRCh38, [] if its index is given
+    grch38_index    // /path/to/directory of the bwa (or STAR, see --pathseq_t2t_grch38_aligner) index of GRCh38, [] to build it
+    grch38_gtf      // /path/to/gtf of the genes of GRCh38, to build its STAR index ([] with bwa, or if the STAR index is given)
+    t2t_fasta       // /path/to/fasta of T2T-CHM13, [] if its index is given
+    t2t_index       // /path/to/directory of the bwa index of T2T-CHM13, [] to build it
+    host_dir        // /path/to/directory of the PathSeq host files (pathseq_host.bfi, pathseq_host.fa.img)
+    decoys_bed      // /path/to/bed of the viral decoy contigs of GRCh38, [] to not rescue the reads aligned to them
+
+    main:
+    ch_multiqc_files = channel.empty()
+
+    // without --pathseq_t2t the reads are passed through unchanged
+    ch_reads_filtered = reads
+    ch_singletons = channel.empty()
+    ch_read_count_logs = channel.empty()
+    ch_published = channel.empty()
+
+    if (params.pathseq_t2t) {
+        def aligner = params.pathseq_t2t_grch38_aligner
+        if (grch38_index) {
+            ch_grch38_index = channel.value([[id: 'grch38'], grch38_index])
+        }
+        else if (aligner == 'star') {
+            // STAR needs the FASTA and the GTF uncompressed
+            ch_grch38_fasta = grch38_fasta.name.endsWith('.gz')
+                ? GUNZIP_GRCH38_FASTA([[id: 'grch38'], grch38_fasta]).gunzip
+                : channel.value([[id: 'grch38'], grch38_fasta])
+            ch_grch38_gtf = grch38_gtf.name.endsWith('.gz')
+                ? GUNZIP_GRCH38_GTF([[id: 'grch38'], grch38_gtf]).gunzip
+                : channel.value([[id: 'grch38'], grch38_gtf])
+            ch_grch38_index = STAR_GENOMEGENERATE_GRCH38(ch_grch38_fasta, ch_grch38_gtf).index.first()
+            if (params.save_hostremoval_index) {
+                ch_published = ch_published.mix(publishFiles(STAR_GENOMEGENERATE_GRCH38.out.index, { meta -> "pathseq_t2t/index/${meta.id}" }, 'star'))
+            }
+        }
+        else {
+            ch_grch38_index = BWA_INDEX_GRCH38([[id: 'grch38'], grch38_fasta]).index.first()
+            if (params.save_hostremoval_index) {
+                ch_published = ch_published.mix(publishFiles(BWA_INDEX_GRCH38.out.index, { meta -> "pathseq_t2t/index/${meta.id}" }, 'bwa'))
+            }
+        }
+        if (t2t_index) {
+            ch_t2t_index = channel.value([[id: 't2t_chm13'], t2t_index])
+        }
+        else {
+            ch_t2t_index = BWA_INDEX_T2T([[id: 't2t_chm13'], t2t_fasta]).index.first()
+            if (params.save_hostremoval_index) {
+                ch_published = ch_published.mix(publishFiles(BWA_INDEX_T2T.out.index, { meta -> "pathseq_t2t/index/${meta.id}" }, 'bwa'))
+            }
+        }
+
+        /*
+            HOST PRE-ALIGNMENT
+        */
+
+        // not sorted: the mates stay together, and nothing downstream needs the coordinate order
+        if (aligner == 'star') {
+            // the genes are those of the index (built with the GTF), so the GTF is not given again
+            STAR_GRCH38(reads, ch_grch38_index, [[], []], true)
+            ch_grch38_bam = STAR_GRCH38.out.bam
+            ch_multiqc_files = ch_multiqc_files.mix(STAR_GRCH38.out.log_final, STAR_GRCH38.out.read_per_gene_tab)
+            // the reads per host gene, and the alignment summary, are always published
+            ch_published = ch_published
+                .mix(publishFiles(STAR_GRCH38.out.read_per_gene_tab, 'pathseq_t2t/grch38', '*.ReadsPerGene.out.tab'))
+                .mix(publishFiles(STAR_GRCH38.out.log_final, 'pathseq_t2t/grch38', '*.Log.final.out'))
+            // --pathseq_t2t_merge_gene_counts: the reads per host gene of all the samples (or runs, without run
+            // merging), merged into tables, the samples named as in the read counts
+            if (params.pathseq_t2t_merge_gene_counts) {
+                // a sheet of the sample names and the names of their ReadsPerGene.out.tab (staged in the work
+                // directory of the merge, unique as named after the sample), one per line, separated by a tab
+                ch_gene_counts_sheet = STAR_GRCH38.out.read_per_gene_tab
+                    .map { meta, tab -> "${params.perform_runmerging ? meta.id : "${meta.id}_${meta.run_accession}"}\t${tab.name}" }
+                    .collectFile(name: 'grch38_samples.tsv', newLine: true, sort: true)
+                ch_gene_counts_tabs = STAR_GRCH38.out.read_per_gene_tab
+                    .map { _meta, tab -> tab }
+                    .collect()
+                // [ meta, sheet, [tabs] ]
+                ch_gene_counts = ch_gene_counts_sheet
+                    .map { sheet -> [[id: 'grch38'], sheet] }
+                    .combine(ch_gene_counts_tabs.map { tabs -> [tabs] })
+                STAR_GENECOUNTSMERGE(ch_gene_counts)
+                ch_published = ch_published
+                    .mix(publishFiles(STAR_GENECOUNTSMERGE.out.counts.mix(STAR_GENECOUNTSMERGE.out.summary), 'pathseq_t2t/grch38', '*.tsv'))
+            }
+        }
+        else {
+            BWA_GRCH38(reads, ch_grch38_index, [[], []], false)
+            ch_grch38_bam = BWA_GRCH38.out.bam
+        }
+
+        PATHSEQT2T_PREFILTER(ch_grch38_bam, aligner, decoys_bed)
+
+        /*
+            HOST FILTERING
+        */
+
+        // the reads aligned to the decoy contigs are given only if there are any
+        ch_reads_for_qcfilter = PATHSEQT2T_PREFILTER.out.unaligned
+            .join(PATHSEQT2T_PREFILTER.out.decoys, remainder: true)
+            .map { meta, unaligned, decoys -> [meta, unaligned, decoys ?: []] }
+
+        PATHSEQT2T_QCFILTER(ch_reads_for_qcfilter, host_dir)
+
+        // PathSeqFilterSpark writes no paired or unpaired reads if none is left: the metrics are always written
+        ch_reads_for_t2tfilter = PATHSEQT2T_QCFILTER.out.metrics
+            .join(PATHSEQT2T_QCFILTER.out.paired, remainder: true)
+            .join(PATHSEQT2T_QCFILTER.out.unpaired, remainder: true)
+            .map { meta, _metrics, paired, unpaired -> [meta, paired ?: [], unpaired ?: []] }
+
+        PATHSEQT2T_T2TFILTER(ch_reads_for_t2tfilter, ch_t2t_index)
+
+        // paired-end reads: the pairs, the reads left without their mate (singletons) being kept apart for the profilers
+        // that can use them; single-end reads: all the reads are unpaired
+        ch_unpaired = PATHSEQT2T_T2TFILTER.out.unpaired.branch { meta, _fastq ->
+            single_end: meta.single_end
+            singletons: true
+        }
+        ch_reads_filtered = PATHSEQT2T_T2TFILTER.out.paired
+            .mix(ch_unpaired.single_end)
+            .map { meta, fastqs -> [meta, [fastqs].flatten()] }
+
+        // the reads after each step, for the read counts: the primary reads given to the filtering (flagstat), the reads
+        // after each filter of PathSeqFilterSpark (the metrics of the reads not aligned to the host and of those aligned to
+        // its decoy contigs, which are summed), and the reads not aligned to T2T-CHM13
+        ch_read_count_logs = PATHSEQT2T_PREFILTER.out.flagstat
+            .map { meta, flagstat -> [meta + [tool: 'pathseq_flagstat'], flagstat] }
+            .mix(
+                PATHSEQT2T_QCFILTER.out.metrics
+                    .transpose()
+                    .map { meta, metrics -> [meta + [tool: 'pathseq_filter'], metrics] }
+            )
+            .mix(PATHSEQT2T_T2TFILTER.out.log.map { meta, log_file -> [meta + [tool: 'pathseq_t2tfilter'], log_file] })
+        ch_singletons = ch_unpaired.singletons
+
+        // the logs and metrics of each step, the BAMs (--save_pathseq_t2t_bams), and the reads not aligned to the host
+        // (--save_hostremoval_unmapped), which are also the reads given to the profilers (--save_analysis_ready_fastqs)
+        ch_published = ch_published
+            .mix(publishFiles(PATHSEQT2T_PREFILTER.out.flagstat, 'pathseq_t2t/prefilter', '*.flagstat.tsv'))
+            .mix(publishFiles(PATHSEQT2T_QCFILTER.out.metrics, 'pathseq_t2t/qcfilter', '*.filter_metrics.txt'))
+            .mix(publishFiles(PATHSEQT2T_T2TFILTER.out.log, 'pathseq_t2t/t2tfilter', '*.t2tfilter.log'))
+        if (params.save_pathseq_t2t_bams) {
+            ch_published = ch_published
+                .mix(publishFiles(ch_grch38_bam, 'pathseq_t2t/grch38', '*.bam'))
+                .mix(publishFiles(PATHSEQT2T_PREFILTER.out.unaligned.mix(PATHSEQT2T_PREFILTER.out.decoys), 'pathseq_t2t/prefilter', '*.bam'))
+                .mix(publishFiles(PATHSEQT2T_QCFILTER.out.paired.mix(PATHSEQT2T_QCFILTER.out.unpaired), 'pathseq_t2t/qcfilter', '*.bam'))
+                .mix(publishFiles(PATHSEQT2T_T2TFILTER.out.bam, 'pathseq_t2t/t2tfilter', '*.bam'))
+        }
+        ch_t2tfilter_reads = PATHSEQT2T_T2TFILTER.out.paired.mix(PATHSEQT2T_T2TFILTER.out.unpaired)
+        ch_published = ch_published
+            .mix(params.save_hostremoval_unmapped ? publishFiles(ch_t2tfilter_reads, 'pathseq_t2t/t2tfilter', '*.fastq.gz') : channel.empty())
+            .mix(params.save_analysis_ready_fastqs ? publishFiles(ch_t2tfilter_reads, 'analysis_ready_fastqs', '*.fastq.gz') : channel.empty())
+    }
+
+    emit:
+    reads           = ch_reads_filtered     // channel: [ val(meta), [ reads ] ], the pairs, or the single-end reads
+    singletons      = ch_singletons         // channel: [ val(meta), fastq ], paired-end reads left without their mate
+    read_count_logs = ch_read_count_logs    // channel: [ val(meta), log ], with the tool in meta.tool
+    mqc             = ch_multiqc_files
+    published       = ch_published          // channel: [ file, target ], the files to publish (publishFiles)
+}

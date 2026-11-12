@@ -3,9 +3,9 @@ process MOTUS4_PROFILE {
     label 'process_medium'
 
     conda "${moduleDir}/environment.yml"
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'https://depot.galaxyproject.org/singularity/motus:4.0.4--pyhdfd78af_0':
-        'biocontainers/motus:4.0.4--pyhdfd78af_0' }"
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/39/3930809d11a1016e5b92efcdb77a68678b63ec2a8ee0a1e0cf5656cc7efdce1a/data'
+        : 'community.wave.seqera.io/library/motus:4.0.4--79a63faa164322d2'}"
 
     input:
     tuple val(meta), path(reads)
@@ -16,16 +16,16 @@ process MOTUS4_PROFILE {
     tuple val(meta), path("*.bam"), optional: true, emit: bam
     tuple val(meta), path("*.mgc"), optional: true, emit: mgc
     tuple val(meta), path("*.log")                , emit: log
-    path "versions.yml"           , emit: versions
-
-    when:
-    task.ext.when == null || task.ext.when
+    tuple val("${task.process}"), val('motus4'), eval('motus 2>&1 | sed -n "s/^.*Version: //p"'), emit: versions_motus4, topic: versions
 
     script:
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    // mOTUs 4 does not support anymore additional inputs formats except for FASTA,FASTQ
-    def inputs = meta.single_end ? "-s $reads" : "-f ${reads[0]} -r ${reads[1]}"
+    // mOTUs 4 does not support anymore additional inputs formats except for FASTA,FASTQ. The paired-end reads can be
+    // followed by the reads left without their mate by --pathseq_t2t, given as unpaired reads, or be only those if no
+    // pair is left (a single file is staged as a path, not a list)
+    def fastqs = reads instanceof List ? reads : [reads]
+    def inputs = meta.single_end || fastqs.size() == 1 ? "-s ${fastqs.join(' ')}" : "-f ${fastqs[0]} -r ${fastqs[1]}" + (fastqs.size() > 2 ? " -s ${fastqs[2]}" : "")
     """
     motus4_patch.py profile \\
         $args \\
@@ -39,30 +39,12 @@ process MOTUS4_PROFILE {
         cat ${prefix}.log >&2
         exit \$exit_code
     }
-    
-    # no way to get the version number without triggering an exit code 2
-    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        motus4: \$VERSION
-    END_VERSIONS
     """
 
     stub:
-    def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
-    def inputs = meta.single_end ? "-s $reads" : "-f ${reads[0]} -r ${reads[1]}"
     """
     touch ${prefix}.out
     touch ${prefix}.log
-
-    # no way to get the version number without triggering an exit code 2
-    VERSION=\$(motus 2>&1 | grep "Version" | sed "s%^.*Version: %%" || true)
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        motus4: \$VERSION
-    END_VERSIONS
     """
 }

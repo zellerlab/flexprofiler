@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com/nf-core/taxprofiler/master/assets/schema_database.json",
-    "title": "nf-core/taxprofiler pipeline - params.database schema",
+    "$id": "https://raw.githubusercontent.com/zellerlab/flexprofiler/master/assets/schema_database.json",
+    "title": "zellerlab/flexprofiler pipeline - params.database schema",
     "description": "Schema for the file provided with params.database",
     "type": "array",
     "items": {
@@ -14,9 +14,10 @@
                     "motus3",
                     "cayman",
                     "gqlib",
-                    "idtaxa"
+                    "idtaxa",
+                    "kraken2"
                 ],
-                "errorMessage": "Invalid tool name. Please see documentation for all supported profilers. Currently these classifers are included: motus4, motus3, cayman, gqlib, idtaxa.",
+                "errorMessage": "Invalid tool name. Please see documentation for all supported profilers. Currently these classifers are included: motus4, motus3, cayman, gqlib, idtaxa, kraken2.",
                 "meta": [
                     "tool"
                 ]

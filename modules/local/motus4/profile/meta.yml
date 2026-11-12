@@ -77,13 +77,27 @@ output:
           description: Standard error logging file containing summary statistics
           pattern: "*.log"
           ontologies: []
+  versions_motus4:
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - motus4:
+          type: string
+          description: The name of the tool
+      - 'motus 2>&1 | sed -n "s/^.*Version: //p"':
+          type: eval
+          description: The expression to obtain the version of the tool
+topics:
   versions:
-    - versions.yml:
-        type: file
-        description: File containing software versions
-        pattern: "versions.yml"
-        ontologies:
-          - edam: http://edamontology.org/format_3750 # YAML
+    - - ${task.process}:
+          type: string
+          description: The name of the process
+      - motus4:
+          type: string
+          description: The name of the tool
+      - 'motus 2>&1 | sed -n "s/^.*Version: //p"':
+          type: eval
+          description: The expression to obtain the version of the tool
 authors:
   - "@saulpierotti"
 maintainers:

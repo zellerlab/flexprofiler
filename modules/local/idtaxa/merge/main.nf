@@ -3,9 +3,9 @@ process IDTAXA_MERGE {
     label 'process_single'
 
     conda "${moduleDir}/environment.yml"
-    container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/pandas:2.2.1'
-        : 'biocontainers/pandas:2.2.1'}"
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/84/84e799e45917de0293324e738f0c0b7d1fd0f85ac0536d39d1161d7ef372fbaa/data'
+        : 'community.wave.seqera.io/library/pandas:2.2.1--2558de69969e58b9'}"
 
     input:
     // the profiles of all the samples for one training set (meta.id), staged in a folder, so that the command lists
@@ -14,10 +14,8 @@ process IDTAXA_MERGE {
 
     output:
     tuple val(meta), path("*.tsv"), emit: tsv
-    path "versions.yml"           , emit: versions
-
-    when:
-    task.ext.when == null || task.ext.when
+    tuple val("${task.process}"), val('python'), eval('python --version 2>&1 | sed "s/Python //"'), emit: versions_python, topic: versions
+    tuple val("${task.process}"), val('pandas'), eval('python -c "import pandas; print(pandas.__version__)"'), emit: versions_pandas, topic: versions
 
     script:
     def prefix = task.ext.prefix ?: "${meta.id}"
@@ -29,23 +27,11 @@ process IDTAXA_MERGE {
     # command line
     printf '%s\\n' profiles/* > profiles.txt
     idtaxa_merge.py ${prefix} _${meta.id}.idtaxa.profile.tsv profiles.txt ${ranks}
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version 2>&1 | sed 's/Python //')
-        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
-    END_VERSIONS
     """
 
     stub:
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
     touch ${prefix}.lineage.tsv
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        python: \$(python --version 2>&1 | sed 's/Python //')
-        pandas: \$(python -c 'import pandas; print(pandas.__version__)')
-    END_VERSIONS
     """
 }

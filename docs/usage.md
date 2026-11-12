@@ -6,9 +6,7 @@ zellerlab/flexprofiler is a pipeline for highly-parallelised taxonomic and funct
 In addition to multiple classification and profiling tools, at the same time it allows you to performing taxonomic classification and profiling across multiple databases and settings per tool, as well as produces standardised output tables to allow immediate cross comparison of results between tools.
 
 > [!NOTE]
-> Long read and FASTA input is accepted in pre-processing but not used for profiling at the moment.
-> Only short-read ILLUMINA files can be profiled at present.
-> There are remaining references in this documentation about long reads and FASTA but these are not yet implemented.
+> Only short-read ILLUMINA FASTQ, and PACBIO_SMRT FASTQ of AMPLICON runs, can be profiled at present: the samplesheets with other inputs (other platforms, or PACBIO_SMRT runs that are not AMPLICON, e.g. WGS, the default `library_strategy`) fail validation, and the pipeline does not start.
 > Please reach out to Saul if you would need this functionality.
 
 ## General Usage
@@ -22,7 +20,7 @@ Both contain metadata and paths to the data of your input samples and databases.
 When running zellerlab/flexprofiler, every step and tool is 'opt in'.
 To run a given classifier or profiler you must make sure to supply both a database in your `<database>.csv` and supply `--run_<profiler>` flag to your command.
 Omitting either will result in the profiling tool not executing.
-zellerlab/flexprofiler also includes optional pre-processing (adapter clipping, merge running etc.) or post-processing (visualisation) steps.
+zellerlab/flexprofiler also includes optional pre-processing (adapter clipping, run merging etc.) and post-processing (merged profile tables) steps.
 These are also opt in with a `--perform_<step>` flag.
 In some cases, the pre- and post-processing steps may also require additional files. Please check the parameters tab of this documentation for more information.
 Please see the rest of this page for information about how to prepare input samplesheets and databases and how to run Nextflow pipelines.
@@ -30,11 +28,11 @@ See the [parameters](parameters.md) documentation for more information about spe
 
 ## Samplesheet inputs
 
-zellerlab/flexprofiler can accept as input raw or preprocessed single- or paired-end short-read (e.g. Illumina) FASTQ files, long-read FASTQ files (e.g. Oxford Nanopore), or FASTA sequences (available for a subset of profilers).
+zellerlab/flexprofiler can accept as input raw or preprocessed single- or paired-end short-read (e.g. Illumina) FASTQ files, or long-read PacBio FASTQ files of AMPLICON runs. FASTA input is not supported.
 For PACBIO_SMRT data, please convert BAM files to FASTQ format before input.
 You will need to create a samplesheet with information about the samples you would like to analyse before running the pipeline.
 Use this parameter to specify its location.
-It has to be a comma-separated file with 6 columns, and a header row as shown in the examples below.
+It has to be a comma-separated file with 5 or 6 columns (`library_strategy` is optional), and a header row as shown in the examples below.
 Furthermore, zellerlab/flexprofiler also requires a second comma-separated file, the database sheet, with a header row as in the examples below (see [Full database sheet](#full-database-sheet)).
 This samplesheet is then specified on the command line as follows:
 
@@ -46,14 +44,14 @@ This samplesheet is then specified on the command line as follows:
 
 The `sample` identifiers have to be the same when you have re-sequenced the same sample more than once e.g. to increase sequencing depth.
 The pipeline will concatenate different runs FASTQ files of the same sample before performing profiling, when `--perform_runmerging` is supplied.
-All runs of a sample must then have the same instrument platform and file type (FASTQ or FASTA), otherwise the pipeline stops with an error.
+All runs of a sample must then have the same instrument platform, otherwise the pipeline stops with an error.
 Below is an example for the same sample sequenced across 3 lanes:
 
 ```csv title="samplesheet.csv"
-sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
-2612,lane1,ILLUMINA,2612_lane1_R1.fq.gz,2612_lane1_R2.fq.gz,
-2612,lane2,ILLUMINA,2612_lane2_R1.fq.gz,2612_lane2_R2.fq.gz,
-2612,lane3,ILLUMINA,2612_lane3_R1.fq.gz,2612_lane3_R2.fq.gz,
+sample,run_accession,instrument_platform,fastq_1,fastq_2
+2612,lane1,ILLUMINA,2612_lane1_R1.fq.gz,2612_lane1_R2.fq.gz
+2612,lane2,ILLUMINA,2612_lane2_R1.fq.gz,2612_lane2_R2.fq.gz
+2612,lane3,ILLUMINA,2612_lane3_R1.fq.gz,2612_lane3_R2.fq.gz
 ```
 
 ::: info
@@ -65,27 +63,25 @@ Therefore ensure that each `run_accession` ID is unique, even if from the same s
 :::
 
 :::warning
-Runs of the same sample sequenced on Illumina platforms with a combination of single and paired-end data can only be concatenated if read pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`), otherwise the pipeline stops with an error.
+Runs of the same sample sequenced on Illumina platforms with a combination of single and paired-end data can only be concatenated if read pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`, or, for `AMPLICON` runs, `--amplicon_pair_handling` other than `none`), otherwise the pipeline stops with an error.
 :::
 
 ### Full samplesheet
 
 The pipeline will auto-detect whether a sample is single- or paired-end using the information provided in the samplesheet.
-The samplesheet can have as many columns as you desire, however, there is a strict requirement for the first 6 columns to match those defined in the table below.
-A final samplesheet file consisting of both single- and paired-end data, as well as long-read FASTA files may look something like the one below.
-This is for 5 samples.
+The samplesheet can have as many columns as you desire, however, there is a strict requirement for the columns defined in the table below.
+A final samplesheet file consisting of both single- and paired-end data may look something like the one below.
+This is for 3 samples.
 
 ```csv title="samplesheet.csv"
-sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
-2611,ERR5766174,ILLUMINA,,,/<path>/<to>/fasta/ERX5474930_ERR5766174_1.fa.gz
-2612,ERR5766176,ILLUMINA,/<path>/<to>/fastq/ERX5474932_ERR5766176_1.fastq.gz,/<path>/<to>/fastq/ERX5474932_ERR5766176_2.fastq.gz,
-2612_se,ERR5766180,ILLUMINA,/<path>/<to>/fastq/ERX5474936_ERR5766180_1.fastq.gz,,
-2613,ERR5766181,ILLUMINA,/<path>/<to>/fastq/ERX5474937_ERR5766181_1.fastq.gz,/<path>/<to>/fastq/ERX5474937_ERR5766181_2.fastq.gz,
-ERR3201952,ERR3201952,OXFORD_NANOPORE,/<path>/<to>/fastq/ERR3201952.fastq.gz,,
+sample,run_accession,instrument_platform,fastq_1,fastq_2
+2612,ERR5766176,ILLUMINA,/<path>/<to>/fastq/ERX5474932_ERR5766176_1.fastq.gz,/<path>/<to>/fastq/ERX5474932_ERR5766176_2.fastq.gz
+2612_se,ERR5766180,ILLUMINA,/<path>/<to>/fastq/ERX5474936_ERR5766180_1.fastq.gz,
+2613,ERR5766181,ILLUMINA,/<path>/<to>/fastq/ERX5474937_ERR5766181_1.fastq.gz,/<path>/<to>/fastq/ERX5474937_ERR5766181_2.fastq.gz
 ```
 
 :::warning
-Input FASTQ and FASTA files _must_ be gzipped.
+Input FASTQ files _must_ be gzipped.
 :::
 
 :::warning
@@ -97,17 +93,12 @@ This will allow classification optimisation for each data type, and make MultiQC
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sample`              | Unique sample name [required].                                                                                                                                                          |
 | `run_accession`       | Run ID or name unique for each (pairs of) file(s) .Can also supply sample name again here, if only a single run was generated [required].                                               |
-| `instrument_platform` | Sequencing platform reads generated on, selected from the EBI ENA [controlled vocabulary](https://www.ebi.ac.uk/ena/portal/api/controlledVocab?field=instrument_platform) [required].   |
+| `instrument_platform` | Sequencing platform reads generated on, from the EBI ENA [controlled vocabulary](https://www.ebi.ac.uk/ena/portal/api/controlledVocab?field=instrument_platform): `ILLUMINA`, or `PACBIO_SMRT` for `AMPLICON` runs only [required]. |
 | `library_strategy`    | `WGS` (shotgun metagenomics) or `AMPLICON` (e.g. 16S), from the EBI ENA [controlled vocabulary](https://www.ebi.ac.uk/ena/portal/api/controlledVocab?field=library_strategy). Defaults to `WGS` when empty or when the column is missing [optional]. |
-| `fastq_1`             | Path or URL to sequencing reads or for Illumina R1 sequencing reads in FASTQ format. Must be gzipped. Can be left empty if data in FASTA is specified. Cannot be combined with `fasta`. |
-| `fastq_2`             | Path or URL to Illumina R2 sequencing reads in FASTQ format. Must be gzipped. Can be left empty if single end data. Cannot be combined with `fasta`.                                    |
-| `fasta`               | Path or URL to long-reads or contigs in FASTA format. Must be gzipped. Can be left empty if data in FASTQ is specified. Cannot be combined with `fastq_1` or `fastq_2`.                 |
+| `fastq_1`             | Path or URL to sequencing reads or for Illumina R1 sequencing reads in FASTQ format. Must be gzipped [required].                                                                       |
+| `fastq_2`             | Path or URL to Illumina R2 sequencing reads in FASTQ format. Must be gzipped. Can be left empty if single end data.                                                                     |
 
 An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
-
-:::warning
-FASTA input will not go through any preprocessing steps, and will go directly to profiling.
-:::
 
 ### Full database sheet
 
@@ -122,8 +113,11 @@ See the [databases documentation](databases.md) for details.
 
 The pipeline takes the paths and specific classification/profiling parameters of the tool of these databases as input via a comma-separated sheet.
 The optional `db_type` column allows to use specific database/parameters against specific data types.
-By specifying if a database is for short-or long-reads (or even both), the samples sequenced with Illumina are combined with the short-read databases and the samples sequenced with Nanopore are combined with long-read databases.
+By specifying if a database is for short-or long-reads (or even both), the samples sequenced with Illumina are combined with the short-read databases and the samples sequenced with PacBio are combined with long-read databases.
 If `db_type` is not provided, it is assumed the database and parameters are applicable for both short- and long-read data.
+The runs also meet only the databases of the profilers of their `library_strategy`: IDTAXA for `AMPLICON` runs, the other profilers for `WGS` runs.
+When at least one profiler is enabled (`--run_<tool>`), the pipeline stops before starting if an enabled profiler has no database in the sheet, if a run would not meet any database of the enabled profilers (it would be preprocessed but not profiled), or if an enabled profiler has no run to meet.
+With no profiler enabled, the reads are only preprocessed.
 
 :::warning
 To allow user freedom, zellerlab/flexprofiler does not check for mandatory or the validity of non-file database parameters for correct execution of the tool - excluding options offered via pipeline level parameters!
@@ -165,7 +159,7 @@ You can also specify the same database directory/file twice (ensuring unique `db
 
 zellerlab/flexprofiler will automatically decompress and extract any compressed archives for you.
 The optional `db_type` column enables the use of specific databases or parameters for different data types.
-By specifying if a database is for short-reads, long-reads, or both, Illumina samples are combined with short-read databases, while Nanopore samples are combined with long-read databases.
+By specifying if a database is for short-reads, long-reads, or both, Illumina samples are combined with short-read databases, while PacBio samples are combined with long-read databases.
 
 :::tip
 Click the links in the list below for short quick-reference tutorials how to generate download 'pre-made' and/or custom databases for each tool.
@@ -192,7 +186,7 @@ See below for more information about profiles.
 When running zellerlab/flexprofiler, every step and tool is 'opt in'.
 To run a given classifier/profiler you must make sure to supply both a database in your `<database>.csv` and supply `--run_<profiler>` flag to your command.
 Omitting either will result in the classification/profiling tool not executing.
-If you wish to perform pre-processing (adapter clipping, merge running etc.) or post-processing (visualisation) steps, these are also opt in with a `--perform_<step>` flag.
+If you wish to perform pre-processing (adapter clipping, run merging etc.) steps, these are also opt in with a `--perform_<step>` flag (the amplicon primer trimming is on by default), and the merged profile tables with `--run_profile_standardisation`.
 In some cases, the pre- and post-processing steps may also require additional files. Please check the parameters tab of this documentation for more information.
 
 Note that the pipeline will create the following files in your working directory:
@@ -228,7 +222,7 @@ outdir: './results/'
 
 [`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/) gives general quality metrics about your reads.
 It provides information about the quality score distribution across your reads, per base sequence content (%A/T/G/C), adapter contamination and overrepresented sequences.
-zellerlab/flexprofiler offers [`falco`](https://github.com/smithlabcode/falco) as an drop-in replacement, with supposedly better improvement particularly for long reads.
+zellerlab/flexprofiler runs by default [`falco`](https://github.com/smithlabcode/falco), a faster drop-in replacement of FastQC with much lower memory use; FastQC can be used instead with `--preprocessing_qc_tool fastqc`.
 
 ### Preprocessing Steps
 
@@ -236,8 +230,6 @@ zellerlab/flexprofiler offers the following preprocessing steps for raw sequenci
 
 - [**Paired-end read repair**](#paired-end-read-repair): correctly pair read order in PE files that have become unpaired.
 - [**Read processing**](#read-processing): adapter clipping and pair-merging.
-- [**Redundancy estimation**](#redundancy-estimation): short-read metagenome coverage estimation.
-- [**Complexity filtering**](#complexity-filtering): removal of low-sequence complexity reads.
 - [**Host read-removal**](#host-read-removal): removal of reads aligning to reference genome(s) of a host.
 - [**Run merging**](#run-merging): concatenation of multiple FASTQ chunks/sequencing runs/libraries of a sample.
 
@@ -257,106 +249,57 @@ Paired-end repair applies only to short reads.
 
 #### Read Processing
 
-Raw sequencing read processing in the form of adapter clipping and paired-end read merging can be activated via the `--perform_shortread_qc` or `--perform_longread_qc` flags.
+Raw sequencing read processing in the form of adapter clipping and paired-end read merging can be activated via the `--perform_shortread_qc` flag. For PacBio reads, `--perform_longread_qc` turns on their quality filtering (VSEARCH and BBDuk).
 
 It is highly recommended to run this on raw reads to remove artifacts from sequencing that can cause false positive identification of taxa (e.g. contaminated reference genomes) and/or skews in taxonomic abundance profiles.
 If you have public data, normally these should have been corrected for, however you should still check that these steps have indeed been already performed.
 
-There are currently two options for short-read preprocessing: [`fastp`](https://github.com/OpenGene/fastp) or [`adapterremoval`](https://github.com/MikkelSchubert/adapterremoval).
+The short reads are preprocessed with [`fastp`](https://github.com/OpenGene/fastp).
 
-For adapter clipping, you can either rely on the tool's default adapter sequences, or supply your own adapters (`--shortread_qc_adapter1` and `--shortread_qc_adapter2`)
+For adapter clipping, you can either rely on the default adapter sequences of fastp, or supply your own adapters (`--shortread_qc_adapter1` and `--shortread_qc_adapter2`)
 By default, paired-end merging is not activated.
 In this case paired-end 'alignment' against the reference databases is performed where supported, and if not, supported pairs will be independently classified/profiled.
 If paired-end merging is activated you can also specify whether to include unmerged reads in the reads sent for classification/profiling (`--shortread_qc_mergepairs` and `--shortread_qc_includeunmerged`).
 You can also turn off clipping and only perform paired-end merging, if requested.
 This can be useful when processing data downloaded from the ENA, SRA, or DDBJ (`--shortread_qc_skipadaptertrim`).
-Both tools support length filtering of reads and can be tuned with `--shortread_qc_minlength`.
+fastp filters the reads by length, as set by `--shortread_qc_minlength`.
 Performing length filtering can be useful to remove short (often low sequencing complexity) sequences that result in unspecific classification and therefore slow down runtime during classification/profiling, with minimal gain.
 
-There are currently two options for long-read Oxford Nanopore processing: [`porechop`](https://github.com/rrwick/Porechop), [`porechop_abi`](https://github.com/bonsai-team/Porechop_ABI).
-
-For both short-read and long-read preprocessing, you can optionally save the resulting processed reads with `--save_preprocessed_reads`.
-
-#### Redundancy Estimation
-
-Metagenome 'coverage' or sequencing complexity estimations of short-read datasets can be activated with `--perform_shortread_redundancyestimation`.
-
-This turns on checking of read redundancy in a sequencing library using [Nonpareil](https://nonpareil.readthedocs.io/en/latest/), to provide an estimation of whether you have sequenced enough to capture all possible genomes present in your metagenomic sample (with the assumption that once you've sequenced enough, you will keep sequencing PCR amplicons rather than unique reads).
-
-This is only suitable for short-read, and in zellerlab/flexprofiler specifically, FASTQ files.
-
-Nonpareil is performed on processed reads (i.e. after fastp or AdapterRemoval). This will run on either the first read of each read pair (as recommended by the authors), or on merged reads.
-
-Before using this tool please note the following caveats:
-
-:::warning
-
-- It is not recommended to keep unmerged (`--shortread_qc_includeunmerged`) reads when using the calculation.
-- Your shortest reads _after_ processing should not go below 24bp
-  If the 'kmer' value is not correct, make sure your shortest reads _after_ processing is not less than 24bp.
-
-      If this is the case you will need to specify in a custom config
-
-      ```nextflow
-      process {
-        withName: NONPAREIL_NONPAREIL {
-          ext.args = { "-k <NUMBER>" }
-          }
-      }
-      ```
-
-      Where `<NUMBER>` should be at least the shortest read in your library
-
-  :::
-
-#### Complexity Filtering
-
-Complexity filtering can be activated via the `--perform_shortread_complexityfilter` flag.
-
-Complexity filtering is primarily a run-time optimisation step.
-It is not necessary for accurate taxonomic classification/profiling, however it can speed up run-time of each tool by removing reads with low-diversity of nucleotides (e.g. with mono-nucleotide - `AAAAAAAA`, or di-nucleotide repeats `GAGAGAGAGAGAGAG`) that have a low-chance of giving an informative taxonomic ID as they can be associated with many different taxa.
-Removing these reads therefore saves computational time and resources.
-
-There are currently three options for short-read complexity filtering: [`bbduk`](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/bb-tools-user-guide/bbduk-guide/), [`prinseq++`](https://github.com/Adrian-Cantu/PRINSEQ-plus-plus), and [`fastp`](https://github.com/OpenGene/fastp#low-complexity-filter).
-
-There are two options for long-read quality filtering: [`Filtlong`](https://github.com/rrwick/Filtlong) and [`nanoq`](https://github.com/esteinig/nanoq), with `nanoq` being the default option.
-
-The tools offer different algorithms and parameters for removing low complexity reads and quality filtering.
-We therefore recommend reviewing the pipeline's [parameter documentation](parameters.md) and the documentation of the tools (see links above) to decide on optimal methods and parameters for your dataset.
-
-You can optionally save the FASTQ output of the run merging with the `--save_complexityfiltered_reads`.
-If running with `fastp`, complexity filtering happens inclusively within the earlier shortread preprocessing step.
-Therefore there will not be an independent pipeline step for complexity filtering, and no independent FASTQ file (i.e. `--save_complexityfiltered_reads` will be ignored) - your complexity filtered reads will also be in the `fastp/` folder in the same file(s) as the preprocessed read.
-
-:::warning
-For nanopore data: we do not recommend performing any read preprocessing or complexity filtering if you are using ONTs Guppy toolkit for basecalling and post-processing.
-:::
+You can optionally save the resulting processed reads with `--save_preprocessed_reads`.
 
 #### Host-Read Removal
 
-Removal of possible-host reads from FASTQ files prior classification/profiling can be activated with `--perform_shortread_hostremoval` or `--perform_longread_hostremoval`.
+Removal of possible-host reads from FASTQ files prior classification/profiling can be activated with `--perform_shortread_hostremoval` (short reads only).
 
-Similarly to complexity filtering, host-removal can be useful for runtime optimisation and reduction in misclassified reads.
+Host-removal can be useful for runtime optimisation and reduction in misclassified reads.
 It is not always necessary to report classification of reads from a host when you already know the host of the sample, therefore you can gain a run-time and computational advantage by removing these prior typically resource-heavy classification/profiling with more efficient methods.
 Furthermore, particularly with human samples, you can reduce the number of false positives during classification/profiling that occur due to host-sequence contamination in reference genomes on public databases.
 
-zellerlab/flexprofiler currently offers host-removal via alignment against a reference genome with Bowtie2 for short reads and minimap2 for long reads, and the use of the unaligned reads for downstream classification/profiling.
+zellerlab/flexprofiler currently offers host-removal via alignment against a reference genome with Bowtie2 for short reads, and the use of the unaligned reads for downstream classification/profiling.
 For paired-end short reads, the two mates are aligned separately and a pair is removed if either mate aligns to the host, as recommended by [Forbes et al. 2025](https://doi.org/10.1016/j.crmeth.2025.101218).
 
 You can supply your reference genome in FASTA format with `--hostremoval_reference`.
-You can also optionally supply a directory containing pre-indexed Bowtie2 index files with `--shortread_hostremoval_index` or a minimap2 `.mmi` file for `--longread_hostremoval_index`, however zellerlab/flexprofiler will generate these for you if necessary.
+You can also optionally supply a directory containing pre-indexed Bowtie2 index files with `--shortread_hostremoval_index`, however zellerlab/flexprofiler will generate these for you if necessary.
 Pre-supplying the index directory or files can greatly speed up the process, and these can be re-used.
 
 :::tip
 If you have multiple taxa or sequences you wish to remove (e.g., the host genome and then also PhiX - common quality-control reagent during sequencing) you can simply concatenate the FASTAs of each taxa or sequences into a single reference file.
 :::
 
+#### PathSeq-T2T host filtering (low-biomass samples)
+
+For human samples with few microbial reads, such as tumour or blood whole-genome sequencing, a single alignment to the host genome leaves enough human reads to cause false microbial calls.
+`--pathseq_t2t` replaces the QC and host removal with the PathSeq-T2T host filtering of [Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015): alignment to GRCh38, GATK PathSeqFilterSpark (quality, complexity, host k-mer and duplicate filters), and alignment to T2T-CHM13.
+It needs the bwa indexes (or FASTAs) of GRCh38 and T2T-CHM13 (for RNA-seq, the STAR index of GRCh38 instead of its bwa index, with `--pathseq_t2t_grch38_aligner star`) and the GATK PathSeq host files, accepts only Illumina `WGS` FASTQ, and cannot be combined with `--perform_shortread_qc` or `--perform_shortread_hostremoval`, nor with `--run_cayman` or `--run_gqlib`.
+It runs after run merging, so that with `--perform_runmerging` the duplicates are removed over the whole sample.
+See [the PathSeq-T2T page](pathseq_t2t.md) for the references, the outputs, and the differences from the upstream implementation.
+
 #### Run Merging
 
 For samples that may have been sequenced over multiple runs, or for FASTQ files split into multiple chunks, you can activate the ability to merge across all runs or chunks with `--perform_runmerging`.
 For more information how to set up your input samplesheet, see [Multiple runs of the same sample](#multiple-runs-of-the-same-sample).
 Activating this functionality will concatenate the FASTQ files with the same sample name _after_ the optional preprocessing steps and _before_ classification/profiling.
-All runs of a sample must have the same pairing type (single- or paired-end), unless pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`), otherwise the pipeline stops with an error.
+All runs of a sample must have the same pairing type (single- or paired-end), unless pairs are merged during preprocessing (`--perform_shortread_qc --shortread_qc_mergepairs`, or, for `AMPLICON` runs, `--amplicon_pair_handling` other than `none`), otherwise the pipeline stops with an error.
 The `WGS` and `AMPLICON` runs of a sample (`library_strategy` column) are never merged together: they are merged separately, into the runs `merged_WGS` and `merged_AMPLICON` of the sample, and a sample with a single run of a strategy keeps its `run_accession`.
 
 You can optionally save the FASTQ output of the run merging with the `--save_runmerged_reads`.
@@ -368,51 +311,65 @@ For advice and/or guidance whether you should run a particular tool on your spec
 An important distinction between the different tools in included in the pipeline is classification versus profiling.
 For advice as to which tool to run in your context, please see the documentation of each tool.
 
-<!-- TODO: add section
-##### MapSeq
--->
-
 ##### IDTaxa
 
 IDTAXA (DECIPHER) classifies 16S amplicon reads, the samples with `AMPLICON` in the `library_strategy` column of the samplesheet, against a training set. Turn it on with `--run_idtaxa` and an `idtaxa` row in the database CSV, with `db_path` a training set as distributed with DECIPHER (`.RData`).
 
-The database CSV can list several training sets, e.g. the GTDB release matching the taxonomy of the mOTUs version used for the WGS samples (R220 for mOTUs 4.0, used by `--run_motus4`; mOTUs 3 uses the NCBI taxonomy), a newer GTDB release, or SILVA. By default all the `idtaxa` rows are used. To use only some of them, list their `db_name` with `--idtaxa_db_names`, e.g. `--idtaxa_db_names gtdb_r220` or `--idtaxa_db_names gtdb_r220,silva_r138_2`. This way the paths are set once in the database CSV:
+The database CSV can list several training sets, e.g. the GTDB release matching the taxonomy of the mOTUs version used for the WGS samples (R207 for mOTUs 3.x, with its GTDB metadata of 3.0.2 and 3.1.0; R220 for mOTUs 4.0, used by `--run_motus4`; R226 for mOTUs 4.1), a newer GTDB release, or SILVA. By default all the `idtaxa` rows are used. To use only some of them, list their `db_name` with `--idtaxa_db_names`, e.g. `--idtaxa_db_names gtdb_r220_motus4.0` or `--idtaxa_db_names gtdb_r220_motus4.0,silva_r138_2`. This way the paths are set once in the database CSV:
 
 ```csv title="databases.csv"
 tool,db_name,db_params,db_path
-idtaxa,gtdb_r220,,/path/to/GTDB_r220.RData
+idtaxa,gtdb_r220_motus4.0,,/path/to/GTDB_r220.RData
 idtaxa,gtdb_r232,,/path/to/GTDB_r232-mod.RData
 idtaxa,silva_r138_2,,/path/to/SILVA_SSU_r138_2-mod.RData
 ```
 
-The `db_name` also names the output files and directories, so it is worth stating the release in it.
+The `db_name` also names the output files and directories, so it is worth stating the release in it, and the mOTUs version sharing its taxonomy (e.g. `gtdb_r220_motus4.0`).
 
-Before IDTAXA, the primers of each amplicon run are found with PIMENTO and trimmed with cutadapt (`--perform_amplicon_primertrimming`, on by default).
+The amplicon reads are first preprocessed as the other reads of their read type (short reads: `--perform_shortread_qc` etc.), then by the amplicon preprocessing: the primers of each amplicon run are found with PIMENTO and trimmed with cutadapt (`--perform_amplicon_primertrimming`, on by default), and the read pairs are made into single sequences (`--amplicon_pair_handling`, see below). The amplicon reads are not host-removed.
+
+PacBio amplicon reads (`PACBIO_SMRT`, e.g. full-length 16S, as FASTQ of HiFi reads) are preprocessed following the best practice for full-length 16S (Callahan et al. 2019, https://doi.org/10.1093/nar/gkz569, and PacBio's pb-16S-nf):
+
+- With `--perform_longread_qc`, the reads with more than 10 expected errors (about 0.7% of a full-length 16S; relaxed from the 2 of Callahan et al. 2019, as IDTAXA classifies single reads and tolerates a few errors) or with Ns are removed with vsearch (`--fastq_maxee 10 --fastq_maxns 0`), then those with a base of quality below 3 with BBDuk (`mbq=3`), as by `filterAndTrim(maxN = 0, minQ = 3)` in Callahan et al. 2019 (HiFi reads need neither adapter nor quality trimming).
+- PacBio reads are sequenced from either end of the amplicon, so, to find their primers with PIMENTO, they are first oriented with `vsearch --orient` against reference sequences of their gene, in its orientation (`--amplicon_orient_reference`, required for long-read AMPLICON runs unless the primers are given). A few diverse sequences are enough, as only the strand is found (e.g. a 16S of a few bacterial phyla and an archaeon, or a 16S database such as GTDB `ssu_all`); the reads that cannot be oriented (not of the gene of the reference) are dropped. The oriented reads are then searched as single-end reads (`--merged`), with the full-length 16S primers of PacBio, also used for Kinnex 16S (27F `AGRGTTYGATYMTGGCTCAG` and the 19-nt 1492R `RGYTACCTTGTTACGACTT`, PacBio PN 101-599-700), added to the PIMENTO standard library (`--amplicon_pimento_primers_pacbio`). The PIMENTO library has not them: PIMENTO would find in their place its 27F and 1492modR, by fuzzy matching, but 1492modR is 3 bases longer than the end of the reads, and cutadapt, which requires the primers of the long reads in full, would discard nearly all the reads.
+- The primers can instead be given, for all the AMPLICON runs, with `--amplicon_primer_fwd` and `--amplicon_primer_rev` (e.g. PacBio's full-length 16S primers: `--amplicon_primer_fwd AGRGTTYGATYMTGGCTCAG --amplicon_primer_rev RGYTACCTTGTTACGACTT`): PIMENTO and the orientation are skipped.
+- The primers are trimmed as a pair, both required in full (cutadapt linked adapter): the reads without both primers (truncated or chimeric) are discarded. The reads are written in the orientation of the forward primer (`--revcomp`), and only those of 1000-1600 bp after trimming are kept (full-length 16S). For shorter amplicons change the length window, keeping the primers argument:
+
+```groovy
+process {
+    withName: CUTADAPT_LINKED {
+        ext.args = { "-g '${meta.primer_linked}' --revcomp --discard-untrimmed -m 200 -M 600" }
+    }
+}
+```
+
+The read counts give the reads after each step (`raw_reads`, `qc_reads`, `oriented_reads`, `primer_trimmed_reads`).
 
 :::warning
 The primer detection has some limitations, so check `amplicon_primers/primers.tsv` and the read counts (`primer_trimmed_reads`, `readthrough_trimmed_reads`):
 
-- PIMENTO reports a primer only if it is at the start of more than 60% of the reads of a mate (`-m 0.60`). In libraries ligated in both orientations, with 40-60% of the pairs flipped (e.g. 50/50), neither primer passes in either mate: no primer is found and the run is not trimmed, as a run without primers. The threshold can be lowered with `ext.args` (e.g. `withName: PIMENTO_STD { ext.args = '-m 0.4' }`, adding `--merged` for single-end reads), at the risk of finding primers that are not there.
+- PIMENTO reports a primer only if it is at the start of more than 60% of the reads of a mate (`-m 0.60`). In short-read libraries ligated in both orientations, with 40-60% of the pairs flipped (e.g. 50/50), neither primer passes in either mate: no primer is found and the run is not trimmed, as a run without primers. The threshold can be lowered with `ext.args` (e.g. `withName: PIMENTO_STD { ext.args = { meta.single_end ? '--merged -m 0.4' : '-m 0.4' } }`), at the risk of finding primers that are not there, or the primers can be given (`--amplicon_primer_fwd`, `--amplicon_primer_rev`).
 - Single-end reads are searched with `--merged`, as if they spanned the whole amplicon: the forward primers at the start of the reads, the reverse primers at their end. In single-end reads shorter than the amplicon only the forward primer is found, so the reads running past the end of the amplicon keep the reverse complement of the reverse primer, and the adapter after it (removed by fastp only if it detects it, in files of at least 10000 reads). Single-end reads starting with the reverse primer (sequenced in the other orientation) are not recognised either.
 - The reverse primer of a library cannot be deduced from the forward primer: the PIMENTO standard library has several reverse primers per region (V3-V4: 805R, 806R, 806BR, 785R, 798R), some of them binding inside the amplicon of the others.
 
 :::
 
-IDTAXA classifies single sequences, so the pairs of paired-end reads are first merged if their mates overlap. The other pairs are handled as set by `--idtaxa_pair_handling`:
+IDTAXA classifies single sequences, so at the end of the amplicon preprocessing (after primer trimming, before run merging) the pairs of paired-end reads are merged if their mates overlap. The other pairs are handled as set by `--amplicon_pair_handling`:
 
 - `merged_plus_joined` (default): vsearch merges the overlapping pairs and joins the others with a padding of Ns (R1, `NNNNNNNN`, reverse complement of R2). Each pair is classified once, as one sequence.
 - `merged_plus_unmerged`: fastp merges the overlapping pairs and keeps both mates of the others as separate sequences, so these pairs count twice in the profile.
+- `none`: the pairs are kept as they are, e.g. to save the trimmed pairs with `--save_analysis_ready_fastqs` for another tool. IDTAXA cannot be run then.
 
-Single-end reads are classified as they are. Only the reads given to IDTAXA change, not the analysis-ready reads.
+Single-end and long reads are classified as they are. The analysis-ready reads of the amplicon runs are those after pair handling.
 
 The profiles of the samples are merged, for each training set, into a table of the whole lineages and one table per rank (domain, phylum, ..., genus), the sequences not assigned down to a rank being in its row `unassigned`. `--idtaxa_ranks` restricts the rank tables to some ranks, e.g. `--idtaxa_ranks genus`.
 
-The confidence threshold of IdTaxa is set with `--idtaxa_threshold` (default 40, as in vknight; DECIPHER suggests 60 for very high, 50 for high and 40 for moderate confidence). The strand of the sequences is left at the DECIPHER default (`both`), and is changed with `ext.strand` in a custom config; the vsearch and fastp options with `ext.args`:
+The confidence threshold of IdTaxa is set with `--idtaxa_threshold` (default 40, as in vknight; DECIPHER suggests 60 for very high, 50 for high and 40 for moderate confidence). IdTaxa classifies both strands of the short reads (`strand = 'both'`, the DECIPHER default), as they can be in either orientation, and only the top strand of the long reads, oriented as the gene by the primer trimming (by vsearch, or by cutadapt with the primers given; both strands without `--perform_amplicon_primertrimming`). The strand is changed with `ext.strand` in a custom config; the vsearch and fastp options with `ext.args`:
 
 ```groovy
 process {
     withName: IDTAXA_CLASSIFY {
-        ext.strand = 'top'
+        ext.strand = { meta.type == 'long' ? 'top' : 'both' }
     }
     withName: VSEARCH_MERGEJOIN {
         ext.args = '--fastq_allowmergestagger --fastq_minovlen 20'
@@ -420,7 +377,16 @@ process {
 }
 ```
 
-Keep the strand `both` for libraries with reads in both orientations.
+Keep the strand `both` for short-read libraries with reads in both orientations.
+
+##### Kraken2
+
+To run Kraken2, specify `--run_kraken2` and give `kraken2` rows in the database sheet, with the directory of the database (the `hash.k2d`, `opts.k2d` and `taxo.k2d` files, or a `.tar.gz` of them) as `db_path`.
+By default all the `kraken2` rows are used: to use only some of them, list their `db_name` with `--kraken2_db_names`, e.g. `--kraken2_db_names pluspf`, as `--idtaxa_db_names` does for IDTAXA.
+The options of a database (`db_params`) default to `--report-minimizer-data`, with `--confidence 0.15` added with `--pathseq_t2t`, as in PathSeq-T2T ([Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015)), which used the [PlusPF database of 2024-06-05](https://benlangmead.github.io/aws-indexes/k2): give other options in `db_params` to replace them (not with `--pathseq_t2t`, which uses its own options and rejects the `db_params` of the kraken2 databases).
+With `--pathseq_t2t`, the reads left without their mate are classified too, on their own, and added to the pairs in the merged tables.
+With `--run_profile_standardisation`, the reports are merged into tables of reads per taxon (see [the output documentation](output.md#kraken2)).
+The PlusPF database needs about 80 GB of memory: `KRAKEN2_KRAKEN2` asks for 128 GB.
 
 ##### mOTUs v4
 

@@ -19,18 +19,24 @@ We plan to contribute to **nf-core** modules or other components of more general
 ## Pipeline simplified overview
 
 1. Optional repair of the order of PE reads ([BBMap repair](https://github.com/BioInfoTools/BBMap/blob/master/sh/repair.sh))
-2. Read QC ([`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
-3. Read pre-processing
-   - Adapter clipping and merging: [fastp](https://github.com/OpenGene/fastp)
-   - Host-read removal: [BowTie2](http://bowtie-bio.sourceforge.net/bowtie2/)
-4. Performs classification and/or profiling using one or more of:
+2. Read pre-processing
+   - Short reads (Illumina): adapter clipping and merging with [fastp](https://github.com/OpenGene/fastp)
+   - Long reads (PacBio, `AMPLICON` runs only): quality filtering with [vsearch](https://doi.org/10.7717/peerj.2584) and [BBDuk](https://jgi.doe.gov/data-and-tools/software-tools/bbtools/)
+   - Shotgun (`WGS`) runs: host-read removal with [Bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/)
+   - Or, for low-biomass human samples, after run merging, the stringent host filtering of [PathSeq-T2T](docs/pathseq_t2t.md) ([Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015)): alignment to GRCh38 (bwa, or STAR for RNA-seq), [GATK PathSeq](https://doi.org/10.1093/bioinformatics/bty501) filters, and alignment to T2T-CHM13 (`--pathseq_t2t`)
+   - Amplicon (`AMPLICON`, e.g. 16S) runs: primer detection with [PIMENTO](https://doi.org/10.1093/gigascience/giag083) and trimming with [cutadapt](https://doi.org/10.14806/ej.17.1.200), and merging of the read pairs
+3. Optional concatenation of the runs of each sample
+4. Read QC of the raw and of the preprocessed reads ([`Falco`](https://github.com/smithlabcode/falco) or [`FastQC`](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/))
+5. Performs classification and/or profiling using one or more of:
    - [mOTUs v3](https://motus-tool.org/)
    - [mOTUs v4](https://motus-tool.org/)
    - [Cayman](https://github.com/zellerlab/cayman)
    - [gqlib](https://github.com/cschu/gqlib) (gene-based functional profiling)
-5. Standardises and collates output tables (tool-specific)
-6. Reports the read counts of each sample after each step
-7. Present QC for raw reads ([`MultiQC`](http://multiqc.info/))
+   - [Kraken2](https://ccb.jhu.edu/software/kraken2/)
+   - [IDTAXA](https://doi.org/10.1186/s40168-018-0521-5) (16S amplicons)
+6. Standardises and collates output tables (tool-specific)
+7. Reports the read counts of each sample after each step
+8. Presents the QC and the read counts ([`MultiQC`](http://multiqc.info/))
 
 ## For Zellerlab internal users
 A set of pre-configured options used internally in the group is documented [here](docs/zellerlab.md).
@@ -43,10 +49,10 @@ A set of pre-configured options used internally in the group is documented [here
 First, prepare a samplesheet with your input data that looks as follows:
 
 ```csv title="samplesheet.csv"
-sample,run_accession,instrument_platform,fastq_1,fastq_2,fasta
-2612,run1,ILLUMINA,2612_run1_R1.fq.gz,2612_run1_R2.fq.gz,
-2612,run2,ILLUMINA,2612_run2_R1.fq.gz,2612_run2_R2.fq.gz,
-2612,run3,ILLUMINA,2612_run3_R1.fq.gz,2612_run3_R2.fq.gz,
+sample,run_accession,instrument_platform,fastq_1,fastq_2
+2612,run1,ILLUMINA,2612_run1_R1.fq.gz,2612_run1_R2.fq.gz
+2612,run2,ILLUMINA,2612_run2_R1.fq.gz,2612_run2_R2.fq.gz
+2612,run3,ILLUMINA,2612_run3_R1.fq.gz,2612_run3_R2.fq.gz
 ```
 
 Additionally, you will need a database sheet that looks as follows:
@@ -79,12 +85,12 @@ For more details and further functionality, please refer to the [usage documenta
 
 To use **zellerlab/flexprofiler** you need the databases that the profiling tools that you want to run require.
 These can be downloaded using [this script](utils/fetch_databases.sh), which requires as argument the path where the databases will be downloaded, and optionally the number of cpus.
-The gqlib database is built by annotating the gene catalogue with eggNOG-mapper, which takes long: set `SKIP_GQLIB=1` to skip it. This part of the script has not been tested.
+Each database is downloaded only on request, by setting its variable to 1: `FETCH_MOTUS4` (mOTUs 4.0.4), `FETCH_MOTUS3` (mOTUs 3.1), `FETCH_CAYMAN` (the GMGC10 human gut gene catalogue with its bwa index and the Cayman annotation), `FETCH_GQLIB` (the gqlib database, built by annotating the gene catalogue with eggNOG-mapper, which takes long; not tested), `FETCH_PATHSEQ_T2T` (the references of `--pathseq_t2t`, ~200 GB), `FETCH_PATHSEQ_T2T_STAR` (the STAR index of GRCh38 for `--pathseq_t2t_grch38_aligner star`) and `FETCH_KRAKEN2` (the Kraken2 PlusPF 2024-12-28 database, ~75 GB).
 See the [database documentation](docs/databases.md) for the details.
 The script also generates a `flexprofiler_databases.csv` file in the local directory, which can be used in input for the pipeline.
 
 ```bash
-fetch_databases.sh <out_database_path> [cpus]
+FETCH_MOTUS4=1 FETCH_CAYMAN=1 fetch_databases.sh <out_database_path> [cpus]
 ```
 
 > [!IMPORTANT]

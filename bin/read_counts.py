@@ -6,8 +6,10 @@ usage: read_counts.py <manifest.tsv> <inputs_dir> <out.tsv> <out_mqc.tsv>
 The manifest has a header and one row per input file, with the columns file (its name in <inputs_dir>), sample,
 run_accession, kind and db_name. The run_accession is that of the run, or, with run merging, the merged run of a multi-
 run sample (merged_<library_strategy>). The kinds are fastp, bowtie2, bbmap_repair, motus4, motus3, cayman and gqlib,
-and for amplicons cutadapt_primers, cutadapt_readthrough, vsearch or fastp_merge, and idtaxa. The counts of the files of
-a sample and run (e.g. of the runs merged into it) are summed. A column is written only if some file has its count.
+and for amplicons cutadapt_primers, cutadapt_readthrough, vsearch or fastp_merge, and idtaxa, and for long amplicon reads
+vsearch_fastqfilter and bbduk_pacbio (PacBio QC), vsearch_orient and cutadapt_linked, and for the PathSeq-T2T host
+filtering pathseq_flagstat, pathseq_filter and pathseq_t2tfilter. The counts of the files of a sample and run (e.g. of
+the runs merged into it) are summed. A column is written only if some file has its count.
 """
 import json
 import pathlib
@@ -17,14 +19,21 @@ import textwrap
 
 import pandas as pd
 
-PROFILERS = ["motus4", "motus3", "cayman", "gqlib", "idtaxa"]
+PROFILERS = ["motus4", "motus3", "cayman", "gqlib", "kraken2", "kraken2_pairs", "idtaxa"]
 # the columns of the preprocessing steps, in their order
 PREPROCESSING_COLUMNS = [
-    "primer_trimmed_reads",
-    "readthrough_trimmed_reads",
     "raw_reads",
     "qc_reads",
+    "oriented_reads",
+    "primer_trimmed_reads",
+    "readthrough_trimmed_reads",
     "hostremoval_retained_pairs",
+    "grch38_unaligned_reads",
+    "prealigned_host_filter_reads",
+    "quality_complexity_filter_reads",
+    "host_kmer_filter_reads",
+    "deduplication_filter_reads",
+    "t2t_filter_reads",
     "merged_pairs",
     "joined_pairs",
 ]
@@ -57,6 +66,41 @@ def parse_bbmap_repair(text, kind, db):
     return {"hostremoval_retained_pairs": None if count is None else count // 2}
 
 
+def parse_pathseq_flagstat(text, kind, db):
+    # samtools flagstat (tsv) of the reads aligned to GRCh38, before any filter: the primary reads, each mate counted
+    return {"raw_reads": search_int(r"^(\d+)\t\d+\tprimary$", text)}
+
+
+# the columns of the filter metrics of GATK PathSeqFilterSpark -> those of the read counts, in the order of the filters
+PATHSEQ_FILTER_COLUMNS = {
+    "PRIMARY_READS": "grch38_unaligned_reads",
+    "READS_AFTER_PREALIGNED_HOST_FILTER": "prealigned_host_filter_reads",
+    "READS_AFTER_QUALITY_AND_COMPLEXITY_FILTER": "quality_complexity_filter_reads",
+    "READS_AFTER_HOST_FILTER": "host_kmer_filter_reads",
+    "READS_AFTER_DEDUPLICATION": "deduplication_filter_reads",
+}
+
+
+def parse_pathseq_filter(text, kind, db):
+    # the reads left after each filter of PathSeqFilterSpark, each mate counted: a table with one row, after the
+    # header lines (#). There is a file for the reads not aligned to GRCh38 and one for those aligned to its decoy
+    # contigs, whose counts are summed
+    rows = [line.split("\t") for line in text.splitlines() if line.strip() and not line.startswith("#")]
+    metrics = dict(zip(*rows)) if len(rows) == 2 and len(rows[0]) == len(rows[1]) else {}
+    return {
+        column: int(metrics[name]) if metrics.get(name, "").isdigit() else None
+        for name, column in PATHSEQ_FILTER_COLUMNS.items()
+    }
+
+
+def parse_pathseq_t2tfilter(text, kind, db):
+    # the reads not aligned to T2T-CHM13, given to the profilers, each mate counted: the pairs, and the reads left
+    # without their mate by the filters (single-end: all the reads)
+    pairs = search_int(r"^Retained pairs: (\d+)$", text)
+    unpaired = search_int(r"^Retained unpaired reads: (\d+)$", text)
+    return {"t2t_filter_reads": None if pairs is None or unpaired is None else 2 * pairs + unpaired}
+
+
 def parse_cutadapt(text, kind, db):
     # individual reads, each mate counted: the reads with a primer (adapter) found and trimmed. cutadapt writes the
     # numbers with thousands separators, and the single-end and paired-end reports differ
@@ -68,6 +112,29 @@ def parse_cutadapt(text, kind, db):
         reads = None if r1 is None or r2 is None else r1 + r2
     column = {"cutadapt_primers": "primer_trimmed_reads", "cutadapt_readthrough": "readthrough_trimmed_reads"}[kind]
     return {column: reads}
+
+
+def parse_cutadapt_linked(text, kind, db):
+    # long reads with both primers (linked adapter, the others discarded) and in the length window: the reads written
+    text = text.replace(",", "")
+    return {"primer_trimmed_reads": search_int(r"^Reads written \(passing filters\):\s+(\d+)", text)}
+
+
+def parse_vsearch_fastqfilter(text, kind, db):
+    # PacBio reads, before the quality filters (vsearch, then BBDuk, which gives the reads after them)
+    kept = search_int(r"^(\d+) sequences kept", text)
+    discarded = search_int(r"(\d+) sequences discarded", text)
+    return {"raw_reads": None if kept is None or discarded is None else kept + discarded}
+
+
+def parse_bbduk_pacbio(text, kind, db):
+    # PacBio reads, after the quality filters (vsearch, then BBDuk)
+    return {"qc_reads": search_int(r"^Result:\s+(\d+) reads", text)}
+
+
+def parse_vsearch_orient(text, kind, db):
+    # long reads oriented as the reference (the others are dropped)
+    return {"oriented_reads": search_int(r"^All oriented sequences:\s+(\d+)", text)}
 
 
 def parse_vsearch(text, kind, db):
@@ -88,13 +155,21 @@ def parse_idtaxa(text, kind, db):
     return {f"{kind}_{db}_pairs": search_int(r"^Assigned sequences: (\d+)", text)}
 
 
+def parse_kraken2(text, kind, db):
+    # the reads classified by Kraken2: the fragments of the clade of the root (taxid 1, the second column), each mate
+    # counted, as a pair is one fragment for Kraken2 (kraken2_pairs), counted twice. An empty report, or one with no
+    # root (no fragment classified), is of no reads
+    fragments = search_int(r"^[^\t\n]*\t *(\d+)\t(?:[^\t\n]*\t)*1\troot$", text) or 0
+    return {f"kraken2_{db}_reads": fragments * (2 if kind == "kraken2_pairs" else 1)}
+
+
 def parse_motus4(text, kind, db):
-    # the inserts (read pairs) passing the motus filters
+    # the inserts (read pairs, and the singletons of --pathseq_t2t) passing the motus filters
     return {f"{kind}_{db}_pairs": search_int(r"Read (\d+) aligned inserts", text)}
 
 
 def parse_motus3(text, kind, db):
-    # the inserts (read pairs) passing the motus filters
+    # the inserts (read pairs, and the singletons of --pathseq_t2t) passing the motus filters
     return {f"{kind}_{db}_pairs": search_int(r"Total number of inserts: (\d+)", text)}
 
 
@@ -111,8 +186,15 @@ PARSERS = {
     "fastp": parse_fastp,
     "bowtie2": parse_bowtie2,
     "bbmap_repair": parse_bbmap_repair,
+    "pathseq_flagstat": parse_pathseq_flagstat,
+    "pathseq_filter": parse_pathseq_filter,
+    "pathseq_t2tfilter": parse_pathseq_t2tfilter,
     "cutadapt_primers": parse_cutadapt,
     "cutadapt_readthrough": parse_cutadapt,
+    "cutadapt_linked": parse_cutadapt_linked,
+    "vsearch_fastqfilter": parse_vsearch_fastqfilter,
+    "bbduk_pacbio": parse_bbduk_pacbio,
+    "vsearch_orient": parse_vsearch_orient,
     "vsearch": parse_vsearch,
     "fastp_merge": parse_fastp_merge,
     "motus4": parse_motus4,
@@ -120,33 +202,78 @@ PARSERS = {
     "cayman": parse_gene_catalogue,
     "gqlib": parse_gene_catalogue,
     "idtaxa": parse_idtaxa,
+    "kraken2": parse_kraken2,
+    "kraken2_pairs": parse_kraken2,
 }
 
 # column, or, for the profilers, kind -> (title, description), {db} being the database
 DESCRIPTIONS = {
     "primer_trimmed_reads": (
         "Primer-trimmed reads",
-        "Amplicon reads with a primer found by PIMENTO trimmed at their start (cutadapt), each mate counted",
+        "Amplicon reads with a primer (found by PIMENTO or given) trimmed at their start (cutadapt), each mate counted;"
+        " long reads: with both primers trimmed, and in the length window",
     ),
     "readthrough_trimmed_reads": (
         "Read-through-trimmed reads",
         "Amplicon reads with the opposite primer trimmed at their end (cutadapt), each mate counted",
     ),
-    "raw_reads": ("Raw reads", "Reads before QC (fastp), each mate counted"),
-    "qc_reads": ("QC reads", "Reads after QC (fastp), each mate counted"),
+    "raw_reads": (
+        "Raw reads",
+        "Reads before QC (fastp, or vsearch for PacBio reads), each mate counted; PathSeq-T2T: the primary reads"
+        " aligned to GRCh38 (samtools flagstat)",
+    ),
+    "qc_reads": ("QC reads", "Reads after QC (fastp, or vsearch and BBDuk for PacBio reads), each mate counted"),
+    "oriented_reads": ("Oriented reads", "Long amplicon reads oriented as the reference sequences (vsearch), the others dropped"),
     "hostremoval_retained_pairs": (
         "Host removal retained pairs",
         "Read pairs with neither mate aligned to the host genome (single-end: reads not aligned), given to the"
         " profilers",
     ),
-    "motus4": ("mOTUs v4 {db} pairs", "Read pairs aligned to the mOTUs v4 database {db} and passing the mOTUs filters"),
-    "motus3": ("mOTUs v3 {db} pairs", "Read pairs aligned to the mOTUs v3 database {db} and passing the mOTUs filters"),
+    "grch38_unaligned_reads": (
+        "Not aligned to GRCh38",
+        "PathSeq-T2T: reads not aligned to GRCh38 in a proper pair with an alignment score above 35 (single-end:"
+        " not aligned with such a score), and reads aligned to its viral decoy contigs, each mate counted",
+    ),
+    "prealigned_host_filter_reads": (
+        "Prealigned host filter",
+        "PathSeq-T2T: reads left by PathSeqFilterSpark after removing those aligned to GRCh38, each mate counted",
+    ),
+    "quality_complexity_filter_reads": (
+        "Quality/complexity filter",
+        "PathSeq-T2T: reads left by PathSeqFilterSpark after the quality and complexity filters, each mate counted",
+    ),
+    "host_kmer_filter_reads": (
+        "Host k-mer filter",
+        "PathSeq-T2T: reads left by PathSeqFilterSpark after removing those with host k-mers or aligned to the host,"
+        " each mate counted",
+    ),
+    "deduplication_filter_reads": (
+        "Deduplication filter",
+        "PathSeq-T2T: reads left by PathSeqFilterSpark after removing the duplicates, each mate counted",
+    ),
+    "t2t_filter_reads": (
+        "T2T-CHM13 filter",
+        "PathSeq-T2T: reads not aligned to T2T-CHM13, given to the profilers, each mate counted: the pairs, and the"
+        " reads left without their mate",
+    ),
+    "motus4": (
+        "mOTUs v4 {db} pairs",
+        "Inserts (read pairs, and the reads left without their mate by PathSeq-T2T) aligned to the mOTUs v4 database {db}"
+        " and passing the mOTUs filters",
+    ),
+    "motus3": (
+        "mOTUs v3 {db} pairs",
+        "Inserts (read pairs, and the reads left without their mate by PathSeq-T2T) aligned to the mOTUs v3 database {db}"
+        " and passing the mOTUs filters",
+    ),
     "cayman": ("cayman {db} pairs", "Read pairs aligned to the gene catalogue {db} and passing the cayman filters"),
     "gqlib": ("gqlib {db} pairs", "Read pairs aligned to the gene catalogue {db} and passing the gqlib filters"),
-    "merged_pairs": ("Merged pairs", "Amplicon read pairs merged into one sequence (vsearch or fastp), for IDTAXA"),
+    "kraken2": ("Kraken2 {db} reads", "Reads classified by Kraken2 with the database {db}, each mate counted"),
+    "kraken2_pairs": ("Kraken2 {db} reads", "Reads classified by Kraken2 with the database {db}, each mate counted"),
+    "merged_pairs": ("Merged pairs", "Amplicon read pairs merged into one sequence (vsearch or fastp)"),
     "joined_pairs": (
         "Joined pairs",
-        "Amplicon read pairs not merged, joined with a padding of Ns into one sequence (vsearch), for IDTAXA",
+        "Amplicon read pairs not merged, joined with a padding of Ns into one sequence (vsearch)",
     ),
     "idtaxa": (
         "IDTAXA {db} sequences",
@@ -215,8 +342,8 @@ def main(manifest, inputs_dir, out_tsv, out_mqc):
     config = {
         "id": "read_counts",
         "section_name": "Read counts",
-        "description": "Reads after each step. The raw and QC reads count each mate, the following columns count read"
-        " pairs (single-end: reads).",
+        "description": "Reads after each step. The raw and QC reads, and the reads of the PathSeq-T2T host filtering,"
+        " count each mate, the other columns count read pairs (single-end: reads).",
         "plot_type": "table",
         "pconfig": {"id": "read_counts_table", "title": "Read counts", "col1_header": "Sample"},
         "headers": {column: headers[column] for column in counts.columns},

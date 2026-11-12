@@ -1,0 +1,61 @@
+nextflow_pipeline {
+    name "Test Kraken2 on WGS reads, after the short-read QC and host removal"
+    script "../main.nf"
+    tag "pipeline"
+    tag "test_kraken2"
+    profile "test_kraken2"
+
+    // the WGS test reads (2612: paired-end, two runs merged; 2612_se: single-end; 2613: paired-end) and the database of
+    // the reference genomes of Methanobrevibacter smithii (taxid 2173) and Collinsella aerofaciens (taxid 74426)
+    test("test_kraken2") {
+        when {
+            params {
+                outdir = "${outputDir}"
+            }
+        }
+
+        then {
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}', 'multiqc/multiqc_plots', 'multiqc/multiqc_plots/**' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            // the commit of the pipeline code changes with every commit
+            software_versions.Workflow.remove( "zellerlab/flexprofiler_commit" )
+            def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
+            def count             = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] as int }
+            def kraken2_table     = { name -> path( "${params.outdir}/kraken2/kraken2_test_kraken2_wgs.${name}.tsv" ).readLines().collect { line -> line.split( "\t" ) as List } }
+            def kraken2_clade     = { taxid, sample ->
+                def table = kraken2_table( "reads_clade" )
+                table.find { row -> row[0] == taxid }[table[0].indexOf( sample )] as int
+            }
+            // the taxid of a species, by its name in the taxonomy table (taxid, name, rank, lineage)
+            def kraken2_species   = { name ->
+                def species = kraken2_table( "taxonomy" ).find { row -> row[1] == name && row[2] == "S" }
+                assert species : "no species '${name}' in the Kraken2 taxonomy table"
+                species[0]
+            }
+            // Kraken2 counts each mate: the reads given to it are the pairs left by the host removal, as two reads each,
+            // or the single-end reads left
+            def kraken2_input     = [ "2612": 2 * count( "2612", "hostremoval_retained_pairs" ), "2612_se": count( "2612_se", "hostremoval_retained_pairs" ), "2613": 2 * count( "2613", "hostremoval_retained_pairs" ) ]
+            assertAll(
+                { assert workflow.success },
+                { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
+                { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
+                { assert snapshot ( read_counts ).match( "read_counts" ) },
+                // the classified and unclassified reads add up to the reads given to Kraken2, and the classified ones are
+                // those of the read counts
+                { assert kraken2_input.every { sample, reads -> kraken2_clade( "0", sample ) + kraken2_clade( "1", sample ) == reads } },
+                { assert kraken2_input.every { sample, _reads -> kraken2_clade( "1", sample ) == count( sample, "kraken2_test_kraken2_wgs_reads" ) } },
+                // the reads of each species in every sample, which together are all the classified reads
+                { assert [ "Methanobrevibacter smithii", "Collinsella aerofaciens" ].collectEntries { name -> [ ( name ): kraken2_input.keySet().collectEntries { sample -> [ ( sample ): kraken2_clade( kraken2_species( name ), sample ) ] } ] } == [
+                    "Methanobrevibacter smithii": [ "2612": 97700, "2612_se": 15674, "2613": 17598 ],
+                    "Collinsella aerofaciens":    [ "2612": 66296, "2612_se": 7390,  "2613": 16908 ],
+                ] },
+                { assert snapshot (
+                    path( "${params.outdir}/kraken2/kraken2_test_kraken2_wgs.reads_clade.tsv" ),
+                    path( "${params.outdir}/kraken2/kraken2_test_kraken2_wgs.reads_taxon.tsv" ),
+                    path( "${params.outdir}/kraken2/kraken2_test_kraken2_wgs.taxonomy.tsv" ),
+                ).match( "kraken2_tables" ) },
+            )
+        }
+    }
+}

@@ -14,7 +14,6 @@ include { samplesheetToList         } from 'plugin/nf-schema'
 include { paramsHelp                } from 'plugin/nf-schema'
 include { completionEmail           } from '../../nf-core/utils_nfcore_pipeline'
 include { completionSummary         } from '../../nf-core/utils_nfcore_pipeline'
-include { imNotification            } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NFCORE_PIPELINE     } from '../../nf-core/utils_nfcore_pipeline'
 include { UTILS_NEXTFLOW_PIPELINE   } from '../../nf-core/utils_nextflow_pipeline'
 
@@ -39,8 +38,6 @@ workflow PIPELINE_INITIALISATION {
 
     main:
 
-    ch_versions = channel.empty()
-
     //
     // Print version and exit if required and dump pipeline parameters to JSON file
     //
@@ -63,6 +60,7 @@ workflow PIPELINE_INITIALISATION {
 \033[0;34m /____\\___|_|_|\\___|_|  |_|\\__,_|_.__/     \033[0m
                                        
 \033[0;35m  zellerlab/flexprofiler ${workflow.manifest.version}\033[0m
+\033[0;35m  commit ${getPipelineCommit()}\033[0m
 -\033[2m-----------------------------------------------\033[0m-
 """
     after_text = """
@@ -83,7 +81,8 @@ workflow PIPELINE_INITIALISATION {
         show_hidden,
         before_text,
         after_text,
-        command
+        command,
+        null,       // cli_typecast: the default of nf-schema
     )
 
     //
@@ -98,77 +97,67 @@ workflow PIPELINE_INITIALISATION {
     //
 
     def samplesheet_rows = samplesheetToList(input, "assets/schema_input.json")
+    validatePacbio(samplesheet_rows)
     if (params.perform_runmerging) {
         validateRunMerging(samplesheet_rows)
     }
+    // first, as it rejects the inputs that the other checks are about
+    if (params.pathseq_t2t) {
+        validatePathseqT2t(samplesheet_rows)
+    }
+    // the reads per host gene are counted only by STAR, in PathSeq-T2T
+    if (params.pathseq_t2t_merge_gene_counts && !(params.pathseq_t2t && params.pathseq_t2t_grch38_aligner == 'star')) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t_merge_gene_counts merges the reads per host gene counted by STAR, and needs --pathseq_t2t with --pathseq_t2t_grch38_aligner star: please turn it off, or set them")
+    }
+    validateAmpliconPrimers(samplesheet_rows)
     // Samples with more than one run are published as analysis-ready reads only after run merging. The runs of a
     // sample are merged separately for each library strategy, so they are counted per sample and strategy
     def runs_per_sample = samplesheet_rows.countBy { row -> [row[0].id, row[0].library_strategy] }
-    Channel.fromList(samplesheet_rows)
-        .map { meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
-            [meta + [is_multirun: runs_per_sample[[meta.id, meta.library_strategy]] > 1], run_accession, instrument_platform, fastq_1, fastq_2, fasta]
+    ch_samplesheet = channel.fromList(samplesheet_rows)
+        .map { meta, run_accession, instrument_platform, fastq_1, fastq_2 ->
+            [meta + [is_multirun: runs_per_sample[[meta.id, meta.library_strategy]] > 1], run_accession, instrument_platform, fastq_1, fastq_2]
         }
-        .set { ch_samplesheet }
 
     //
     // Validate and create channel from databases file provided through params.databases
     //
-    def database_rows = selectIdtaxaDatabases(samplesheetToList(databases, "assets/schema_database.json"), params.idtaxa_db_names)
+    def database_rows = selectDatabases(
+        selectDatabases(samplesheetToList(databases, "assets/schema_database.json"), 'idtaxa', params.idtaxa_db_names),
+        'kraken2',
+        params.kraken2_db_names,
+    )
     validateDatabaseSheet(database_rows)
-    Channel.fromList(database_rows)
-        .set { ch_databases }
+    validateDatabaseMatching(samplesheet_rows, database_rows)
+    ch_databases = channel.fromList(database_rows)
 
     //
     // Validate parameter inputs
     //
 
     // Preprocessing
+    if (params.run_idtaxa && params.amplicon_pair_handling == 'none') {
+        error("[zellerlab/flexprofiler] ERROR: IDTAXA classifies single sequences, so --run_idtaxa needs the read pairs of the amplicon reads made into single sequences: please set --amplicon_pair_handling to merged_plus_joined or merged_plus_unmerged")
+    }
+
     if (params.shortread_qc_includeunmerged && !params.shortread_qc_mergepairs) {
         error("ERROR: [zellerlab/flexprofiler] cannot include unmerged reads when merging is not turned on. Please specify --shortread_qc_mergepairs")
     }
 
     if (params.shortread_qc_adapterlist) {
         def adapterlist = file(params.shortread_qc_adapterlist, checkIfExists: true)
-        if (params.shortread_qc_tool == 'adapterremoval' && !(adapterlist.extension == 'txt')) {
-            error("[zellerlab/flexprofiler] ERROR: AdapterRemoval2 adapter list requires a `.txt` format and extension. Check input: --shortread_qc_adapterlist ${params.shortread_qc_adapterlist}")
-        }
-        if (params.shortread_qc_tool == 'fastp' && !adapterlist.extension.matches(".*(fa|fasta|fna|fas)")) {
+        if (!adapterlist.extension.matches(".*(fa|fasta|fna|fas)")) {
             error("[zellerlab/flexprofiler] ERROR: fastp adapter list requires a `.fasta` format and extension (or fa, fas, fna). Check input: --shortread_qc_adapterlist ${params.shortread_qc_adapterlist}")
         }
     }
 
-    if (params.shortread_complexityfilter_tool == 'fastp' && (params.perform_shortread_qc == false || params.shortread_qc_tool != 'fastp')) {
-        error("ERROR: [zellerlab/flexprofiler] cannot use fastp complexity filtering if preprocessing not turned on and/or tool is not fastp. Please specify --perform_shortread_qc and/or --shortread_qc_tool 'fastp'")
-    }
     // The reference is needed also when an index is supplied, e.g. for host removal statistics
     if (params.perform_shortread_hostremoval && !params.hostremoval_reference) {
         error("ERROR: [zellerlab/flexprofiler] --perform_shortread_hostremoval requested but no --hostremoval_reference FASTA supplied (required also when providing --shortread_hostremoval_index). Check input.")
     }
-    if (params.perform_longread_hostremoval && !params.hostremoval_reference) {
-        error("ERROR: [zellerlab/flexprofiler] --perform_longread_hostremoval requested but no --hostremoval_reference FASTA supplied (required also when providing --longread_hostremoval_index). Check input.")
-    }
-    //if (!params.shortread_qc_mergepairs && params.run_malt) {
-    //    log.warn("[zellerlab/flexprofiler] MALT does not accept uncollapsed paired-reads. Pairs will be profiled as separate files.")
-    //}
-
-    // Profiling
-    //if (params.run_bracken && !params.run_kraken2) {
-    //    error('ERROR: [zellerlab/flexprofiler] You are attempting to run Bracken without running kraken2. This is not possible! Please set --run_kraken2 as well.')
-    //}
-    //if (params.diamond_save_reads) {
-    //    log.warn("[zellerlab/flexprofiler] DIAMOND only allows output of a single format. As --diamond_save_reads supplied, only aligned reads in SAM format will be produced, no taxonomic profiles will be available.")
-    //}
-    //if (params.run_malt && params.run_krona && !params.krona_taxonomy_directory) {
-    //    log.warn("[zellerlab/flexprofiler] Krona can only be run on MALT output if path to Krona taxonomy database supplied to --krona_taxonomy_directory. Krona will not be executed in this run for MALT.")
-    //}
-    //if ([params.taxpasta_add_name, params.taxpasta_add_rank, params.taxpasta_add_lineage, params.taxpasta_add_lineage, params.taxpasta_add_idlineage, params.taxpasta_add_ranklineage].any() && !params.taxpasta_taxonomy_dir) {
-    //    error('ERROR: [zellerlab/flexprofiler] All --taxpasta_add_* parameters require a taxonomy supplied to --taxpasta_taxonomy_dir. However the latter parameter was not detected. Please check input.')
-    //}
 
     emit:
     samplesheet = ch_samplesheet
     databases   = ch_databases
-    versions    = ch_versions
 }
 
 /*
@@ -184,11 +173,10 @@ workflow PIPELINE_COMPLETION {
     plaintext_email // boolean: Send plain-text email instead of HTML
     outdir          //    path: Path to output directory where results will be published
     monochrome_logs // boolean: Disable ANSI colour codes in log output
-    hook_url        //  string: hook URL for notifications
     multiqc_report  //  string: Path to MultiQC report
 
     main:
-    summary_params = paramsSummaryMap(workflow, parameters_schema: "nextflow_schema.json")
+    summary_params = paramsSummaryMap(parameters_schema: "nextflow_schema.json")
     def multiqc_reports = multiqc_report.toList()
 
     //
@@ -208,9 +196,6 @@ workflow PIPELINE_COMPLETION {
         }
 
         completionSummary(monochrome_logs)
-        if (hook_url) {
-            imNotification(summary_params, hook_url)
-        }
     }
 
     workflow.onError {
@@ -223,17 +208,69 @@ workflow PIPELINE_COMPLETION {
     FUNCTIONS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
+//
+// The files to publish, for the output block of main.nf: a channel of [ file, target ], the target being the directory
+// of the file under the output directory, with a trailing slash (the file keeps its name). Each subworkflow emits the
+// files of its steps (`published`), so that what is published, and where, is decided next to the step that makes it.
+//
+// ch: a channel of files, or of tuples of a meta map and files (or lists of files, or directories); directory: a
+// string, or a closure of the meta map; pattern: a glob matched against the file names (as the publishDir pattern)
+//
+def publishFiles(ch, directory, pattern = '*') {
+    def matcher = java.nio.file.FileSystems.getDefault().getPathMatcher("glob:${pattern}")
+    return ch.flatMap { value ->
+        def items = value instanceof List ? value : [value]
+        def meta = items && items[0] instanceof Map ? items[0] : [:]
+        def target = directory instanceof Closure ? directory.call(meta) : directory
+        items.flatten()
+            .findAll { item -> item instanceof Path && matcher.matches(item.fileName) }
+            .collect { file_path -> [file_path, "${target}/"] }
+    }
+}
+
+//
+// The commit of the pipeline code that is run: Nextflow knows it only when the pipeline is run from a repository
+// (nextflow run zellerlab/flexprofiler -r ...), so for a local clone it is read with git, and marked as dirty if the
+// clone has uncommitted changes
+//
+def getPipelineCommit() {
+    if (workflow.commitId) {
+        return workflow.commitId
+    }
+    def commit = runGit(['rev-parse', 'HEAD'])
+    if (!commit) {
+        return 'unknown'
+    }
+    def status = runGit(['status', '--porcelain', '--untracked-files=no'])
+    return status ? "${commit}-dirty" : commit
+}
+
+// The output of a git command run on the pipeline code, or null if it fails (e.g. git is missing or it is not a clone)
+def runGit(args) {
+    try {
+        def proc = (['git', '-C', projectDir.toString()] + args).execute()
+        def out = proc.text.trim()
+        proc.waitFor()
+        return proc.exitValue() == 0 ? out : null
+    }
+    catch (Exception e) {
+        return null
+    }
+}
+
 // Validate that all runs of each sample can be merged together
 //
 def validateRunMerging(rows) {
-    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ]
-    // With pair merging, paired-end reads become single-end before run merging, so endedness can differ
-    def check_endedness = !(params.perform_shortread_qc && params.shortread_qc_mergepairs)
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
+    // With pair merging, paired-end reads become single-end before run merging, so endedness can differ: with
+    // --shortread_qc_mergepairs, and for amplicon reads unless --amplicon_pair_handling is none
+    def pairs_merged = params.perform_shortread_qc && params.shortread_qc_mergepairs
     // the WGS and AMPLICON runs of a sample are merged separately
     rows.groupBy { row -> [row[0].id, row[0].library_strategy] }.each { sample_strategy, sample_rows ->
         def (sample, strategy) = sample_strategy
+        def check_endedness = !pairs_merged && (strategy != 'AMPLICON' || params.amplicon_pair_handling == 'none')
         def datatypes = sample_rows.collect { row ->
-            def datatype = [row[2], row[5] ? 'FASTA' : 'FASTQ']
+            def datatype = [row[2]]
             if (check_endedness) {
                 datatype << (row[4] ? 'paired-end' : 'single-end')
             }
@@ -242,7 +279,7 @@ def validateRunMerging(rows) {
         if (datatypes.size() > 1) {
             error(
                 "Please check input samplesheet -> with --perform_runmerging, all runs of a sample must have the same " +
-                "instrument platform, file type (FASTQ/FASTA) and, unless pairs are merged with --shortread_qc_mergepairs, " +
+                "instrument platform and, unless pairs are merged (--shortread_qc_mergepairs, or for AMPLICON runs --amplicon_pair_handling), " +
                 "endedness (single/paired-end).\n" +
                 "Sample '${sample}' (${strategy}) has: ${datatypes.collect { datatype -> datatype.join(' ') }.join('; ')}"
             )
@@ -251,20 +288,117 @@ def validateRunMerging(rows) {
 }
 
 //
-// Keep only the idtaxa rows of the database sheet named in --idtaxa_db_names (comma-separated), all of them if not set
+// Validate the PacBio runs: their reads are preprocessed only as amplicons, and are single-end
 //
-def selectIdtaxaDatabases(rows, db_names) {
+def validatePacbio(rows) {
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
+    rows.findAll { row -> row[2] == 'PACBIO_SMRT' }.each { row ->
+        if (row[0].library_strategy != 'AMPLICON') {
+            error("[zellerlab/flexprofiler] ERROR: PACBIO_SMRT runs are supported only with library_strategy AMPLICON: please check sample ${row[0].id}, run ${row[1]} (library_strategy ${row[0].library_strategy})")
+        }
+        if (row[4]) {
+            error("[zellerlab/flexprofiler] ERROR: PACBIO_SMRT runs are single-end, fastq_2 must be empty: please check sample ${row[0].id}, run ${row[1]}")
+        }
+    }
+}
+
+//
+// Validate the primer parameters: the primers are given both or none, and without them the long-read AMPLICON runs
+// need the reference to orient the reads with
+//
+def validateAmpliconPrimers(rows) {
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
+    if (!params.amplicon_primer_fwd != !params.amplicon_primer_rev) {
+        error("Please check the primer parameters -> --amplicon_primer_fwd and --amplicon_primer_rev must be given together.")
+    }
+    def long_amplicon = rows.any { row -> row[0].library_strategy == 'AMPLICON' && row[2] == 'PACBIO_SMRT' }
+    if (params.perform_amplicon_primertrimming && long_amplicon && !params.amplicon_primer_fwd && !params.amplicon_orient_reference) {
+        error(
+            "Please check the primer parameters -> the long reads of the AMPLICON runs are oriented before finding their " +
+            "primers with PIMENTO: give the reference sequences of their gene (e.g. 16S) with --amplicon_orient_reference, " +
+            "or give the primers with --amplicon_primer_fwd and --amplicon_primer_rev."
+        )
+    }
+}
+
+//
+// Keep only the rows of a tool in the database sheet named in --<tool>_db_names (comma-separated, db_names), all of them
+// if not set; the rows of the other tools are kept
+//
+def selectDatabases(rows, tool, db_names) {
     // rows: [ meta, db_path ]
     if (!db_names) {
         return rows
     }
     def selected = db_names.tokenize(',')
-    def available = rows.findAll { meta, _db_path -> meta.tool == 'idtaxa' }.collect { meta, _db_path -> meta.db_name }
+    def available = rows.findAll { meta, _db_path -> meta.tool == tool }.collect { meta, _db_path -> meta.db_name }
     def missing = selected - available
     if (missing) {
-        error("Please check --idtaxa_db_names -> ${missing.join(', ')} not among the idtaxa rows of the database sheet. Available: ${available.join(', ') ?: 'none'}")
+        error("Please check --${tool}_db_names -> ${missing.join(', ')} not among the ${tool} rows of the database sheet. Available: ${available.join(', ') ?: 'none'}")
     }
-    return rows.findAll { meta, _db_path -> meta.tool != 'idtaxa' || meta.db_name in selected }
+    return rows.findAll { meta, _db_path -> meta.tool != tool || meta.db_name in selected }
+}
+
+//
+// The library strategy of the reads a profiler is run on: AMPLICON for the amplicon profilers, WGS for the shotgun ones
+//
+def toolLibraryStrategy(tool) {
+    return tool in ['idtaxa'] ? 'AMPLICON' : 'WGS'
+}
+
+//
+// Validate that the reads and the databases of the enabled profilers match each other. In PROFILING, the reads meet
+// the databases with the same read type (short/long, from instrument_platform and db_type) and library strategy (of
+// the reads, and of the profiler, toolLibraryStrategy), and what has no match is dropped silently, so it is an error
+// here: an enabled profiler without databases, reads that no enabled profiler can run on, and an enabled profiler
+// without reads to run on. Without any enabled profiler the pipeline only preprocesses the reads, which is allowed
+//
+def validateDatabaseMatching(samplesheet_rows, database_rows) {
+    // samplesheet_rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]; database_rows: [ meta, db_path ]
+    def enabled = ['motus4', 'motus3', 'cayman', 'gqlib', 'idtaxa', 'kraken2'].findAll { tool -> params["run_${tool}"] }
+    if (!enabled) {
+        return
+    }
+    // the read type and library strategy that each enabled profiler can run on, from its databases
+    def tool_keys = enabled.collectEntries { tool ->
+        def keys = database_rows
+            .findAll { meta, _db_path -> meta.tool == tool }
+            .collectMany { meta, _db_path -> (meta.db_type ?: 'short;long').tokenize(';').collect { type -> [type, toolLibraryStrategy(tool)] } }
+            .unique()
+        [tool, keys]
+    }
+
+    def no_db = enabled.findAll { tool -> !tool_keys[tool] }
+    if (no_db) {
+        error("[zellerlab/flexprofiler] ERROR: ${no_db.collect { tool -> "--run_${tool}" }.join(', ')} set, but the database sheet has no ${no_db.join(', ')} database: add one, or turn the profiler off.")
+    }
+
+    def all_keys = tool_keys.values().sum()
+    def unprofiled = samplesheet_rows.findAll { row -> !(readKey(row) in all_keys) }
+    if (unprofiled) {
+        def listed = unprofiled.collect { row -> "${row[0].id} ${row[1]} (${readKey(row).join(' ')})" }.join(', ')
+        error(
+            "[zellerlab/flexprofiler] ERROR: no enabled profiler has a database for these runs, which would be preprocessed but not profiled: ${listed}. " +
+            "The ${enabled.join(', ')} databases match: ${all_keys.unique().collect { key -> key.join(' ') }.join(', ')} reads (read type from instrument_platform and the db_type of the database sheet, library strategy of the profiler)."
+        )
+    }
+
+    def read_keys = samplesheet_rows.collect { row -> readKey(row) }.unique()
+    def no_reads = enabled.findAll { tool -> !tool_keys[tool].any { key -> key in read_keys } }
+    if (no_reads) {
+        error(
+            "[zellerlab/flexprofiler] ERROR: no runs of the samplesheet for ${no_reads.collect { tool -> "--run_${tool} (${tool_keys[tool].collect { key -> key.join(' ') }.join(', ')})" }.join(', ')}: " +
+            "check the library_strategy and instrument_platform of the samplesheet and the db_type of the database sheet, or turn the profiler off."
+        )
+    }
+}
+
+//
+// The read type (short/long, as meta.type and db_type) and library strategy of a samplesheet row
+//
+def readKey(row) {
+    // row: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
+    return [row[2] == 'PACBIO_SMRT' ? 'long' : 'short', row[0].library_strategy]
 }
 
 //
@@ -279,6 +413,10 @@ def validateDatabaseSheet(rows) {
         }
         if (!(meta.tool in gene_tools) && (meta.annot_db_name || meta.annot_db_path)) {
             error("Please check database sheet -> ${meta.tool} database '${meta.db_name}' has annot_db_name or annot_db_path, which are only used by ${gene_tools.join(' and ')}.")
+        }
+        // PathSeq-T2T classifies with its own Kraken2 options
+        if (params.pathseq_t2t && params.run_kraken2 && meta.tool == 'kraken2' && meta.db_params) {
+            error("Please check database sheet -> kraken2 database '${meta.db_name}' has db_params, which cannot be used with --pathseq_t2t (its options, `--confidence 0.15 --report-minimizer-data`, are used): please remove them.")
         }
     }
     // the reads are aligned once per db_name, shared by all the annotations and by cayman and gqlib
@@ -302,45 +440,28 @@ def toolCitationText() {
     ].join(' ').trim()
 
     def text_shortread_qc = [
-        "Short read preprocessing was performed with:",
-        params.shortread_qc_tool == "adapterremoval" ? "AdapterRemoval (Schubert et al. 2016)." : "",
-        params.shortread_qc_tool == "fastp" ? "fastp (Chen et al. 2018)." : "",
+        "Short read preprocessing was performed with fastp (Chen et al. 2018).",
     ].join(' ').trim()
 
-
-    def text_shortread_redundancy = [
-        "Short-read reference-free metagenome coverage estimation was performed with Nonpareil (Rodriguez-R et al. 2018)."
-    ].join(' ').trim()
 
     def text_longread_qc = [
-        "Long read preprocessing was performed with:",
-        params.longread_adapterremoval_tool == "porechop_abi" ? "Porechop_ABI (Bonenfant et al. 2023)," : "",
-        params.longread_adapterremoval_tool == "porechop" ? "Porechop (Wick et al. 2017)," : "",
-        params.longread_filter_tool == "filtlong" ? "Filtlong (Wick 2021)." : "",
-        params.longread_filter_tool == "nanoq" ? "Nanoq (Steinig and Coin 2022)." : "",
-    ].join(' ').trim()
-
-    def text_shortreadcomplexity = [
-        "Low-complexity sequence filtering was carried out with:",
-        params.shortread_complexityfilter_tool == "bbduk" ? "BBDuk (Bushnell 2022)." : "",
-        params.shortread_complexityfilter_tool == "prinseqplusplus" ? "PRINSEQ++ (Cantu et al. 2019)." : "",
-        params.shortread_complexityfilter_tool == "fastp" ? "fastp (Chen et al. 2018)." : "",
+        "The PacBio reads were filtered with VSEARCH (Rognes et al. 2016) and BBDuk (Bushnell 2022)."
     ].join(' ').trim()
 
     def text_shortreadhostremoval = [
         "Host read removal was performed for short reads with Bowtie2 (Langmead and Salzberg 2012) and SAMtools (Danecek et al. 2021)."
     ].join(' ').trim()
 
-    def text_longreadhostremoval = [
-        "Host read removal was performed for long reads with minimap2 (Li et al. 2018) and SAMtools (Danecek et al. 2021)."
+    def text_pathseq_t2t = [
+        "Host reads were removed with PathSeq-T2T (Dohlman et al. 2026): the reads were aligned to GRCh38 with " + (params.pathseq_t2t_grch38_aligner == 'star' ? "STAR (Dobin et al. 2013), which also counted the reads per host gene" : "BWA-MEM (Li and Durbin 2009)") + ", the reads not aligned to it and those aligned to its viral decoy contigs selected with SAMtools (Danecek et al. 2021), filtered with GATK PathSeqFilterSpark (Walker et al. 2018), and the reads aligned to T2T-CHM13 (Nurk et al. 2022) removed."
     ].join(' ').trim()
 
     def text_amplicon_primertrimming = [
-        "The primers of amplicon reads were detected with PIMENTO (Atallah et al. 2026) and trimmed with cutadapt (Martin 2011)."
+        params.amplicon_primer_fwd ? "The primers of amplicon reads were trimmed with cutadapt (Martin 2011)." : "The primers of amplicon reads were detected with PIMENTO (Atallah et al. 2026), the long reads after their orientation with VSEARCH (Rognes et al. 2016), and trimmed with cutadapt (Martin 2011)."
     ].join(' ').trim()
 
     def text_amplicon_pairmerging = [
-        "The read pairs of amplicon reads were merged with VSEARCH (Rognes et al. 2016) for IDTAXA."
+        "The read pairs of amplicon reads were merged with VSEARCH (Rognes et al. 2016)."
     ].join(' ').trim()
 
 
@@ -350,38 +471,28 @@ def toolCitationText() {
         params.run_cayman ? "Cayman (Ducarmon et al. 2026)," : "",
         params.run_gqlib ? "gqlib (https://github.com/cschu/gqlib)," : "",
         params.run_idtaxa ? "IDTAXA (Murali et al. 2018) of DECIPHER (Wright 2016)," : "",
+        params.run_kraken2 ? "Kraken2 (Wood et al. 2019)," : "",
         ".",
-    ].join(' ').trim()
-
-    def text_visualisation = [
-        "Visualisation of results, where supported, was performed with Krona (Ondov et al. 2011)."
-    ].join(' ').trim()
-
-    def text_postprocessing = [
-        "Standardisation of taxonomic profiles was carried out with TAXPASTA (Beber et al. 2023)."
     ].join(' ').trim()
 
     def citation_text = [
         "Tools used in the workflow included:",
         text_seq_qc,
         params.perform_shortread_qc ? text_shortread_qc : "",
-        params.perform_shortread_redundancyestimation ? text_shortread_redundancy : "",
         params.perform_longread_qc ? text_longread_qc : "",
-        params.perform_shortread_complexityfilter ? text_shortreadcomplexity : "",
         params.perform_shortread_hostremoval ? text_shortreadhostremoval : "",
-        params.perform_longread_hostremoval ? text_longreadhostremoval : "",
+        params.pathseq_t2t ? text_pathseq_t2t : "",
         params.perform_amplicon_primertrimming ? text_amplicon_primertrimming : "",
-        params.run_idtaxa && params.idtaxa_pair_handling == 'merged_plus_joined' ? text_amplicon_pairmerging : "",
+        params.amplicon_pair_handling == 'merged_plus_joined' ? text_amplicon_pairmerging : "",
         [
             params.run_motus4,
             params.run_cayman,
             params.run_gqlib,
-            params.run_idtaxa
+            params.run_idtaxa,
+            params.run_kraken2
         ].any()
             ? text_classification
             : "",
-        // params.run_krona ? text_visualisation : "",
-        params.run_profile_standardisation ? text_postprocessing : "",
         "Pipeline results statistics were summarised with MultiQC (Ewels et al. 2016).",
     ].join(' ').trim().replaceAll("[,|.] +\\.", ".")
 
@@ -395,24 +506,10 @@ def toolBibliographyText() {
     ].join(' ').trim()
 
 
-    def text_shortread_qc = [
-        params.shortread_qc_tool == "adapterremoval" ? "<li>Schubert, M., Lindgreen, S., & Orlando, L. (2016). AdapterRemoval v2: rapid adapter trimming, identification, and read merging. BMC Research Notes, 9, 88. <a href=\"https://doi.org/10.1186/s13104-016-1900-2\">10.1186/s13104-016-1900-2</a></li>" : ""
-    ].join(' ').trim()
-
-    def text_shortread_redundancy = [
-        "<li>Rodriguez-R, L. M., Gunturu, S., Tiedje, J. M., Cole, J. R., & Konstantinidis, K. T. (2018). Nonpareil 3: Fast Estimation of Metagenomic Coverage and Sequence Diversity. mSystems, 3(3). <a href=\"https://doi.org/10.1128/mSystems.00039-18\">10.1128/mSystems.00039-18</a></li>"
-    ].join(' ').trim()
 
     def text_longread_qc = [
-        params.longread_adapterremoval_tool == "porechop_abi" ? "<li>Bonenfant, Q., Noé, L., & Touzet, H. (2023). Porechop_ABI: discovering unknown adapters in Oxford Nanopore Technology sequencing reads for downstream trimming. Bioinformatics Advances, 3(1):vbac085. <a href=\"https://10.1093/bioadv/vbac085\">10.1093/bioadv/vbac085</a></li>" : "",
-        params.longread_adapterremoval_tool == "porechop" ? "<li>Wick, R. R., Judd, L. M., Gorrie, C. L., & Holt, K. E. (2017). Completing bacterial genome assemblies with multiplex MinION sequencing. Microbial Genomics, 3(10), e000132. <a href=\"https://doi.org/10.1099/mgen.0.000132\">10.1099/mgen.0.000132</a></li>" : "",
-        params.longread_filter_tool == "filtlong" ? "<li>Wick R. (2021) Filtlong, URL:  <a href=\"https://github.com/rrwick/Filtlong\">https://github.com/rrwick/Filtlong</a></li>" : "",
-        params.longread_filter_tool == "nanoq" ? "<li>Steinig, E., & Coin, L. (2022). Nanoq: ultra-fast quality control for nanopore reads. Journal of Open Source Software, 7(69). <a href=\"https://doi.org/10.21105/joss.02991\">10.21105/joss.02991</a></li>" : "",
-    ].join(' ').trim()
-
-    def text_shortreadcomplexity = [
-        params.shortread_complexityfilter_tool == "bbduk" ? "<li>Bushnell B. (2022) BBMap, URL:  <a href=\"http://sourceforge.net/projects/bbmap/\">http://sourceforge.net/projects/bbmap/</a></li>" : "",
-        params.shortread_complexityfilter_tool == "prinseqplusplus" ? "<li>Cantu, V. A., Sadural, J., & Edwards, R. (2019). PRINSEQ++, a multi-threaded tool for fast and efficient quality control and preprocessing of sequencing datasets (e27553v1). PeerJ Preprints. <a href=\"https://doi.org/10.7287/peerj.preprints.27553v1\">10.7287/peerj.preprints.27553v1</a></li>" : "",
+        // the PacBio reads (VSEARCH is cited with the amplicon pair merging)
+        "<li>Bushnell B. (2022) BBMap, URL:  <a href=\"http://sourceforge.net/projects/bbmap/\">http://sourceforge.net/projects/bbmap/</a></li>",
     ].join(' ').trim()
 
     def text_shortreadhostremoval = [
@@ -420,7 +517,7 @@ def toolBibliographyText() {
     ].join(' ').trim()
 
     def text_amplicon_primertrimming = [
-        "<li>Atallah, C., Richardson, L., Beracochea, M., & Finn, R. D. (2026). PIMENTO: a primer inference toolkit to facilitate large-scale calling of amplicon sequence variants. GigaScience, 15. <a href=\"https://doi.org/10.1093/gigascience/giag083\">10.1093/gigascience/giag083</a></li>",
+        params.amplicon_primer_fwd ? "" : "<li>Atallah, C., Richardson, L., Beracochea, M., & Finn, R. D. (2026). PIMENTO: a primer inference toolkit to facilitate large-scale calling of amplicon sequence variants. GigaScience, 15. <a href=\"https://doi.org/10.1093/gigascience/giag083\">10.1093/gigascience/giag083</a></li>",
         "<li>Martin, M. (2011). Cutadapt removes adapter sequences from high-throughput sequencing reads. EMBnet.journal, 17(1), 10–12. <a href=\"https://doi.org/10.14806/ej.17.1.200\">10.14806/ej.17.1.200</a></li>"
     ].join(' ').trim()
 
@@ -428,8 +525,12 @@ def toolBibliographyText() {
         "<li>Rognes, T., Flouri, T., Nichols, B., Quince, C., & Mahé, F. (2016). VSEARCH: a versatile open source tool for metagenomics. PeerJ, 4, e2584. <a href=\"https://doi.org/10.7717/peerj.2584\">10.7717/peerj.2584</a></li>"
     ].join(' ').trim()
 
-    def text_longreadhostremoval = [
-        "<li>Li, H. (2018). Minimap2: pairwise alignment for nucleotide sequences. Bioinformatics , 34(18), 3094–3100. <a href=\"https://doi.org/10.1093/bioinformatics/bty191\">10.1093/bioinformatics/bty191</a></li>"
+    def text_pathseq_t2t = [
+        "<li>Dohlman, A. B., Mjelle, R., Wood, H. M., Jiang, K., Shumate, A., Lee, I., Piccinno, G., Serna, G., Yakubu, A.-R., Nuciforo, P., Quirke, P., Huttenhower, C., Segata, N., & Meyerson, M. (2026). Biodiversity and biogeography of the multi-kingdom cancer microbiome. Cell, 189, 3817–3837. <a href=\"https://doi.org/10.1016/j.cell.2026.04.015\">10.1016/j.cell.2026.04.015</a></li>",
+        "<li>Walker, M. A., Pedamallu, C. S., Ojesina, A. I., Bullman, S., Sharpe, T., Whelan, C. W., & Meyerson, M. (2018). GATK PathSeq: a customizable computational tool for the discovery and identification of microbial sequences in libraries from eukaryotic hosts. Bioinformatics, 34(24), 4287–4289. <a href=\"https://doi.org/10.1093/bioinformatics/bty501\">10.1093/bioinformatics/bty501</a></li>",
+        "<li>Li, H., & Durbin, R. (2009). Fast and accurate short read alignment with Burrows-Wheeler transform. Bioinformatics, 25(14), 1754–1760. <a href=\"https://doi.org/10.1093/bioinformatics/btp324\">10.1093/bioinformatics/btp324</a></li>",
+        params.pathseq_t2t_grch38_aligner == 'star' ? "<li>Dobin, A., Davis, C. A., Schlesinger, F., Drenkow, J., Zaleski, C., Jha, S., Batut, P., Chaisson, M., & Gingeras, T. R. (2013). STAR: ultrafast universal RNA-seq aligner. Bioinformatics, 29(1), 15–21. <a href=\"https://doi.org/10.1093/bioinformatics/bts635\">10.1093/bioinformatics/bts635</a></li>" : "",
+        "<li>Nurk, S., Koren, S., Rhie, A., et al. (2022). The complete sequence of a human genome. Science, 376(6588), 44–53. <a href=\"https://doi.org/10.1126/science.abj6987\">10.1126/science.abj6987</a></li>",
     ].join(' ').trim()
 
 
@@ -438,36 +539,25 @@ def toolBibliographyText() {
         params.run_cayman ? "<li>Ducarmon, Q.R., Karcher, N., Giri, S. et al. Cayman enables large-scale analysis of gut microbiome carbohydrate-active enzyme repertoires. Nat Microbiol (2026). <a href=\"https://doi.org/10.1038/s41564-026-02318-2\">https://doi.org/10.1038/s41564-026-02318-2</a></li>" : "",
         params.run_gqlib ? "<li>Schudoma, C. gqlib: gene quantification library (gffquant). <a href=\"https://github.com/cschu/gqlib\">https://github.com/cschu/gqlib</a></li>" : "",
         params.run_idtaxa ? "<li>Murali, A., Bhargava, A., & Wright, E. S. (2018). IDTAXA: a novel approach for accurate taxonomic classification of microbiome sequences. Microbiome, 6(1), 140. <a href=\"https://doi.org/10.1186/s40168-018-0521-5\">10.1186/s40168-018-0521-5</a></li>" : "",
+        params.run_kraken2 ? "<li>Wood, D. E., Lu, J., & Langmead, B. (2019). Improved metagenomic analysis with Kraken 2. Genome Biology, 20(1), 257. <a href=\"https://doi.org/10.1186/s13059-019-1891-0\">10.1186/s13059-019-1891-0</a></li>" : "",
         params.run_idtaxa ? "<li>Wright, E. S. (2016). Using DECIPHER v2.0 to Analyze Big Biological Sequence Data in R. The R Journal, 8(1), 352–359. <a href=\"https://doi.org/10.32614/RJ-2016-025\">10.32614/RJ-2016-025</a></li>" : "",
     ].join(' ').trim()
 
-    def text_visualisation = [
-        "<li>Ondov, B. D., Bergman, N. H., & Phillippy, A. M. (2011). Interactive metagenomic visualization in a Web browser. BMC Bioinformatics, 12(1), 385.  <a href=\"https://doi.org/10.1186/1471-2105-12-385\">10.1186/1471-2105-12-385</a></li>"
-    ].join(' ').trim()
-
-    def text_postprocessing = [
-        "<li>Beber, M. E., Borry, M., Stamouli, S., & Fellows Yates, J. A. (2023). TAXPASTA: TAXonomic Profile Aggregation and STAndardisation. Journal of Open Source Software, 8(87), 5627.  <a href=\"https://doi.org/10.21105/joss.05627\">10.21105/joss.05627</a></li>"
-    ].join(' ').trim()
-
     def text_extras = [
-        (params.perform_shortread_qc && params.shortread_qc_tool == "fastp") || (params.perform_shortread_complexityfilter && params.shortread_complexityfilter_tool == "fastp") ? "<li>Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics , 34(17), i884–i890. <a href=\"https://doi.org/10.1093/bioinformatics/bty560\">10.1093/bioinformatics/bty560</a></li>" : "",
-        params.perform_shortread_hostremoval || params.perform_longread_hostremoval ? "<li>Danecek, P., Bonfield, J. K., Liddle, J., Marshall, J., Ohan, V., Pollard, M. O., Whitwham, A., Keane, T., McCarthy, S. A., Davies, R. M., & Li, H. (2021). Twelve years of SAMtools and BCFtools. GigaScience, 10(2). <a href=\"https://doi.org/10.1093/gigascience/giab008\">10.1093/gigascience/giab008</a></li>" : "",
+        params.perform_shortread_qc ? "<li>Chen, S., Zhou, Y., Chen, Y., & Gu, J. (2018). fastp: an ultra-fast all-in-one FASTQ preprocessor. Bioinformatics , 34(17), i884–i890. <a href=\"https://doi.org/10.1093/bioinformatics/bty560\">10.1093/bioinformatics/bty560</a></li>" : "",
+        params.perform_shortread_hostremoval ? "<li>Danecek, P., Bonfield, J. K., Liddle, J., Marshall, J., Ohan, V., Pollard, M. O., Whitwham, A., Keane, T., McCarthy, S. A., Davies, R. M., & Li, H. (2021). Twelve years of SAMtools and BCFtools. GigaScience, 10(2). <a href=\"https://doi.org/10.1093/gigascience/giab008\">10.1093/gigascience/giab008</a></li>" : "",
     ].join(' ').trim()
 
     def reference_text = [
         text_seq_qc,
-        params.perform_shortread_qc ? text_shortread_qc : "",
         params.perform_longread_qc ? text_longread_qc : "",
-        params.perform_shortread_redundancyestimation ? text_shortread_redundancy : "",
-        params.perform_shortread_complexityfilter ? text_shortreadcomplexity : "",
         params.perform_shortread_hostremoval ? text_shortreadhostremoval : "",
-        params.perform_longread_hostremoval ? text_longreadhostremoval : "",
+        params.pathseq_t2t ? text_pathseq_t2t : "",
         params.perform_amplicon_primertrimming ? text_amplicon_primertrimming : "",
-        params.run_idtaxa && params.idtaxa_pair_handling == 'merged_plus_joined' ? text_amplicon_pairmerging : "",
+        // VSEARCH: pair merging, orientation of the long amplicon reads, and QC of the PacBio reads
+        params.amplicon_pair_handling == 'merged_plus_joined' || (params.perform_amplicon_primertrimming && !params.amplicon_primer_fwd) || params.perform_longread_qc ? text_amplicon_pairmerging : "",
         text_extras,
         text_classification,
-        //params.run_krona ? text_visualisation : "",
-        params.run_profile_standardisation ? text_postprocessing : "",
         "<li>Ewels, P., Magnusson, M., Lundin, S., & Käller, M. (2016). MultiQC: summarize analysis results for multiple tools and samples in a single report. Bioinformatics , 32(19), 3047–3048. <a href=\"https:/doi.org/10.1093/bioinformatics/btw354\">10.1093/bioinformatics/btw354.</a></li>",
     ].join(' ').trim().replaceAll("[,|.] +\\.", ".")
 
@@ -510,4 +600,56 @@ def methodsDescriptionText(mqc_methods_yaml) {
     def description_html = engine.createTemplate(methods_text).make(meta)
 
     return description_html.toString()
+}
+
+//
+// PathSeq-T2T host filtering (--pathseq_t2t): it is for Illumina shotgun reads as they were sequenced, so the other
+// inputs and the steps that change the reads before it are errors, rather than being skipped silently
+//
+def validatePathseqT2t(samplesheet_rows) {
+    // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
+    def unsupported = samplesheet_rows.findAll { row -> row[2] != 'ILLUMINA' || row[0].library_strategy != 'WGS' }
+    if (unsupported) {
+        def listed = unsupported.collect { row -> "${row[0].id} ${row[1]} (${row[2]} ${row[0].library_strategy})" }.join(', ')
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t accepts only ILLUMINA FASTQ of WGS runs, please remove from the samplesheet: ${listed}")
+    }
+
+    // the steps that PathSeq-T2T does itself (QC, host removal)
+    def conflicting = ['perform_shortread_qc', 'perform_shortread_hostremoval'].findAll { name -> params[name] }
+    if (conflicting) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t filters the reads as they were sequenced, and cannot be used with ${conflicting.collect { name -> "--${name}" }.join(', ')}: please turn ${conflicting.size() > 1 ? 'them' : 'it'} off")
+    }
+
+    // the gene catalogue profilers are not supported on the reads filtered by PathSeq-T2T
+    def unsupported_profilers = ['run_cayman', 'run_gqlib'].findAll { name -> params[name] }
+    if (unsupported_profilers) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t cannot be used with ${unsupported_profilers.collect { name -> "--${name}" }.join(', ')}: please turn ${unsupported_profilers.size() > 1 ? 'them' : 'it'} off")
+    }
+
+    if (params.pathseq_t2t_grch38_aligner == 'star') {
+        if (params.pathseq_t2t_grch38_star_index) {
+            // the reads per gene need the genes in the index
+            def star_index = file(params.pathseq_t2t_grch38_star_index, checkIfExists: true)
+            if (!star_index.resolve('exonGeTrInfo.tab').exists()) {
+                error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t_grch38_star_index ${params.pathseq_t2t_grch38_star_index} has no exonGeTrInfo.tab: the STAR index must be built with a GTF (--sjdbGTFfile) to count the reads per gene, please rebuild it, or give the FASTA and GTF of GRCh38 (--pathseq_t2t_grch38_reference, --pathseq_t2t_grch38_gtf) to build it")
+            }
+        }
+        else if (!params.pathseq_t2t_grch38_reference || !params.pathseq_t2t_grch38_gtf) {
+            error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t with --pathseq_t2t_grch38_aligner star needs GRCh38: please give its STAR index (--pathseq_t2t_grch38_star_index), or its FASTA and GTF to build it (--pathseq_t2t_grch38_reference and --pathseq_t2t_grch38_gtf)")
+        }
+    }
+    else if (!params.pathseq_t2t_grch38_reference && !params.pathseq_t2t_grch38_bwa_index) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs GRCh38: please give its bwa index (--pathseq_t2t_grch38_bwa_index) or its FASTA to build it (--pathseq_t2t_grch38_reference)")
+    }
+    if (!params.pathseq_t2t_chm13_reference && !params.pathseq_t2t_chm13_bwa_index) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs T2T-CHM13: please give its bwa index (--pathseq_t2t_chm13_bwa_index) or its FASTA to build it (--pathseq_t2t_chm13_reference)")
+    }
+    if (!params.pathseq_host_dir) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t needs the PathSeq host files (pathseq_host.bfi and pathseq_host.fa.img): please give their directory (--pathseq_host_dir)")
+    }
+    def host_dir = file(params.pathseq_host_dir, checkIfExists: true)
+    def missing = ['pathseq_host.bfi', 'pathseq_host.fa.img'].findAll { name -> !host_dir.resolve(name).exists() }
+    if (missing) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_host_dir ${params.pathseq_host_dir} has no ${missing.join(' and ')}")
+    }
 }

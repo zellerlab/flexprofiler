@@ -19,8 +19,10 @@ nextflow_pipeline {
         }
 
         then {
-            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}', 'multiqc/multiqc_plots', 'multiqc/multiqc_plots/**' ], relative: true )
             def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            // the commit of the pipeline code changes with every commit
+            software_versions.Workflow.remove( "zellerlab/flexprofiler_commit" )
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
             // the samples (tags) a process ran on
             def samples_of        = { process -> workflow.trace.tasks().findAll { task -> task.name.contains( ":${process} (" ) }.collect { task -> task.name.replaceAll( /.*\(|\)$/, '' ).tokenize( '|' )[-1] }.unique().sort() }
@@ -34,9 +36,11 @@ nextflow_pipeline {
                 { assert samples_of( "MOTUS4_PROFILE" ) == [ "2612", "2613" ] },
                 { assert samples_of( "PIMENTO_STD" ) == [ "2612", "amplicon_only" ] },
                 { assert samples_of( "IDTAXA_CLASSIFY" ) == [ "2612", "amplicon_only" ] },
-                // the WGS and AMPLICON runs of 2612 are merged separately
+                // the WGS and AMPLICON runs of 2612 are merged separately, the AMPLICON ones after their pairs are made
+                // into single sequences (amplicon pair handling)
                 { assert path( "${params.outdir}/run_merging/2612_merged_WGS_1.merged.fastq.gz" ).exists() },
-                { assert path( "${params.outdir}/run_merging/2612_merged_AMPLICON_1.merged.fastq.gz" ).exists() },
+                { assert path( "${params.outdir}/run_merging/2612_merged_AMPLICON.merged.fastq.gz" ).exists() },
+                { assert samples_of( "VSEARCH_MERGEJOIN" ) == [ "2612", "amplicon_only" ] },
                 // one read count row per merged run, the single runs keeping their run accession
                 { assert read_counts.collect { row -> row[0..1] } == [ [ "sample", "run_accession" ], [ "2612", "merged_AMPLICON" ], [ "2612", "merged_WGS" ], [ "2613", "ERR5766181" ], [ "amplicon_only", "amplicon_mixed" ] ] },
                 { assert snapshot ( read_counts ).match( "read_counts" ) },

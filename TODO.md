@@ -1,7 +1,7 @@
 # TODOs
 - Add support for 16s profilers: MapSeq
 - Add a denoising/ASV mode for amplicon samples
-- Add support for metagenomics profilers: kraken2, PathSeq/pythseq, sylph
+- Add support for metagenomics profilers: sylph, metaphlan
 - gqlib 2.14.4 and gffquant 2.16.5 (used by nevermore) count differently the `uniq_*` columns: gqlib counts as ambiguous the reads not in a pair aligned to the same gene (single-end reads, orphans, lone mates, mates on different genes) that have MAPQ 0 but no secondary alignments left after the filters, gffquant counts them as unique (ambiguous only if secondary alignments are left). The `combined_*` columns are the same. Compared on one sample of a nevermore run from its alignments: `uniq_raw` ~3.6% lower with gqlib
 - gqlib writes no profiles for a sample with no reads aligned to the gene catalogue, and GQLIB_PROFILE_GENES fails on the missing outputs
 - amplicon primer removal limitations (documented in docs/usage.md):
@@ -14,3 +14,8 @@
     - no quality trimming at the read ends by default (fastp only filters whole reads): consider `--cut_tail` and `--average_qual`
     - `--length_required 15` (`shortread_qc_minlength`) is permissive compared to vortex_knight (75, 45 for functional profiling)
     - `--detect_adapter_for_pe` is passed twice to FASTP_PAIRED (nf-core module and `conf/modules.config`), harmless
+- Switch to static types (Nextflow 26.10, `nextflow.enable.types = true`): typed processes and workflows, records instead of `[meta, files]` tuples, and drop the legacy operators (26.04: `branch`, `multiMap`, `flatten`, `transpose`, `ifEmpty`, `collectFile`, `toList`, `first`, `distinct`, `set`, `concat`, `count`, ...) for the core ones (`map`, `flatMap`, `filter`, `mix`, `join`, `combine`, `groupBy`, `collect`), which the type checker can validate
+- Workflow outputs are used as a stand-in for `publishDir`: each subworkflow chooses the files of its steps and their directory (`publishFiles`, emitted as `published`, `[file, target]`), and the output block of `main.nf` only copies them (`source >> target`), in a single `results` output. This kept the layout of the output directory exactly as it was with `publishDir` when moving off it (Nextflow plans to deprecate it), with the publishing rules next to the steps, as before. The intended use is the other way round: the workflow publishes meaningful channels (e.g. samples, profiles, merged tables) and the output block owns the layout, with `path` closures over the metadata, and index files. That needs channels of a consistent structure (records), so it goes with the switch to static types: on the current untyped tuples it would move ~40 process-specific rules into `main.nf`. Related constraints:
+    - only the entry workflow can publish (a named workflow cannot have a `publish:` section), so every published channel is emitted up to `main.nf`
+    - a topic channel cannot replace this plumbing: only process outputs can send to a topic, not a workflow channel (`ch >> 'topic'` fails), and the nf-core modules cannot be given a `topic:` output
+    - files outside the work directory are published only with `includeInputs`: it is set only on `amplicon_analysis_ready_fastqs`, the amplicon analysis-ready reads, which are the input FASTQs for a run that no step changes, so that no other input file is published by mistake

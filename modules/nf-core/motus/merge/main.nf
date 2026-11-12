@@ -1,3 +1,6 @@
+// Copyright (c) the nf-core community under an open-source MIT license.
+// See https://github.com/nf-core/modules for full license, file patching instructions and upstream contributing.
+
 process MOTUS_MERGE {
     tag "$meta.id"
     label 'process_single'
@@ -12,9 +15,10 @@ process MOTUS_MERGE {
     path db
 
     output:
-    tuple val(meta), path("*.txt") , optional: true, emit: txt
-    tuple val(meta), path("*.biom"), optional: true, emit: biom
-    path "versions.yml" , emit: versions
+    tuple val(meta), path("*.txt") , emit: txt, optional: true
+    tuple val(meta), path("*.biom"), emit: biom, optional: true
+    // WARN: Version information not provided by tool on CLI.  Please update version string below when bumping container versions.
+    tuple val("${task.process}"), val('motus'), val("3.1.0"), topic: versions, emit: versions_motus
 
     when:
     task.ext.when == null || task.ext.when
@@ -27,23 +31,10 @@ process MOTUS_MERGE {
     """
     motus \\
         merge \\
-        -db $db \\
+        -db ${db} \\
         ${cmd_input} \\
-        $args \\
+        ${args} \\
         -o ${prefix}.${suffix}
-
-    ## mOTUs version number is not available from command line.
-    ## mOTUs save the version number in index database folder.
-    ## mOTUs will check the database version is same version as exec version.
-    if [ "$db" == "" ]; then
-        VERSION=\$(echo \$(motus -h 2>&1) | sed 's/^.*Version: //; s/References.*\$//')
-    else
-        VERSION=\$(grep motus $db/db_mOTU_versions | sed 's/motus\\t//g')
-    fi
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        motus3: \$VERSION
-    END_VERSIONS
     """
 
     stub:
@@ -52,16 +43,6 @@ process MOTUS_MERGE {
 
     """
     touch ${prefix}.${suffix}
-
-    if [ "$db" == "" ]; then
-        VERSION=\$(echo \$(motus -h 2>&1) | sed 's/^.*Version: //; s/References.*\$//')
-    else
-        VERSION=\$(grep motus $db/db_mOTU_versions | sed 's/motus\\t//g')
-    fi
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        motus3: \$VERSION
-    END_VERSIONS
     """
 
 }

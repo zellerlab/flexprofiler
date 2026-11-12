@@ -7,6 +7,7 @@ include { BOWTIE2_ALIGN                            } from '../../modules/nf-core
 include { BBMAP_REPAIR as BBMAP_REPAIR_HOSTREMOVAL } from '../../modules/local/bbmap/repair/main'
 include { SAMTOOLS_INDEX                           } from '../../modules/nf-core/samtools/index/main'
 include { SAMTOOLS_STATS                           } from '../../modules/nf-core/samtools/stats/main'
+include { publishFiles                             } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow SHORTREAD_HOSTREMOVAL {
     take:
@@ -15,12 +16,15 @@ workflow SHORTREAD_HOSTREMOVAL {
     index     // /path/to/index
 
     main:
-    ch_versions = Channel.empty()
-    ch_multiqc_files = Channel.empty()
+    ch_multiqc_files = channel.empty()
+
+    ch_published = channel.empty()
 
     if (!params.shortread_hostremoval_index) {
         ch_bowtie2_index = BOWTIE2_BUILD([[], reference]).index
-        ch_versions = ch_versions.mix(BOWTIE2_BUILD.out.versions)
+        if (params.save_hostremoval_index) {
+            ch_published = ch_published.mix(publishFiles(BOWTIE2_BUILD.out.index, 'bowtie2/build', 'bowtie2'))
+        }
     }
     else {
         ch_bowtie2_index = index.first()
@@ -38,7 +42,6 @@ workflow SHORTREAD_HOSTREMOVAL {
 
     // Map, generate BAM with all reads and unmapped reads in FASTQ for downstream
     BOWTIE2_ALIGN(ch_reads_for_bowtie2, ch_bowtie2_index, [[], reference], true, true)
-    ch_versions = ch_versions.mix(BOWTIE2_ALIGN.out.versions.first())
     ch_multiqc_files = ch_multiqc_files.mix(BOWTIE2_ALIGN.out.log)
 
     ch_unmapped = BOWTIE2_ALIGN.out.fastq.branch { meta, _fastq ->
@@ -62,18 +65,35 @@ workflow SHORTREAD_HOSTREMOVAL {
         }
 
     BBMAP_REPAIR_HOSTREMOVAL(ch_unmapped_mates, false)
-    ch_versions = ch_versions.mix(BBMAP_REPAIR_HOSTREMOVAL.out.versions.first())
 
     // Indexing whole BAM for host removal statistics
     if (!params.skip_hostremoval_qc) {
         SAMTOOLS_INDEX(BOWTIE2_ALIGN.out.bam)
-        ch_versions = ch_versions.mix(SAMTOOLS_INDEX.out.versions.first())
+        bam_bai = BOWTIE2_ALIGN.out.bam.join(SAMTOOLS_INDEX.out.index, remainder: true)
 
-        bam_bai = BOWTIE2_ALIGN.out.bam.join(SAMTOOLS_INDEX.out.bai, remainder: true)
-
-        SAMTOOLS_STATS(bam_bai, [[], reference])
-        ch_versions = ch_versions.mix(SAMTOOLS_STATS.out.versions.first())
+        SAMTOOLS_STATS(bam_bai, [[], reference, []])
         ch_multiqc_files = ch_multiqc_files.mix(SAMTOOLS_STATS.out.stats)
+        ch_published = ch_published.mix(publishFiles(SAMTOOLS_STATS.out.stats, 'samtools/stats', '*stats'))
+    }
+
+    // the logs, the alignments (--save_hostremoval_bam), and the reads not aligned to the host
+    // (--save_hostremoval_unmapped): those of the mates of the paired-end reads after BBMAP_REPAIR_HOSTREMOVAL pairs them
+    // again, those of the single-end reads from bowtie2
+    ch_published = ch_published
+        .mix(publishFiles(BOWTIE2_ALIGN.out.log.mix(BBMAP_REPAIR_HOSTREMOVAL.out.log), 'bowtie2/align', '*.log'))
+        .mix(params.save_hostremoval_bam ? publishFiles(BOWTIE2_ALIGN.out.bam, 'bowtie2/align', '*.bam') : channel.empty())
+    if (params.save_hostremoval_unmapped) {
+        ch_published = ch_published
+            .mix(publishFiles(ch_unmapped.single_end, 'bowtie2/align', '*.fastq.gz'))
+            .mix(publishFiles(BBMAP_REPAIR_HOSTREMOVAL.out.repaired, 'bowtie2/align', '*_repaired.fastq.gz'))
+    }
+    // the reads given to the profilers (--save_analysis_ready_fastqs), unless their sample has more than one run and
+    // the runs are merged (published by the run merging)
+    if (params.save_analysis_ready_fastqs) {
+        def is_analysis_ready = { meta, _files -> !(params.perform_runmerging && meta.is_multirun) }
+        ch_published = ch_published
+            .mix(publishFiles(ch_unmapped.single_end.filter(is_analysis_ready), 'analysis_ready_fastqs', '*.fastq.gz'))
+            .mix(publishFiles(BBMAP_REPAIR_HOSTREMOVAL.out.repaired.filter(is_analysis_ready), 'analysis_ready_fastqs', '*_repaired.fastq.gz'))
     }
 
     // the reads left after host removal are counted from the repair.sh log for the paired-end reads, as the
@@ -86,6 +106,6 @@ workflow SHORTREAD_HOSTREMOVAL {
     emit:
     reads           = BBMAP_REPAIR_HOSTREMOVAL.out.repaired.mix(ch_unmapped.single_end) // channel: [ val(meta), [ reads ] ]
     read_count_logs = ch_read_count_logs // channel: [ val(meta), log ], with the tool in meta.tool
-    versions        = ch_versions // channel: [ versions.yml ]
     mqc             = ch_multiqc_files
+    published       = ch_published // channel: [ file, target ], the files to publish (publishFiles)
 }

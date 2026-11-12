@@ -1,0 +1,7 @@
+host_grch38	test	gene	1001	3600	.	+	.	gene_id "gene_spliced"; transcript_id "gene_spliced.1"; gene_name "gene_spliced";
+host_grch38	test	transcript	1001	3600	.	+	.	gene_id "gene_spliced"; transcript_id "gene_spliced.1"; gene_name "gene_spliced";
+host_grch38	test	exon	1001	1600	.	+	.	gene_id "gene_spliced"; transcript_id "gene_spliced.1"; gene_name "gene_spliced"; exon_number 1;
+host_grch38	test	exon	3001	3600	.	+	.	gene_id "gene_spliced"; transcript_id "gene_spliced.1"; gene_name "gene_spliced"; exon_number 2;
+host_grch38	test	gene	5001	6500	.	-	.	gene_id "gene_unspliced"; transcript_id "gene_unspliced.1"; gene_name "gene_unspliced";
+host_grch38	test	transcript	5001	6500	.	-	.	gene_id "gene_unspliced"; transcript_id "gene_unspliced.1"; gene_name "gene_unspliced";
+host_grch38	test	exon	5001	6500	.	-	.	gene_id "gene_unspliced"; transcript_id "gene_unspliced.1"; gene_name "gene_unspliced"; exon_number 1;

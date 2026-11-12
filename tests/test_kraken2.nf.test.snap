@@ -1,0 +1,267 @@
+{
+    "number_of_tasks": {
+        "content": [
+            43
+        ],
+        "timestamp": "2026-11-12T14:32:02.293445",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
+        }
+    },
+    "software_versions": {
+        "content": [
+            {
+                "BBMAP_REPAIR_HOSTREMOVAL": {
+                    "bbmap": 39.18
+                },
+                "BOWTIE2_ALIGN": {
+                    "bowtie2": "2.5.5",
+                    "pigz": 2.8,
+                    "samtools": 1.24
+                },
+                "BOWTIE2_BUILD": {
+                    "bowtie2": "2.5.5"
+                },
+                "FALCO": {
+                    "falco": "1.2.5"
+                },
+                "FASTP_PAIRED": {
+                    "fastp": "1.4.0"
+                },
+                "FASTP_SINGLE": {
+                    "fastp": "1.4.0"
+                },
+                "KRAKEN2_KRAKEN2": {
+                    "kraken2": "2.1.6",
+                    "pigz": 2.8
+                },
+                "KRAKEN2_MERGE": {
+                    "pandas": "2.2.1"
+                },
+                "MERGE_RUNS": {
+                    "cat": 9.5
+                },
+                "READ_COUNTS": {
+                    "pandas": "2.2.1"
+                },
+                "SAMTOOLS_INDEX": {
+                    "samtools": 1.25
+                },
+                "SAMTOOLS_STATS": {
+                    "samtools": 1.25
+                },
+                "Workflow": {
+                    "zellerlab/flexprofiler": "v0.1.0"
+                }
+            }
+        ],
+        "timestamp": "2026-11-12T14:32:02.307574",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
+        }
+    },
+    "filenames": {
+        "content": [
+            [
+                "bowtie2",
+                "bowtie2/align",
+                "bowtie2/align/2612_ERR5766176.unmapped.repair.sh.log",
+                "bowtie2/align/2612_ERR5766176_1.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_2.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_B.unmapped.repair.sh.log",
+                "bowtie2/align/2612_ERR5766176_B_1.bowtie2.log",
+                "bowtie2/align/2612_ERR5766176_B_2.bowtie2.log",
+                "bowtie2/align/2612_se_ERR5766180.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181.unmapped.repair.sh.log",
+                "bowtie2/align/2613_ERR5766181_1.bowtie2.log",
+                "bowtie2/align/2613_ERR5766181_2.bowtie2.log",
+                "falco",
+                "falco/processed",
+                "falco/processed/2612_merged_WGS_processed_1_fastqc_data.txt",
+                "falco/processed/2612_merged_WGS_processed_1_report.html",
+                "falco/processed/2612_merged_WGS_processed_1_summary.txt",
+                "falco/processed/2612_merged_WGS_processed_2_fastqc_data.txt",
+                "falco/processed/2612_merged_WGS_processed_2_report.html",
+                "falco/processed/2612_merged_WGS_processed_2_summary.txt",
+                "falco/processed/2612_se_ERR5766180_processed_fastqc_data.txt",
+                "falco/processed/2612_se_ERR5766180_processed_report.html",
+                "falco/processed/2612_se_ERR5766180_processed_summary.txt",
+                "falco/processed/2613_ERR5766181_processed_1_fastqc_data.txt",
+                "falco/processed/2613_ERR5766181_processed_1_report.html",
+                "falco/processed/2613_ERR5766181_processed_1_summary.txt",
+                "falco/processed/2613_ERR5766181_processed_2_fastqc_data.txt",
+                "falco/processed/2613_ERR5766181_processed_2_report.html",
+                "falco/processed/2613_ERR5766181_processed_2_summary.txt",
+                "falco/raw",
+                "falco/raw/2612_ERR5766176_B_raw_1_fastqc_data.txt",
+                "falco/raw/2612_ERR5766176_B_raw_1_report.html",
+                "falco/raw/2612_ERR5766176_B_raw_1_summary.txt",
+                "falco/raw/2612_ERR5766176_B_raw_2_fastqc_data.txt",
+                "falco/raw/2612_ERR5766176_B_raw_2_report.html",
+                "falco/raw/2612_ERR5766176_B_raw_2_summary.txt",
+                "falco/raw/2612_ERR5766176_raw_1_fastqc_data.txt",
+                "falco/raw/2612_ERR5766176_raw_1_report.html",
+                "falco/raw/2612_ERR5766176_raw_1_summary.txt",
+                "falco/raw/2612_ERR5766176_raw_2_fastqc_data.txt",
+                "falco/raw/2612_ERR5766176_raw_2_report.html",
+                "falco/raw/2612_ERR5766176_raw_2_summary.txt",
+                "falco/raw/2612_se_ERR5766180_raw_fastqc_data.txt",
+                "falco/raw/2612_se_ERR5766180_raw_report.html",
+                "falco/raw/2612_se_ERR5766180_raw_summary.txt",
+                "falco/raw/2613_ERR5766181_raw_1_fastqc_data.txt",
+                "falco/raw/2613_ERR5766181_raw_1_report.html",
+                "falco/raw/2613_ERR5766181_raw_1_summary.txt",
+                "falco/raw/2613_ERR5766181_raw_2_fastqc_data.txt",
+                "falco/raw/2613_ERR5766181_raw_2_report.html",
+                "falco/raw/2613_ERR5766181_raw_2_summary.txt",
+                "fastp",
+                "fastp/2612_ERR5766176.fastp.html",
+                "fastp/2612_ERR5766176.fastp.json",
+                "fastp/2612_ERR5766176.fastp.log",
+                "fastp/2612_ERR5766176_B.fastp.html",
+                "fastp/2612_ERR5766176_B.fastp.json",
+                "fastp/2612_ERR5766176_B.fastp.log",
+                "fastp/2612_se_ERR5766180.fastp.html",
+                "fastp/2612_se_ERR5766180.fastp.json",
+                "fastp/2612_se_ERR5766180.fastp.log",
+                "fastp/2613_ERR5766181.fastp.html",
+                "fastp/2613_ERR5766181.fastp.json",
+                "fastp/2613_ERR5766181.fastp.log",
+                "kraken2",
+                "kraken2/kraken2_test_kraken2_wgs.reads_clade.tsv",
+                "kraken2/kraken2_test_kraken2_wgs.reads_taxon.tsv",
+                "kraken2/kraken2_test_kraken2_wgs.taxonomy.tsv",
+                "kraken2/test_kraken2_wgs",
+                "kraken2/test_kraken2_wgs/2612_se_test_kraken2_wgs.kraken2.report.txt",
+                "kraken2/test_kraken2_wgs/2612_test_kraken2_wgs.kraken2.report.txt",
+                "kraken2/test_kraken2_wgs/2613_test_kraken2_wgs.kraken2.report.txt",
+                "multiqc",
+                "multiqc/multiqc_data",
+                "multiqc/multiqc_data/bowtie2_se_plot.txt",
+                "multiqc/multiqc_data/falco-status-check-heatmap.txt",
+                "multiqc/multiqc_data/falco_adapter_content_plot.txt",
+                "multiqc/multiqc_data/falco_per_base_n_content_plot.txt",
+                "multiqc/multiqc_data/falco_per_base_sequence_quality_plot.txt",
+                "multiqc/multiqc_data/falco_per_sequence_gc_content_plot_Counts.txt",
+                "multiqc/multiqc_data/falco_per_sequence_gc_content_plot_Percentages.txt",
+                "multiqc/multiqc_data/falco_per_sequence_quality_scores_plot.txt",
+                "multiqc/multiqc_data/falco_sequence_counts_plot.txt",
+                "multiqc/multiqc_data/falco_sequence_duplication_levels_plot.txt",
+                "multiqc/multiqc_data/fastp-insert-size-plot.txt",
+                "multiqc/multiqc_data/fastp-seq-content-gc-plot_Read_1_After_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-content-gc-plot_Read_1_Before_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-content-gc-plot_Read_2_After_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-content-gc-plot_Read_2_Before_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-content-n-plot_Read_1_After_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-content-n-plot_Read_1_Before_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-content-n-plot_Read_2_After_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-content-n-plot_Read_2_Before_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-quality-plot_Read_1_After_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-quality-plot_Read_1_Before_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-quality-plot_Read_2_After_filtering.txt",
+                "multiqc/multiqc_data/fastp-seq-quality-plot_Read_2_Before_filtering.txt",
+                "multiqc/multiqc_data/fastp_filtered_reads_plot.txt",
+                "multiqc/multiqc_data/fastqc_sequence_length_distribution_plot.txt",
+                "multiqc/multiqc_data/kraken-top-duplication_plot.txt",
+                "multiqc/multiqc_data/kraken-top-n-plot_Class.txt",
+                "multiqc/multiqc_data/kraken-top-n-plot_Family.txt",
+                "multiqc/multiqc_data/kraken-top-n-plot_Genus.txt",
+                "multiqc/multiqc_data/kraken-top-n-plot_Kingdom.txt",
+                "multiqc/multiqc_data/kraken-top-n-plot_Order.txt",
+                "multiqc/multiqc_data/kraken-top-n-plot_Phylum.txt",
+                "multiqc/multiqc_data/kraken-top-n-plot_Species.txt",
+                "multiqc/multiqc_data/kraken-top-n-plot_Unclassified.txt",
+                "multiqc/multiqc_data/llms-full.txt",
+                "multiqc/multiqc_data/multiqc.log",
+                "multiqc/multiqc_data/multiqc.parquet",
+                "multiqc/multiqc_data/multiqc_bowtie2.txt",
+                "multiqc/multiqc_data/multiqc_citations.txt",
+                "multiqc/multiqc_data/multiqc_data.json",
+                "multiqc/multiqc_data/multiqc_fastp.txt",
+                "multiqc/multiqc_data/multiqc_fastqc.txt",
+                "multiqc/multiqc_data/multiqc_fastqc_fastqc-1.txt",
+                "multiqc/multiqc_data/multiqc_general_stats.txt",
+                "multiqc/multiqc_data/multiqc_kraken.txt",
+                "multiqc/multiqc_data/multiqc_read_counts_table.txt",
+                "multiqc/multiqc_data/multiqc_samtools_stats.txt",
+                "multiqc/multiqc_data/multiqc_software_versions.txt",
+                "multiqc/multiqc_data/multiqc_sources.txt",
+                "multiqc/multiqc_data/samtools-stats-dp.txt",
+                "multiqc/multiqc_data/samtools_alignment_plot.txt",
+                "multiqc/multiqc_report.html",
+                "pipeline_info",
+                "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml",
+                "read_counts",
+                "read_counts/read_counts.tsv",
+                "samtools",
+                "samtools/stats",
+                "samtools/stats/2612_ERR5766176.stats",
+                "samtools/stats/2612_ERR5766176_B.stats",
+                "samtools/stats/2612_se_ERR5766180.stats",
+                "samtools/stats/2613_ERR5766181.stats"
+            ]
+        ],
+        "timestamp": "2026-11-12T14:32:02.299088",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
+        }
+    },
+    "kraken2_tables": {
+        "content": [
+            "kraken2_test_kraken2_wgs.reads_clade.tsv:md5,f13ed7e461e94c98bb85c474dae206b5",
+            "kraken2_test_kraken2_wgs.reads_taxon.tsv:md5,b2adb81ac3856817f30c259c42602631",
+            "kraken2_test_kraken2_wgs.taxonomy.tsv:md5,c644888ad82b0f3339996f934d32e741"
+        ],
+        "timestamp": "2026-11-12T14:32:02.339509",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
+        }
+    },
+    "read_counts": {
+        "content": [
+            [
+                [
+                    "sample",
+                    "run_accession",
+                    "raw_reads",
+                    "qc_reads",
+                    "hostremoval_retained_pairs",
+                    "kraken2_test_kraken2_wgs_reads"
+                ],
+                [
+                    "2612",
+                    "merged_WGS",
+                    "2528240",
+                    "2513136",
+                    "1256228",
+                    "163996"
+                ],
+                [
+                    "2612_se",
+                    "ERR5766180",
+                    "801532",
+                    "800818",
+                    "800776",
+                    "23064"
+                ],
+                [
+                    "2613",
+                    "ERR5766181",
+                    "1075088",
+                    "1067004",
+                    "533421",
+                    "34508"
+                ]
+            ]
+        ],
+        "timestamp": "2026-11-12T14:32:02.314564",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
+        }
+    }
+}

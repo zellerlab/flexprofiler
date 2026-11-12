@@ -4,12 +4,7 @@
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 include { BBMAP_REPAIR                  } from '../modules/local/bbmap/repair/main'
-include { FASTQC                        } from '../modules/nf-core/fastqc/main'
-include { MULTIQC                       } from '../modules/nf-core/multiqc/main'
-include { paramsSummaryMap              } from 'plugin/nf-schema'
-include { paramsSummaryMultiqc          } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { softwareVersionsToYAML        } from '../subworkflows/nf-core/utils_nfcore_pipeline'
-include { methodsDescriptionText        } from '../subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
+include { READS_QC                      } from '../subworkflows/local/reads_qc'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -21,16 +16,17 @@ include { methodsDescriptionText        } from '../subworkflows/local/utils_zell
 // SUBWORKFLOW: Consisting of a mix of local and nf-core/modules
 //
 
-include { AMPLICON_PRIMERTRIMMING       } from '../subworkflows/local/amplicon_primertrimming'
 include { SHORTREAD_PREPROCESSING       } from '../subworkflows/local/shortread_preprocessing'
-include { NONPAREIL                     } from '../subworkflows/local/nonpareil'
 include { LONGREAD_PREPROCESSING        } from '../subworkflows/local/longread_preprocessing'
-include { SHORTREAD_HOSTREMOVAL         } from '../subworkflows/local/shortread_hostremoval'
-include { LONGREAD_HOSTREMOVAL          } from '../subworkflows/local/longread_hostremoval'
-include { SHORTREAD_COMPLEXITYFILTERING } from '../subworkflows/local/shortread_complexityfiltering'
+include { WGS_PREPROCESSING             } from '../subworkflows/local/wgs_preprocessing'
+include { AMPLICON_PREPROCESSING        } from '../subworkflows/local/amplicon_preprocessing'
+include { RUN_MERGING                   } from '../subworkflows/local/run_merging'
+include { PATHSEQ_T2T                   } from '../subworkflows/local/pathseq_t2t'
 include { PROFILING                     } from '../subworkflows/local/profiling'
 include { STANDARDISATION_PROFILES      } from '../subworkflows/local/standardisation_profiles'
-include { READ_COUNTS                   } from '../modules/local/read_counts/main'
+include { READ_COUNTING                 } from '../subworkflows/local/read_counting'
+include { MULTIQC_REPORTING             } from '../subworkflows/local/multiqc_reporting'
+include { publishFiles                  } from '../subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,8 +38,6 @@ include { READ_COUNTS                   } from '../modules/local/read_counts/mai
 // MODULE: Installed directly from nf-core/modules
 //
 include { UNTAR                         } from '../modules/nf-core/untar/main'
-include { FALCO                         } from '../modules/nf-core/falco/main'
-include { CAT_FASTQ as MERGE_RUNS       } from '../modules/nf-core/cat/fastq/main'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,79 +52,46 @@ workflow FLEXPROFILER {
 
     main:
 
-    ch_versions = channel.empty()
     ch_multiqc_files = channel.empty()
 
     // Preprocessing auxiliary file input channel preperation
-    adapterlist = params.shortread_qc_adapterlist ? file(params.shortread_qc_adapterlist) : []
-    if (params.hostremoval_reference) {
-        ch_reference = file(params.hostremoval_reference)
-    }
+    adapterlist = params.shortread_qc_adapterlist ? file(params.shortread_qc_adapterlist, checkIfExists: true) : []
+    ch_reference = params.hostremoval_reference ? file(params.hostremoval_reference, checkIfExists: true) : []
+    ch_amplicon_orient_reference = params.amplicon_orient_reference ? file(params.amplicon_orient_reference, checkIfExists: true) : []
     if (params.shortread_hostremoval_index) {
-        ch_shortread_reference_index = channel.fromPath(params.shortread_hostremoval_index).map { [[], it] }
+        ch_shortread_reference_index = channel.fromPath(params.shortread_hostremoval_index, checkIfExists: true).map { index -> [[], index] }
     }
     else {
         ch_shortread_reference_index = []
     }
-    if (params.longread_hostremoval_index) {
-        ch_longread_reference_index = file(params.longread_hostremoval_index)
-    }
-    else {
-        ch_longread_reference_index = []
-    }
 
-    // Validate input files and create separate channels for FASTQ, FASTA, and Nanopore data
+    // PathSeq-T2T host filtering (--pathseq_t2t): a reference (and for STAR its GTF) is needed only to build its index,
+    // of the aligner to GRCh38 (--pathseq_t2t_grch38_aligner)
+    def pathseq_grch38_index_param = params.pathseq_t2t_grch38_aligner == 'star' ? params.pathseq_t2t_grch38_star_index : params.pathseq_t2t_grch38_bwa_index
+    ch_pathseq_grch38_reference = params.pathseq_t2t && !pathseq_grch38_index_param ? file(params.pathseq_t2t_grch38_reference, checkIfExists: true) : []
+    ch_pathseq_grch38_index = params.pathseq_t2t && pathseq_grch38_index_param ? file(pathseq_grch38_index_param, checkIfExists: true) : []
+    ch_pathseq_grch38_gtf = params.pathseq_t2t && params.pathseq_t2t_grch38_aligner == 'star' && !pathseq_grch38_index_param ? file(params.pathseq_t2t_grch38_gtf, checkIfExists: true) : []
+    ch_pathseq_chm13_reference = params.pathseq_t2t && !params.pathseq_t2t_chm13_bwa_index ? file(params.pathseq_t2t_chm13_reference, checkIfExists: true) : []
+    ch_pathseq_chm13_index = params.pathseq_t2t && params.pathseq_t2t_chm13_bwa_index ? file(params.pathseq_t2t_chm13_bwa_index, checkIfExists: true) : []
+    ch_pathseq_host_dir = params.pathseq_t2t ? file(params.pathseq_host_dir, checkIfExists: true) : []
+    ch_pathseq_decoys_bed = params.pathseq_t2t && params.pathseq_decoys_bed ? file(params.pathseq_decoys_bed, checkIfExists: true) : []
+
+    // Separate channels for paired-end and single-end short-read FASTQ, and PacBio FASTQ (the samplesheet is validated in
+    // PIPELINE_INITIALISATION: only ILLUMINA, and PACBIO_SMRT single-end AMPLICON runs)
     ch_input = samplesheet
-        .map { meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
+        .map { meta, run_accession, instrument_platform, fastq_1, fastq_2 ->
             meta.run_accession = run_accession
             meta.instrument_platform = instrument_platform
-
-            // Define single_end based on the conditions
-            meta.single_end = (fastq_1 && !fastq_2 && instrument_platform != 'OXFORD_NANOPORE' && instrument_platform != 'PACBIO_SMRT')
-
-            // Define is_fasta based on the presence of fasta
-            meta.is_fasta = fasta ? true : false
-
-            if (!meta.is_fasta && !fastq_1) {
-                error("ERROR: Please check input samplesheet: entry `fastq_1` doesn't exist!")
-            }
-            if (meta.instrument_platform == 'OXFORD_NANOPORE' && fastq_2) {
-                error("Error: Please check input samplesheet: for Oxford Nanopore reads entry `fastq_2` should be empty!")
-            }
-            if (meta.instrument_platform == 'PACBIO_SMRT' && fastq_2) {
-                error("Error: Please check input samplesheet: for PacBio reads entry `fastq_2` should be empty!")
-            }
-            // this is probably not needed as the condition is impossible to reach (meta.single_end is defined as true only if fastq_2 is not present)
-            if (meta.single_end && fastq_2) {
-                error("Error: Please check input samplesheet: for single-end reads entry `fastq_2` should be empty")
-            }
-            return [meta, run_accession, instrument_platform, fastq_1, fastq_2, fasta]
+            meta.single_end = !fastq_2
+            return [meta, instrument_platform, fastq_1, fastq_2]
         }
-        .filter { meta, _run_accession, _instrument_platform, _fastq_1, _fastq_2, _fasta ->
-            // TODO: this is an initial way to simplify development and focus on adding profilers instead than supporting any data modality
-            // Support for long reads and fasta will be enabled on a case-by-case basis depending on need
-            if (meta.is_fasta || meta.instrument_platform != "ILLUMINA") {
-                log.warn("[zellerlab/flexprofiler] currently accepts only ILLUMINA FASTQ as input. Skipping sample ${meta.id}, run ${meta.run_accession}.")
-            }
-            !meta.is_fasta && meta.instrument_platform == "ILLUMINA"
-        }
-        .branch { meta, _run_accession, instrument_platform, fastq_1, fastq_2, fasta ->
-            fastq_pe: !meta.single_end && fastq_2
+        .branch { meta, instrument_platform, fastq_1, fastq_2 ->
+            pacbio: instrument_platform == 'PACBIO_SMRT'
+            return [meta + [type: "long"], [fastq_1]]
+            fastq_pe: !meta.single_end
             return [meta + [type: "short"], [fastq_1, fastq_2]]
-            fastq_se: meta.single_end && !fastq_2
+            fastq_se: true
             return [meta + [type: "short"], [fastq_1]]
-            nanopore: instrument_platform == 'OXFORD_NANOPORE' && !meta.is_fasta
-            meta.single_end = true
-            return [meta + [type: "long"], [fastq_1]]
-            pacbio: instrument_platform == 'PACBIO_SMRT' && !meta.is_fasta
-            meta.single_end = true
-            return [meta + [type: "long"], [fastq_1]]
-            fasta_short: meta.is_fasta && instrument_platform == 'ILLUMINA'
-            meta.single_end = true
-            return [meta + [type: "short"], [fasta]]
-            fasta_long: meta.is_fasta && (instrument_platform == 'OXFORD_NANOPORE' || instrument_platform == 'PACBIO_SMRT')
-            meta.single_end = true
-            return [meta + [type: "long"], [fasta]]
         }
 
     /*
@@ -138,16 +99,17 @@ workflow FLEXPROFILER {
     */
 
     if (params.perform_repair_pe_order) {
-        BBMAP_REPAIR(ch_input.fastq_pe, Channel.value(false))
+        BBMAP_REPAIR(ch_input.fastq_pe, channel.value(false))
         ch_fastq_repaired = BBMAP_REPAIR.out.repaired.mix(ch_input.fastq_se)
-        ch_versions = ch_versions.mix(BBMAP_REPAIR.out.versions.first())
+        ch_repair_published = publishFiles(BBMAP_REPAIR.out.repaired.mix(BBMAP_REPAIR.out.singleton, BBMAP_REPAIR.out.log), 'bbmap')
     }
     else {
         ch_fastq_repaired = ch_input.fastq_pe.mix(ch_input.fastq_se)
+        ch_repair_published = channel.empty()
     }
     
-    // Merge ch_fastq_repaired and ch_input.nanopore into a single channel
-    ch_input_for_fastqc = ch_fastq_repaired.mix(ch_input.nanopore, ch_input.pacbio)
+    // the short and long reads, for the QC of the raw reads
+    ch_input_for_fastqc = ch_fastq_repaired.mix(ch_input.pacbio)
 
     // Validate and decompress databases
     ch_dbs_for_untar = databases.branch { db_meta, db_path ->
@@ -171,8 +133,7 @@ workflow FLEXPROFILER {
 
     // Untar the databases
     UNTAR(ch_inputdb_untar)
-    ch_versions = ch_versions.mix(UNTAR.out.versions.first())
-
+    ch_databases_published = params.save_untarred_databases ? publishFiles(UNTAR.out.untar, 'untar/databases') : channel.empty()
     // Spread out the untarred and shared databases
     ch_outputdb_from_untar = UNTAR.out.untar
         .map { meta, db ->
@@ -187,338 +148,144 @@ workflow FLEXPROFILER {
             [db_meta + corrected_db_params, db]
         }
 
-    /*
-        MODULE: Run FastQC
-    */
-
-    if (!params.skip_preprocessing_qc) {
-        if (params.preprocessing_qc_tool == 'falco') {
-            FALCO(ch_input_for_fastqc)
-            ch_versions = ch_versions.mix(FALCO.out.versions.first())
-        }
-        else {
-            FASTQC(ch_input_for_fastqc)
-            ch_versions = ch_versions.mix(FASTQC.out.versions.first())
-        }
-    }
 
     /*
-        SUBWORKFLOW: AMPLICON PRIMER TRIMMING
+        SUBWORKFLOW: READ TYPE PREPROCESSING
     */
 
-    if (params.perform_amplicon_primertrimming) {
-        ch_fastq_by_strategy = ch_fastq_repaired.branch { meta, _reads ->
-            amplicon: meta.library_strategy == 'AMPLICON'
+    // the preprocessing of each read type (short/long), whatever the library strategy
+    SHORTREAD_PREPROCESSING(ch_fastq_repaired, adapterlist)
+
+    LONGREAD_PREPROCESSING(ch_input.pacbio)
+
+    /*
+        SUBWORKFLOW: LIBRARY STRATEGY PREPROCESSING
+    */
+
+    // then the preprocessing of each library strategy (WGS/AMPLICON), whatever the read type
+    ch_reads_by_strategy = SHORTREAD_PREPROCESSING.out.reads
+        .mix(LONGREAD_PREPROCESSING.out.reads)
+        .branch { meta, _reads ->
             wgs: meta.library_strategy == 'WGS'
+            amplicon: meta.library_strategy == 'AMPLICON'
             other: true
         }
-        // the samplesheet schema allows only WGS and AMPLICON, this guards against the two going out of sync
-        ch_fastq_by_strategy.other.subscribe { meta, _reads ->
-            error("[zellerlab/flexprofiler] ERROR: unexpected library_strategy '${meta.library_strategy}' for ${meta.id}, it must be WGS or AMPLICON")
-        }
-        AMPLICON_PRIMERTRIMMING(ch_fastq_by_strategy.amplicon)
-        ch_fastq_primertrimmed = ch_fastq_by_strategy.wgs.mix(AMPLICON_PRIMERTRIMMING.out.reads)
-        ch_versions = ch_versions.mix(AMPLICON_PRIMERTRIMMING.out.versions)
+    // the samplesheet schema allows only WGS and AMPLICON, this guards against the two going out of sync
+    ch_reads_by_strategy.other.subscribe { meta, _reads ->
+        error("[zellerlab/flexprofiler] ERROR: unexpected library_strategy '${meta.library_strategy}' for ${meta.id}, it must be WGS or AMPLICON")
     }
-    else {
-        ch_fastq_primertrimmed = ch_fastq_repaired
-    }
+
+    WGS_PREPROCESSING(ch_reads_by_strategy.wgs, ch_reference, ch_shortread_reference_index)
+
+    AMPLICON_PREPROCESSING(ch_reads_by_strategy.amplicon, ch_amplicon_orient_reference)
+
+    ch_reads_preprocessed = WGS_PREPROCESSING.out.reads.mix(AMPLICON_PREPROCESSING.out.reads)
 
     /*
-        SUBWORKFLOW: PERFORM PREPROCESSING
+        SUBWORKFLOW: RUN MERGING
     */
 
-    if (params.perform_shortread_qc) {
-        SHORTREAD_PREPROCESSING(ch_fastq_primertrimmed, adapterlist)
-        ch_shortreads_preprocessed = SHORTREAD_PREPROCESSING.out.reads
-        ch_versions = ch_versions.mix(SHORTREAD_PREPROCESSING.out.versions)
-    }
-    else {
-        ch_shortreads_preprocessed = ch_fastq_primertrimmed
-    }
-
-    if (params.perform_longread_qc) {
-        ch_longreads_preprocessed_nanopore = LONGREAD_PREPROCESSING(ch_input.nanopore).reads.map { it -> [it[0], [it[1]]] }
-        ch_versions = ch_versions.mix(LONGREAD_PREPROCESSING.out.versions)
-    }
-    else {
-        ch_longreads_preprocessed_nanopore = ch_input.nanopore
-    }
+    RUN_MERGING(ch_reads_preprocessed)
 
     /*
-        MODULE: REDUNDANCY ESTIMATION
+        SUBWORKFLOW: PATHSEQ-T2T HOST FILTERING
     */
 
-    // the redundancy estimation assumes shotgun reads
-    if (params.perform_shortread_redundancyestimation) {
-        NONPAREIL(ch_shortreads_preprocessed.filter { meta, _reads -> meta.library_strategy == 'WGS' })
-        ch_versions = ch_versions.mix(NONPAREIL.out.versions)
-    }
+    PATHSEQ_T2T(
+        RUN_MERGING.out.reads,
+        ch_pathseq_grch38_reference,
+        ch_pathseq_grch38_index,
+        ch_pathseq_grch38_gtf,
+        ch_pathseq_chm13_reference,
+        ch_pathseq_chm13_index,
+        ch_pathseq_host_dir,
+        ch_pathseq_decoys_bed,
+    )
+    ch_multiqc_files = ch_multiqc_files.mix(PATHSEQ_T2T.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
+    // the paired-end reads left without their mate, for the profilers that can use them
+    ch_singletons = PATHSEQ_T2T.out.singletons
+
+    ch_reads_runmerged = PATHSEQ_T2T.out.reads
 
     /*
-        SUBWORKFLOW: COMPLEXITY FILTERING
+        SUBWORKFLOW: READS QC
     */
 
-    // fastp complexity filtering is activated via modules.conf in shortread_preprocessing
-    if (params.perform_shortread_complexityfilter && params.shortread_complexityfilter_tool != 'fastp') {
-        SHORTREAD_COMPLEXITYFILTERING(ch_shortreads_preprocessed)
-        ch_shortreads_filtered = SHORTREAD_COMPLEXITYFILTERING.out.reads
-        ch_versions = ch_versions.mix(SHORTREAD_COMPLEXITYFILTERING.out.versions)
-    }
-    else {
-        ch_shortreads_filtered = ch_shortreads_preprocessed
-    }
-
-    /*
-        SUBWORKFLOW: HOST REMOVAL
-    */
-
-    // amplicon reads are not host reads, they are not aligned to the host genome
-    if (params.perform_shortread_hostremoval) {
-        ch_shortreads_for_hostremoval = ch_shortreads_filtered.branch { meta, _reads ->
-            amplicon: meta.library_strategy == 'AMPLICON'
-            wgs: meta.library_strategy == 'WGS'
-            other: true
-        }
-        // the samplesheet schema allows only WGS and AMPLICON, this guards against the two going out of sync
-        ch_shortreads_for_hostremoval.other.subscribe { meta, _reads ->
-            error("[zellerlab/flexprofiler] ERROR: unexpected library_strategy '${meta.library_strategy}' for ${meta.id}, it must be WGS or AMPLICON")
-        }
-        SHORTREAD_HOSTREMOVAL(ch_shortreads_for_hostremoval.wgs, ch_reference, ch_shortread_reference_index)
-        ch_shortreads_hostremoved = SHORTREAD_HOSTREMOVAL.out.reads.mix(ch_shortreads_for_hostremoval.amplicon)
-        ch_versions = ch_versions.mix(SHORTREAD_HOSTREMOVAL.out.versions)
-    }
-    else {
-        ch_shortreads_hostremoved = ch_shortreads_filtered
-    }
-    ch_longreads_preprocessed = ch_longreads_preprocessed_nanopore.mix(ch_input.pacbio)
-    if (params.perform_longread_hostremoval) {
-        LONGREAD_HOSTREMOVAL(ch_longreads_preprocessed, ch_reference, ch_longread_reference_index)
-        ch_longreads_hostremoved = LONGREAD_HOSTREMOVAL.out.reads
-        ch_versions = ch_versions.mix(LONGREAD_HOSTREMOVAL.out.versions)
-    }
-    else {
-        ch_longreads_hostremoved = ch_longreads_preprocessed
-    }
-
-    if (params.perform_runmerging) {
-        ch_reads_for_cat_branch = ch_shortreads_hostremoved
-            .mix(ch_longreads_hostremoved)
-            .map { meta, reads ->
-                def meta_new = meta - meta.subMap('run_accession')
-                [meta_new, meta.run_accession, reads]
-            }
-            .groupTuple()
-            // groupTuple collects the runs in the order in which they finish, so they
-            // are sorted to concatenate them always in the same order (the result of
-            // mOTUs depends on the order of the reads). The runs are grouped by the meta without run_accession, which
-            // contains library_strategy, so the WGS and AMPLICON runs of a sample are merged separately: the merged
-            // runs are named merged_<strategy>, a single run keeps its run_accession
-            .map { meta, run_accessions, reads ->
-                def run_accession = run_accessions.size() > 1 ? "merged_${meta.library_strategy}" : run_accessions[0]
-                [meta + [run_accession: run_accession], [run_accessions, reads].transpose().sort { it[0].toString() }.collect { it[1] }.flatten()]
-            }
-            .branch { meta, reads ->
-                cat: (meta.single_end && reads.size() > 1) || (!meta.single_end && reads.size() > 2)
-                skip: true
-            }
-        // we can't concatenate files if there is not a second run, so we branch
-        // here to separate them out, and mix back in after for efficiency
-        MERGE_RUNS(ch_reads_for_cat_branch.cat)
-        ch_reads_runmerged = MERGE_RUNS.out.reads
-            .mix(ch_reads_for_cat_branch.skip)
-            .map { meta, reads ->
-                [meta, [reads].flatten()]
-            }
-            .mix(ch_input.fasta_short, ch_input.fasta_long)
-
-        ch_versions = ch_versions.mix(MERGE_RUNS.out.versions)
-    }
-    else {
-        ch_reads_runmerged = ch_shortreads_hostremoved.mix(ch_longreads_hostremoved, ch_input.fasta_short, ch_input.fasta_long)
-    }
+    // the raw reads, and the reads given to the profilers, with the singletons of PathSeq-T2T as single-end reads,
+    // named apart
+    READS_QC(
+        ch_input_for_fastqc,
+        ch_reads_runmerged.mix(ch_singletons.map { meta, fastq -> [meta + [single_end: true, singletons: true], [fastq]] }),
+    )
+    ch_multiqc_files = ch_multiqc_files.mix(READS_QC.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
 
     /*
         SUBWORKFLOW: PROFILING
     */
 
-    PROFILING(ch_reads_runmerged, ch_final_dbs)
-    ch_versions = ch_versions.mix(PROFILING.out.versions)
+    PROFILING(ch_reads_runmerged, ch_singletons, ch_final_dbs)
 
     /*
-        MODULE: READ COUNTS
+        SUBWORKFLOW: READ COUNTS
     */
 
-    // read counts after each step, parsed from the logs, per run or, with run merging, per merged run. The [ meta, log ]
-    // of each step, with the tool in meta.tool, are split into the logs and the rows of the read counts manifest. Logs of
-    // different steps can have the same name, so each is renamed, the manifest giving the new name: a hash of its path,
-    // unique, and stable with -resume, the work directories being kept
-    // the database names are defined only for the profiler logs, and are left empty for the other steps
-    def read_count_required_columns = ['sample', 'run_accession', 'kind']
-    def read_count_optional_columns = ['db_name']
-    def read_count_columns = ['file'] + read_count_required_columns + read_count_optional_columns
-    ch_read_count = PROFILING.out.read_count_logs
-        .mix(params.perform_shortread_qc ? SHORTREAD_PREPROCESSING.out.json.map { meta, json -> [meta + [tool: 'fastp'], json] } : channel.empty())
-        .mix(params.perform_shortread_hostremoval ? SHORTREAD_HOSTREMOVAL.out.read_count_logs : channel.empty())
-        .mix(params.perform_amplicon_primertrimming ? AMPLICON_PRIMERTRIMMING.out.read_count_logs : channel.empty())
-        .multiMap { meta, log_file ->
-            // with run merging, the steps before it (QC, host removal, primer trimming) still have the run_accession of
-            // each run: the counts of the runs of a multi-run sample go to its merged run, named as by the run merging
-            def run = params.perform_runmerging && meta.is_multirun ? "merged_${meta.library_strategy}" : meta.run_accession
-            def file_name = "${log_file.toString().md5()}_${log_file.name}"
-            def label = [file: file_name, sample: meta.id, run_accession: run, kind: meta.tool, db_name: meta.db_name]
-            // only null or blank values count as missing, not falsy ones such as 0
-            def missing = read_count_required_columns.findAll { column ->
-                def value = label[column]
-                value == null || value.toString().trim().isEmpty()
-            }
-            if (missing) {
-                error("Read counts: ${missing.join(', ')} not defined for ${log_file}")
-            }
-            files: [file_name, log_file]
-            rows: read_count_columns.collect { column -> label[column] == null ? '' : label[column] }.join('\t')
-        }
-    ch_read_count_manifest = ch_read_count.rows
-        .collectFile(name: 'read_counts_manifest.tsv', seed: read_count_columns.join('\t'), newLine: true)
-    ch_read_count_files = ch_read_count.files
-        .collectFile { file_name, log_file -> [file_name, log_file] }
-        .collect()
-    READ_COUNTS(ch_read_count_files, ch_read_count_manifest)
-    ch_versions = ch_versions.mix(READ_COUNTS.out.versions)
+    // the read counts after each step, from the logs of the steps, with the tool in meta.tool
+    READ_COUNTING(
+        SHORTREAD_PREPROCESSING.out.read_count_logs
+            .mix(LONGREAD_PREPROCESSING.out.read_count_logs)
+            .mix(WGS_PREPROCESSING.out.read_count_logs)
+            .mix(AMPLICON_PREPROCESSING.out.read_count_logs)
+            .mix(PATHSEQ_T2T.out.read_count_logs)
+            .mix(PROFILING.out.read_count_logs)
+    )
 
     /*
         SUBWORKFLOW: PROFILING STANDARDISATION
     */
     if (params.run_profile_standardisation) {
         STANDARDISATION_PROFILES(PROFILING.out.profiles, ch_final_dbs)
-        ch_versions = ch_versions.mix(STANDARDISATION_PROFILES.out.versions)
+        ch_merged_profiles_published = STANDARDISATION_PROFILES.out.published
+    }
+    else {
+        ch_merged_profiles_published = channel.empty()
     }
 
     /*
-        MODULE: MultiQC
+        SUBWORKFLOW: MULTIQC
     */
 
-    //
-    // Collate and save software versions
-    //
-    def topic_versions = Channel.topic("versions")
-        .distinct()
-        .branch { entry ->
-            versions_file: entry instanceof Path
-            versions_tuple: true
-        }
+    // the reports of the steps for MultiQC
+    ch_multiqc_files = ch_multiqc_files.mix(SHORTREAD_PREPROCESSING.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(LONGREAD_PREPROCESSING.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(WGS_PREPROCESSING.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
 
-    def topic_versions_string = topic_versions.versions_tuple
-        .map { process, tool, version ->
-            [ process[process.lastIndexOf(':')+1..-1], "  ${tool}: ${version}" ]
-        }
-        .groupTuple(by:0)
-        .map { process, tool_versions ->
-            tool_versions.unique().sort()
-            "${process}:\n${tool_versions.join('\n')}"
-        }
-
-    softwareVersionsToYAML(ch_versions.mix(topic_versions.versions_file))
-        .mix(topic_versions_string)
-        .collectFile(
-            storeDir: "${params.outdir}/pipeline_info",
-            name: 'zellerlab_' + 'flexprofiler_software_' + 'mqc_' + 'versions.yml',
-            sort: true,
-            newLine: true,
-        )
-        .set { ch_collated_versions }
-
-
-    //
-    // MODULE: MultiQC
-    //
-    ch_multiqc_config        = channel.fromPath(
-        "$projectDir/assets/multiqc_config.yml", checkIfExists: true)
-    ch_multiqc_custom_config = params.multiqc_config ?
-        channel.fromPath(params.multiqc_config, checkIfExists: true) :
-        channel.empty()
-    ch_multiqc_logo          = params.multiqc_logo ?
-        channel.fromPath(params.multiqc_logo, checkIfExists: true) :
-        channel.empty()
-
-    summary_params      = paramsSummaryMap(
-        workflow, parameters_schema: "nextflow_schema.json")
-    ch_workflow_summary = channel.value(paramsSummaryMultiqc(summary_params))
-    ch_multiqc_files = ch_multiqc_files.mix(
-        ch_workflow_summary.collectFile(name: 'workflow_summary_mqc.yaml'))
-    ch_multiqc_custom_methods_description = params.multiqc_methods_description ?
-        file(params.multiqc_methods_description, checkIfExists: true) :
-        file("$projectDir/assets/methods_description_template.yml", checkIfExists: true)
-    ch_methods_description                = channel.value(
-        methodsDescriptionText(ch_multiqc_custom_methods_description))
-
-    ch_multiqc_files = ch_multiqc_files.mix(ch_collated_versions)
-    ch_multiqc_files = ch_multiqc_files.mix(
-        ch_methods_description.collectFile(
-            name: 'methods_description_mqc.yaml',
-            sort: true,
-        )
-    )
-
-    if (!params.skip_preprocessing_qc) {
-        if (params.preprocessing_qc_tool == 'falco') {
-            // only mix in files actually used by MultiQC
-            ch_multiqc_files = ch_multiqc_files.mix(
-                FALCO.out.txt.map { _meta, reports -> reports }.flatten().filter { path -> path.name.endsWith('_data.txt') }.ifEmpty([])
-            )
-        }
-        else {
-            ch_multiqc_files = ch_multiqc_files.mix(FASTQC.out.zip.collect { it[1] }.ifEmpty([]))
-        }
-    }
-
-    if (params.perform_shortread_qc) {
-        ch_multiqc_files = ch_multiqc_files.mix(SHORTREAD_PREPROCESSING.out.mqc.collect { it[1] }.ifEmpty([]))
-    }
-
-    if (params.perform_longread_qc) {
-        ch_multiqc_files = ch_multiqc_files.mix(LONGREAD_PREPROCESSING.out.mqc.collect { it[1] }.ifEmpty([]))
-    }
-
-    if (params.perform_shortread_redundancyestimation) {
-        ch_multiqc_files = ch_multiqc_files.mix(NONPAREIL.out.mqc.collect { it[1] }.ifEmpty([]))
-    }
-
-    if (params.perform_shortread_complexityfilter && params.shortread_complexityfilter_tool != 'fastp') {
-        ch_multiqc_files = ch_multiqc_files.mix(SHORTREAD_COMPLEXITYFILTERING.out.mqc.collect { it[1] }.ifEmpty([]))
-    }
-
-    if (params.perform_shortread_hostremoval) {
-        ch_multiqc_files = ch_multiqc_files.mix(SHORTREAD_HOSTREMOVAL.out.mqc.collect { it[1] }.ifEmpty([]))
-    }
-
-    if (params.perform_longread_hostremoval) {
-        ch_multiqc_files = ch_multiqc_files.mix(LONGREAD_HOSTREMOVAL.out.mqc.collect { it[1] }.ifEmpty([]))
-    }
-
-    ch_multiqc_files = ch_multiqc_files.mix(PROFILING.out.mqc.collect { it[1] }.ifEmpty([]))
-    ch_multiqc_files = ch_multiqc_files.mix(READ_COUNTS.out.mqc)
+    ch_multiqc_files = ch_multiqc_files.mix(PROFILING.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
+    ch_multiqc_files = ch_multiqc_files.mix(READ_COUNTING.out.mqc)
 
     if (params.run_profile_standardisation) {
-        ch_multiqc_files = ch_multiqc_files.mix(STANDARDISATION_PROFILES.out.mqc.collect { it[1] }.ifEmpty([]))
+        ch_multiqc_files = ch_multiqc_files.mix(STANDARDISATION_PROFILES.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
     }
 
-    if (!params.skip_multiqc){
-        MULTIQC(
-            ch_multiqc_files.collect(),
-            ch_multiqc_config.toList(),
-            ch_multiqc_custom_config.toList(),
-            ch_multiqc_logo.toList(),
-            [],
-            [],
-        )
-        multiqc_report = MULTIQC.out.report.toList()
-    } else {
-        multiqc_report = Channel.empty()
-    }
+    MULTIQC_REPORTING(ch_multiqc_files)
 
     emit:
-    multiqc_report = multiqc_report // channel: /path/to/multiqc_report.html
-    versions       = ch_versions // channel: [ path(versions.yml) ]
+    multiqc_report = MULTIQC_REPORTING.out.report // channel: /path/to/multiqc_report.html
+    // the files to publish of all the stages, for the output block of main.nf: [ file, target ] (publishFiles)
+    published      = ch_databases_published.mix(
+        ch_repair_published,
+        SHORTREAD_PREPROCESSING.out.published,
+        LONGREAD_PREPROCESSING.out.published,
+        WGS_PREPROCESSING.out.published,
+        AMPLICON_PREPROCESSING.out.published,
+        RUN_MERGING.out.published,
+        PATHSEQ_T2T.out.published,
+        READS_QC.out.published,
+        PROFILING.out.published,
+        ch_merged_profiles_published,
+        READ_COUNTING.out.published,
+        MULTIQC_REPORTING.out.published,
+    )
+    // the analysis-ready reads of the amplicon runs: [ file, target ], which can be input files
+    amplicon_analysis_ready = AMPLICON_PREPROCESSING.out.analysis_ready
 }
 

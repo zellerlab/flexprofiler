@@ -4,7 +4,7 @@ Flexprofiler expects a csv file with the relevant database paths.
 Refer to the [usage documentation](usage.md) for details on how to set this up.
 These instruction explain how databases for the different profiling tools can be generated.
 The relevant tools are assumed to be installed and in your path for the following instructions.
-The script [`utils/fetch_databases.sh`](../utils/fetch_databases.sh) runs all of them and writes the corresponding database sheet.
+The script [`utils/fetch_databases.sh`](../utils/fetch_databases.sh) runs them and writes the corresponding database sheet: each database is downloaded only when asked, with `FETCH_MOTUS4=1`, `FETCH_MOTUS3=1`, `FETCH_CAYMAN=1`, `FETCH_GQLIB=1`, `FETCH_PATHSEQ_T2T=1`, `FETCH_PATHSEQ_T2T_STAR=1` (the STAR index of GRCh38.d1.vd1 with the GENCODE v36 genes, for `--pathseq_t2t_grch38_aligner star`) and `FETCH_KRAKEN2=1`.
 
 ## mOTUs v4
 
@@ -27,6 +27,19 @@ motus downloadDB
 DB_PATH=$(python -c 'import motus.motus as m; print(m.DATABASE)')
 cp -r ${DB_PATH} .
 ```
+
+## Kraken2
+
+PathSeq-T2T (`--pathseq_t2t`, [Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015)) used the PlusPF database of 2024-06-05 (bacteria, archaea, viruses, protozoa, fungi, human and UniVec), from the [Kraken2 index collection](https://benlangmead.github.io/aws-indexes/k2).
+`utils/fetch_databases.sh` downloads the latest PlusPF release, of 2024-12-28 (replace the date with 20240605 to use the database of the paper, on which its `--confidence 0.15` was chosen):
+
+```
+wget https://genome-idx.s3.amazonaws.com/kraken/k2_pluspf_20241228.tar.gz
+mkdir k2_pluspf_20241228
+tar -xzf k2_pluspf_20241228.tar.gz -C k2_pluspf_20241228
+```
+
+Database sheet row: `kraken2,k2_pluspf_20241228,,<path>/k2_pluspf_20241228,,`
 
 ## Cayman
 

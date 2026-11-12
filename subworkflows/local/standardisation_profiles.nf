@@ -8,6 +8,8 @@ include { GQLIB_MERGE                  } from '../../modules/local/gqlib/merge/m
 // cayman profiles have the same format as the gqlib ones
 include { GQLIB_MERGE  as CAYMAN_MERGE } from '../../modules/local/gqlib/merge/main'
 include { IDTAXA_MERGE                 } from '../../modules/local/idtaxa/merge/main'
+include { KRAKEN2_MERGE                } from '../../modules/local/kraken2/merge/main'
+include { publishFiles                 } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow STANDARDISATION_PROFILES {
     take:
@@ -15,24 +17,24 @@ workflow STANDARDISATION_PROFILES {
     databases
 
     main:
-    ch_versions = Channel.empty()
-    ch_multiqc_files = Channel.empty()
+    ch_multiqc_files = channel.empty()
 
     /*
         Split profile results based on tool they come from
     */
-    ch_input_profiles = profiles.branch {
-        motus4: it[0]['tool'] == 'motus4'
-        motus3: it[0]['tool'] == 'motus3'
-        cayman: it[0]['tool'] == 'cayman'
-        gqlib: it[0]['tool'] == 'gqlib'
-        idtaxa: it[0]['tool'] == 'idtaxa'
+    ch_input_profiles = profiles.branch { meta, _profile ->
+        motus4: meta.tool == 'motus4'
+        motus3: meta.tool == 'motus3'
+        cayman: meta.tool == 'cayman'
+        gqlib: meta.tool == 'gqlib'
+        idtaxa: meta.tool == 'idtaxa'
+        kraken2: meta.tool == 'kraken2'
         unknown: true
     }
 
-    ch_input_databases = databases.branch {
-        motus4: it[0]['tool'] == 'motus4'
-        motus3: it[0]['tool'] == 'motus3'
+    ch_input_databases = databases.branch { db_meta, _db ->
+        motus4: db_meta.tool == 'motus4'
+        motus3: db_meta.tool == 'motus3'
         unknown: true
     }
 
@@ -45,32 +47,37 @@ workflow STANDARDISATION_PROFILES {
     ch_profiles_for_motus4 = groupProfiles(ch_input_profiles.motus4)
     ch_input_for_motus4merge = combineProfilesWithDatabase(ch_profiles_for_motus4, ch_input_databases.motus4)
     MOTUS4_MERGE(ch_input_for_motus4merge.profile, ch_input_for_motus4merge.db)
-    ch_versions = ch_versions.mix(MOTUS4_MERGE.out.versions)
     
     // mOTUs v3
     ch_profiles_for_motus3 = groupProfiles(ch_input_profiles.motus3)
     ch_input_for_motus3merge = combineProfilesWithDatabase(ch_profiles_for_motus3, ch_input_databases.motus3)
     MOTUS3_MERGE(ch_input_for_motus3merge.profile, ch_input_for_motus3merge.db)
-    ch_versions = ch_versions.mix(MOTUS3_MERGE.out.versions)
-    
     // cayman
     ch_profiles_for_cayman = groupProfilesByCategory(ch_input_profiles.cayman)
     CAYMAN_MERGE(ch_profiles_for_cayman)
-    ch_versions = ch_versions.mix(CAYMAN_MERGE.out.versions.first())
 
     // gqlib, merged separately for each category (gene_counts, KEGG_ko, ...) of each database and annotation
     ch_profiles_for_gqlib = groupProfilesByCategory(ch_input_profiles.gqlib.transpose())
     GQLIB_MERGE(ch_profiles_for_gqlib)
-    ch_versions = ch_versions.mix(GQLIB_MERGE.out.versions.first())
 
     // IDTAXA, merged separately for each training set, one table per rank
     ch_profiles_for_idtaxa = groupProfiles(ch_input_profiles.idtaxa)
     IDTAXA_MERGE(ch_profiles_for_idtaxa)
-    ch_versions = ch_versions.mix(IDTAXA_MERGE.out.versions.first())
+
+    // Kraken2, merged separately for each database. Kraken2 counts a pair as one fragment: the pairs are counted twice,
+    // and added to the single reads of the same sample
+    KRAKEN2_MERGE(groupProfilesByEndedness(ch_input_profiles.kraken2))
+
+    ch_published = publishFiles(MOTUS4_MERGE.out.txt, 'motus4/merge', '*.txt')
+        .mix(publishFiles(MOTUS3_MERGE.out.txt, 'motus3/merge', '*.txt'))
+        .mix(publishFiles(CAYMAN_MERGE.out.txt, { meta -> "cayman/merge/${meta.db_name}/${meta.annot_db_name}" }, '*.txt.gz'))
+        .mix(publishFiles(GQLIB_MERGE.out.txt, { meta -> "gqlib/merge/${meta.db_name}/${meta.annot_db_name}" }, '*.txt.gz'))
+        .mix(publishFiles(IDTAXA_MERGE.out.tsv, { meta -> "idtaxa/merge/${meta.id}" }, '*.tsv'))
+        .mix(publishFiles(KRAKEN2_MERGE.out.reads_clade.mix(KRAKEN2_MERGE.out.reads_taxon, KRAKEN2_MERGE.out.taxonomy), 'kraken2', '*.tsv'))
 
     emit:
-    versions = ch_versions
-    mqc      = ch_multiqc_files
+    mqc       = ch_multiqc_files
+    published = ch_published     // channel: [ file, target ], the files to publish (publishFiles)
 }
 
 // Custom Functions
@@ -90,9 +97,8 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
         // which starts with the task hash), so that the task inputs are the same in every run, for -resume, and the
         // samples of the mOTUs v3 merged table, in the order of its inputs, are in the same order in every run
         .groupTuple(groupTupleOptions + [sort: { profile -> profile.name }])
-        .map {
-            db_name, profiles -> 
-            def names = profiles.collect { it.getName() }
+        .map { db_name, profiles ->
+            def names = profiles.collect { profile -> profile.getName() }
             def duplicates = names.findAll { name -> names.count(name) > 1 }.unique()
             if (duplicates) {
                 error (
@@ -104,6 +110,35 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
                 )
             }
             [[id: db_name], profiles]
+        }
+}
+
+/**
+* Group all profiles per reference database, the profiles of read pairs apart from those of single reads.
+*
+* For the profilers whose counts are not the same for a pair and for a single read (e.g. Kraken2, which counts a pair
+* as one fragment), and that are run apart on the pairs and on the reads left without their mate by --pathseq_t2t,
+* whose profiles are then added to those of the pairs of the same sample.
+*
+* @param ch_profiles A channel containing pairs of a meta map, where meta must contain the keys `db_name` and
+*   `single_end`, and the report of a given profiler.
+* @return A channel with one element per reference database: a meta map with an `id` key, the profiles of the read
+*   pairs, and those of the single reads (single-end reads, and the singletons of --pathseq_t2t), [] if none.
+*/
+def groupProfilesByEndedness(ch_profiles) {
+    def ch_branched = ch_profiles.branch { meta, _profile ->
+        pairs: !meta.single_end
+        single_reads: true
+    }
+    return groupProfiles(ch_branched.pairs)
+        .join(groupProfiles(ch_branched.single_reads), remainder: true)
+        .map { meta, pairs, single_reads ->
+            // a paired-end and a single-end sample with the same name, whose profiles would be added
+            def duplicates = (pairs ?: [])*.name.intersect((single_reads ?: [])*.name)
+            if (duplicates) {
+                error("[zellerlab/flexprofiler] ERROR: Duplicate sample names identified in profile standardisation: ${duplicates.join(', ')}")
+            }
+            [meta, pairs ?: [], single_reads ?: []]
         }
 }
 

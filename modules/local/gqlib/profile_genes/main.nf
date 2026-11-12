@@ -3,9 +3,9 @@ process GQLIB_PROFILE_GENES {
     label 'process_medium'
 
     conda "${moduleDir}/environment.yml"
-    container "${workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container
-        ? 'https://depot.galaxyproject.org/singularity/gqlib:2.14.4--pyhdfd78af_0'
-        : 'biocontainers/gqlib:2.14.4--pyhdfd78af_0'}"
+    container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/b3/b36790ad56052b28ef374a2d230862b0d7dd9d0d599b820d2e6bca34d0be57c4/data'
+        : 'community.wave.seqera.io/library/gqlib:2.14.4--1a47e08f7db4071d'}"
 
     input:
     tuple val(meta), path(bam)
@@ -17,10 +17,7 @@ process GQLIB_PROFILE_GENES {
     // all the profiles: one per functional category of the annotation database, plus the gene counts
     tuple val(meta), path("*.txt.gz"               ), emit: profiles
     tuple val(meta), path("*.gqlib.log"            ), emit: log
-    path "versions.yml" , emit: versions
-
-    when:
-    task.ext.when == null || task.ext.when
+    tuple val("${task.process}"), val('gqlib'), eval('python -c "import gqlib; print(gqlib.__version__)"'), emit: versions_gqlib, topic: versions
 
     script:
     def args = task.ext.args ?: ''
@@ -38,13 +35,6 @@ process GQLIB_PROFILE_GENES {
     # moved to a subdirectory so that it is not captured with the profiles
     mkdir aln_stats
     mv ${prefix}.aln_stats.txt.gz aln_stats/
-
-    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gqlib: \$VERSION
-    END_VERSIONS
     """
 
     stub:
@@ -54,13 +44,6 @@ process GQLIB_PROFILE_GENES {
     mkdir aln_stats
     touch "aln_stats/${prefix}.aln_stats.txt.gz"
     touch "${prefix}.gqlib.log"
-
-    VERSION=\$(python -c 'import gqlib; print(gqlib.__version__)')
-
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        gqlib: \$VERSION
-    END_VERSIONS
     """
 
 }

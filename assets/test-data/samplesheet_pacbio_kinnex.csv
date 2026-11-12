@@ -1,0 +1,2 @@
+sample,run_accession,instrument_platform,library_strategy,fastq_1,fastq_2
+kinnex,pacbio_kinnex,PACBIO_SMRT,AMPLICON,../../../assets/test-data/data/fastq/amplicon/amplicon_pacbio_kinnex.fastq.gz,
