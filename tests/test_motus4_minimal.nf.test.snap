@@ -16,18 +16,18 @@
                     "bbmap": 39.18
                 },
                 "BOWTIE2_ALIGN": {
-                    "bowtie2": "2.5.4",
+                    "bowtie2": "2.5.5",
                     "pigz": 2.8,
-                    "samtools": 1.21
+                    "samtools": 1.24
                 },
                 "BOWTIE2_BUILD": {
-                    "bowtie2": "2.5.4"
+                    "bowtie2": "2.5.5"
                 },
                 "FASTP_PAIRED": {
-                    "fastp": "0.24.0"
+                    "fastp": "1.4.0"
                 },
                 "FASTP_SINGLE": {
-                    "fastp": "0.24.0"
+                    "fastp": "1.4.0"
                 },
                 "MERGE_RUNS": {
                     "cat": 9.5
@@ -42,14 +42,15 @@
                     "pandas": "2.2.1"
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.5"
+                    "zellerlab/flexprofiler": "v0.0.5",
+                    "zellerlab/flexprofiler_commit": "c2e6fba314b28acd0f81a31d78cf3a857b48c0df-dirty"
                 }
             }
         ],
-        "timestamp": "2026-10-30T15:54:56.158705",
+        "timestamp": "2026-11-12T12:30:30.107587",
         "meta": {
-            "nf-test": "0.9.4",
-            "nextflow": "26.04.3"
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
         }
     },
     "motus4": {

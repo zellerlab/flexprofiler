@@ -11,7 +11,7 @@ WORKDIR="/exports/lucid-grpzeller-work/<YOUR USER NAME>/<PROJECT NAME>/flexprofi
 # zellerlab_amplicon
 PROFILE="zellerlab_shark,zellerlab_metagenomics"
 # be sure that this points to the pipeline version you want to run
-VERSION="0.0.5"
+VERSION="0.1.0"
 
 # you should not need to edit this
 module purge

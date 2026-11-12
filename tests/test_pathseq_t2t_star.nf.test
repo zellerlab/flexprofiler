@@ -32,7 +32,7 @@ nextflow_pipeline {
         }
 
         then {
-            def stable_name = getAllFilesFromDir( params.outdir, includeDir: true, ignore: [ 'pipeline_info/*.{html,json,txt}', 'pipeline_info/*_versions.yml', 'multiqc/**', 'fastqc/**' ], relative: true )
+            def stable_name = getAllFilesFromDir( params.outdir, includeDir: true, ignore: [ 'pipeline_info/*.{html,json,txt}', 'pipeline_info/*_versions.yml', 'multiqc/**', 'falco/**' ], relative: true )
             def read_counts = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             def count = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] as int }
             def out = "${params.outdir}/analysis_ready_fastqs"

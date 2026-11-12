@@ -1,9 +1,9 @@
 {
     "number_of_tasks": {
         "content": [
-            22
+            23
         ],
-        "timestamp": "2026-11-11T17:08:27.191907",
+        "timestamp": "2026-11-12T12:40:39.080028",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -52,6 +52,10 @@
                 "multiqc",
                 "pathseq_t2t",
                 "pathseq_t2t/grch38",
+                "pathseq_t2t/grch38/grch38_gene_counts.forward.tsv",
+                "pathseq_t2t/grch38/grch38_gene_counts.reverse.tsv",
+                "pathseq_t2t/grch38/grch38_gene_counts.summary.tsv",
+                "pathseq_t2t/grch38/grch38_gene_counts.unstranded.tsv",
                 "pathseq_t2t/grch38/lowbiomass_rna.grch38.Log.final.out",
                 "pathseq_t2t/grch38/lowbiomass_rna.grch38.ReadsPerGene.out.tab",
                 "pathseq_t2t/grch38/lowbiomass_rna_se.grch38.Log.final.out",
@@ -72,7 +76,7 @@
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-11-11T17:08:27.196241",
+        "timestamp": "2026-11-12T12:40:39.117063",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"

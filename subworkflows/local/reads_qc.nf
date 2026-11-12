@@ -20,7 +20,8 @@ workflow READS_QC {
     // without reads are left out, as FastQC cannot read them (e.g. a sample with all its reads removed by a filter)
     ch_reads = (params.skip_preprocessing_qc ? channel.empty() : raw_reads.map { meta, fastqs -> [meta + [qc_stage: 'raw'], fastqs] })
         .mix(params.skip_postprocessing_qc ? channel.empty() : processed_reads.map { meta, fastqs -> [meta + [qc_stage: 'processed'], fastqs] })
-        .filter { _meta, fastqs -> hasReads(fastqs[0]) }
+        // a single-end sample has one file, not a list (indexing a path would give its first name element)
+        .filter { _meta, fastqs -> hasReads(fastqs instanceof List ? fastqs[0] : fastqs) }
 
     // only the files read by MultiQC are emitted
     if (params.preprocessing_qc_tool == 'falco') {

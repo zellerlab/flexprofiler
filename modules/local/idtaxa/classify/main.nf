@@ -25,58 +25,16 @@ process IDTAXA_CLASSIFY {
     // the IdTaxa options, with its defaults
     def threshold = task.ext.threshold ?: 60
     def strand = task.ext.strand ?: 'both'
-    // R code: lists are indexed with [[ ]], as $ would be taken by Nextflow
+    // the R script is in bin (it is not the script of the process, as Nextflow allows eval outputs, the version, only in
+    // Bash scripts)
     """
-    #!/usr/bin/env Rscript
-    library(DECIPHER)
-
-    # the training set, the only object of the .RData file, whatever its name (trainingSet in those of DECIPHER)
-    training_set <- get(load("${training_set}"))
-    seqs <- readDNAStringSet("${reads}", format = "fastq")
-    # IdTaxa needs at least one sequence, and sapply below would return an empty list for none
-    stopifnot("no sequences in ${reads}" = length(seqs) > 0)
-    # the progress bar of IdTaxa (verbose) is unreadable in a log file: the setTxtProgressBar that DECIPHER imports is
-    # replaced by one that draws nothing and logs the progress (with the time) at each whole percent instead. It is called
-    # at (almost) each step i of the loop of IdTaxa (DECIPHER 3.6.0) over I, read from its frame: the unique sequences (it
-    # dereplicates them), then the reverse complements of those classified on both strands; value is i/length(I).
-    # The next percent to log is kept in an environment, as it is modified by reference across the calls
-    imports <- parent.env(asNamespace("DECIPHER"))
-    progress <- new.env()
-    progress[["percent"]] <- 0
-    unlockBinding("setTxtProgressBar", imports)
-    assign("setTxtProgressBar", function(pb, value, ...) {
-        if (100 * value >= progress[["percent"]]) {
-            progress[["percent"]] <- floor(100 * value) + 1
-            message(
-                format(Sys.time(), "%F %T"), " IdTaxa: ", floor(100 * value), "% done (", parent.frame()[["i"]], "/",
-                length(parent.frame()[["I"]]), " unique sequences and reverse complements)"
-            )
-        }
-    }, envir = imports)
-    ids <- IdTaxa(seqs, training_set, strand = "${strand}", threshold = ${threshold}, processors = ${task.cpus}, verbose = TRUE)
-
-    # the lineage of each sequence and its ranks (";"-separated, tab-separated from each other), without the root and the
-    # unclassified_ placeholder of the rank where the assignment stopped; NA if no taxon was assigned
-    lineages <- sapply(ids, function(x) {
-        keep <- x[["rank"]] != "rootrank" & !startsWith(x[["taxon"]], "unclassified_")
-        if (!any(keep)) return(NA_character_)
-        paste(paste(x[["taxon"]][keep], collapse = ";"), paste(x[["rank"]][keep], collapse = ";"), sep = "\\t")
-    })
-    stopifnot(
-        "the lineages are not a character vector" = is.character(lineages),
-        "not one lineage (or NA) per sequence" = length(lineages) == length(seqs)
-    )
-
-    # the number of sequences of each lineage (table leaves out the NA), of the unassigned sequences and of all of them
-    counts <- table(lineages)
-    writeLines(c(
-        "lineage\\tranks\\tcount",
-        paste(names(counts), counts, sep = "\\t"),
-        paste0("unassigned\\t\\t", sum(is.na(lineages))),
-        paste0("total_reads\\t\\t", length(lineages))
-    ), "${prefix}.idtaxa.profile.tsv")
-
-    writeLines(c(paste("Sequences:", length(lineages)), paste("Assigned sequences:", sum(!is.na(lineages)))), "${prefix}.idtaxa.log")
+    idtaxa_classify.R \\
+        ${training_set} \\
+        ${reads} \\
+        ${prefix} \\
+        ${strand} \\
+        ${threshold} \\
+        ${task.cpus}
     """
 
     stub:

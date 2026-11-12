@@ -11,8 +11,7 @@ The directories listed below will be created in the results directory after the 
 The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes data using the following steps:
 
 - [UNTAR](#untar) - Optionally saved decompressed input databases
-- [FastQC](#fastqc) - Raw read QC
-- [falco](#fastqc) - Alternative to FastQC for raw read QC
+- [Falco or FastQC](#fastqc-or-falco) - QC of the raw reads and of the reads given to the profilers
 - [fastp](#fastp) - Adapter trimming for Illumina data
 - [Bowtie2](#bowtie2) - Host removal for Illumina reads
 - [SAMtools stats](#samtools-stats) - Statistics from host removal
@@ -63,7 +62,7 @@ The reports are named `<sample>_<run_accession>[_singletons]_<stage>[_1|_2]`, wi
 zellerlab/flexprofiler runs FastQC/Falco on the raw reads (unless `--skip_preprocessing_qc`) and on the reads given to the profilers, after all the preprocessing steps (unless `--skip_postprocessing_qc`), to allow evaluation of the preprocessing as a whole; the effect of each step is in the [read counts](#read-counts). The files without reads (e.g. a sample with all its reads removed) are not checked. Note in the General Stats table, the columns of these two instances of FastQC/Falco are placed next to each other to make it easier to evaluate. However, the columns of the actual preprocessing steps (e.g. fastp) will be displayed _after_ the two FastQC/Falco columns, even if they were run 'between' the two FastQC/Falco jobs in the pipeline itself.
 
 :::info
-Falco produces identical output to FastQC but in the `falco/` directory.
+Falco (the default) writes its reports in `falco/`, FastQC (`--preprocessing_qc_tool fastqc`) in `fastqc/`. Falco checks the same metrics as FastQC, but its files differ (no `.zip`, see above).
 :::
 
 ### fastp
@@ -403,7 +402,7 @@ All tools in flexprofiler supported by MultiQC will have a dedicated section sho
 
 You can expect in the MultiQC reports either sections and/or general stats columns for the following tools:
 
-- fastqc (or falco)
+- falco (or fastqc)
 - fastp
 - bowtie2
 - samtools (stats)
