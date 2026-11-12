@@ -42,12 +42,11 @@
                     "pandas": "2.2.1"
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.5",
-                    "zellerlab/flexprofiler_commit": "c2e6fba314b28acd0f81a31d78cf3a857b48c0df-dirty"
+                    "zellerlab/flexprofiler": "v0.1.0"
                 }
             }
         ],
-        "timestamp": "2026-11-12T12:30:30.107587",
+        "timestamp": "2026-11-12T14:11:52.51195",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
