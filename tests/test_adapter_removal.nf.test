@@ -38,14 +38,18 @@ nextflow_pipeline {
                 truseq_pe_truseq_1: "adapters_truseq_1", truseq_pe_truseq_2: "adapters_truseq_2", truseq_se_truseq: "adapters_truseq_se",
                 nextera_pe_nextera_1: "adapters_nextera_1", nextera_pe_nextera_2: "adapters_nextera_2", nextera_se_nextera: "adapters_nextera_se",
             ]
-            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}', 'multiqc/multiqc_plots', 'multiqc/multiqc_plots/**' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            // the commit of the pipeline code changes with every commit
+            software_versions.Workflow.remove( "zellerlab/flexprofiler_commit" )
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
-            def stats             = samples.collectEntries { name -> [ name, adapterStats( path( "${params.outdir}/analysis_ready_fastqs/${name}.fastp.fastq.gz" ).linesGzip ) ] }
+            def stats             = samples.collectEntries { name -> [ name, adapterStats( path( "${params.outdir}/analysis_ready_fastqs/${name.replaceAll( /_([12])$/, '_R$1' )}.fastp.fastq.gz" ).linesGzip ) ] }
             def input_stats       = samples.collectEntries { name -> [ name, adapterStats( path( "${baseDir}/assets/test-data/data/fastq/adapters/${inputs[name]}.fastq.gz" ).linesGzip ) ] }
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
                 // the input reads fail the checks below, so that they are not passed without removing anything: the
                 // 300 adapter_ reads are longer than their insert, and all of them have an adapter, except those with
                 // an insert of 138-140 bp (9 TruSeq, 6 Nextera), which read less than the 13 bases searched
@@ -94,7 +98,7 @@ nextflow_pipeline {
                 truseq_pe_truseq_1: "adapters_truseq_1", truseq_pe_truseq_2: "adapters_truseq_2", truseq_se_truseq: "adapters_truseq_se",
                 nextera_pe_nextera_1: "adapters_nextera_1", nextera_pe_nextera_2: "adapters_nextera_2", nextera_se_nextera: "adapters_nextera_se",
             ]
-            def stats             = samples.collectEntries { name -> [ name, adapterStats( path( "${params.outdir}/analysis_ready_fastqs/${name}.fastp.fastq.gz" ).linesGzip ) ] }
+            def stats             = samples.collectEntries { name -> [ name, adapterStats( path( "${params.outdir}/analysis_ready_fastqs/${name.replaceAll( /_([12])$/, '_R$1' )}.fastp.fastq.gz" ).linesGzip ) ] }
             def input_stats       = samples.collectEntries { name -> [ name, adapterStats( path( "${baseDir}/assets/test-data/data/fastq/adapters/${inputs[name]}.fastq.gz" ).linesGzip ) ] }
             assertAll(
                 { assert workflow.success },

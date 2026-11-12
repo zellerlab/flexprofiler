@@ -33,6 +33,9 @@ nextflow_pipeline {
 
         then {
             def stable_name = getAllFilesFromDir( params.outdir, includeDir: true, ignore: [ 'pipeline_info/*.{html,json,txt}', 'pipeline_info/*_versions.yml', 'multiqc/**', 'falco/**' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            // the commit of the pipeline code changes with every commit
+            software_versions.Workflow.remove( "zellerlab/flexprofiler_commit" )
             def read_counts = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             def count = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] as int }
             def out = "${params.outdir}/analysis_ready_fastqs"
@@ -47,6 +50,7 @@ nextflow_pipeline {
                 { assert workflow.success },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
                 // GRCh38: STAR, its index built from the FASTA and the GTF, instead of bwa
                 { assert tasks.any { name -> name.contains( "STAR_GENOMEGENERATE_GRCH38" ) } },
                 { assert tasks.count { name -> name.contains( "STAR_GRCH38" ) } == 2 },

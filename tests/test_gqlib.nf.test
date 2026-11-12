@@ -13,8 +13,10 @@ nextflow_pipeline {
         }
 
         then {
-            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}', 'multiqc/multiqc_plots', 'multiqc/multiqc_plots/**' ], relative: true )
             def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            // the commit of the pipeline code changes with every commit
+            software_versions.Workflow.remove( "zellerlab/flexprofiler_commit" )
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             // total_reads is in the functional profiles, not in the gene counts
             def gqlib_genes       = getAllFilesFromDir( "${params.outdir}/gqlib/profile_genes", include: [ '**.gene_counts.txt.gz' ] )

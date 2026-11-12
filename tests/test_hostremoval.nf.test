@@ -23,7 +23,10 @@ nextflow_pipeline {
         }
 
         then {
-            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}' ], relative: true )
+            def stable_name       = getAllFilesFromDir( params.outdir, includeDir: true , ignore: [ 'pipeline_info/*.{html,json,txt}', 'multiqc/multiqc_plots', 'multiqc/multiqc_plots/**' ], relative: true )
+            def software_versions = removeNextflowVersion( "${params.outdir}/pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml" )
+            // the commit of the pipeline code changes with every commit
+            software_versions.Workflow.remove( "zellerlab/flexprofiler_commit" )
             def read_counts       = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
             // the read names of a fastq, in order, without the comment and the /1 and /2 suffix
             def read_names        = { file -> path( file.toString() ).linesGzip.withIndex().findAll { _line, i -> i % 4 == 0 }.collect { line, _i -> line.substring( 1 ).split( /\s/ )[0].replaceAll( /\/[12]$/, '' ) } }
@@ -39,6 +42,7 @@ nextflow_pipeline {
                 { assert workflow.success },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
                 { assert snapshot ( stable_name ).match( "filenames" ) },
+                { assert snapshot ( software_versions ).match( "software_versions" ) },
                 // the fixture: 2000 non-host pairs, 200 host pairs and 200 chimeric pairs, and 2000 non-host and 200
                 // host single-end reads
                 { assert input_pe.count { name -> !is_host( name ) } == 2000 },

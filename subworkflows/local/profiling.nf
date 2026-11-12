@@ -228,14 +228,23 @@ workflow PROFILING {
         GQLIB_PROFILE_GENES(ch_input_for_gqlib.bam, ch_input_for_gqlib.annot)
         ch_raw_profiles = ch_raw_profiles.mix(GQLIB_PROFILE_GENES.out.profiles)
         ch_read_count_logs = ch_read_count_logs.mix(GQLIB_PROFILE_GENES.out.log.filter(is_first_annot_log))
-        // the aln_stats, in a subdirectory of the task only to keep them apart from the profiles, are published with them
-        ch_published = ch_published.mix(
-            publishFiles(
-                GQLIB_PROFILE_GENES.out.profiles.mix(GQLIB_PROFILE_GENES.out.aln_stats, GQLIB_PROFILE_GENES.out.log),
-                { meta -> "gqlib/profile_genes/${meta.db_name}/${meta.annot_db_name}" },
-                '*.{txt.gz,log}',
+        // the aln_stats, in a subdirectory of the task only to keep them apart from the profiles, are published with them:
+        // their target names the file, as a directory target would keep the subdirectory (the path in the task)
+        ch_published = ch_published
+            .mix(
+                publishFiles(
+                    GQLIB_PROFILE_GENES.out.profiles.mix(GQLIB_PROFILE_GENES.out.log),
+                    { meta -> "gqlib/profile_genes/${meta.db_name}/${meta.annot_db_name}" },
+                    '*.{txt.gz,log}',
+                )
             )
-        )
+            .mix(
+                publishFiles(
+                    GQLIB_PROFILE_GENES.out.aln_stats,
+                    { meta -> "gqlib/profile_genes/${meta.db_name}/${meta.annot_db_name}" },
+                    '*.aln_stats.txt.gz',
+                ).map { file_path, target -> [file_path, "${target}${file_path.name}"] }
+            )
     }
 
     if (params.run_idtaxa) {

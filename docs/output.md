@@ -75,13 +75,13 @@ It is used in zellerlab/flexprofiler for adapter trimming of short-reads.
 <summary>Output files</summary>
 
 - `fastp/`
-  - `<sample_id>.fastp.fastq.gz`: File with the trimmed unmerged fastq reads.
+  - `<sample_id>[_R1|_R2].fastp.fastq.gz`: File with the trimmed unmerged fastq reads (`_R1` and `_R2` for the mates of paired-end reads).
   - `<sample_id>.merged.fastq.gz`: File with the reads that were successfully merged.
   - `<sample_id>.*{log,html,json}`: Log files in different formats.
 
 </details>
 
-By default zellerlab/flexprofiler will only provide the `<sample_id>.fastp.fastq.gz` file. The file `<sample_id>.merged.fastq.gz` will be available in the output folder if you provide the argument ` --shortread_qc_mergepairs` (optionally retaining un-merged pairs when in combination with `--shortread_qc_includeunmerged`).
+By default zellerlab/flexprofiler will only provide the `<sample_id>[_R1|_R2].fastp.fastq.gz` files. The file `<sample_id>.merged.fastq.gz` will be available in the output folder if you provide the argument ` --shortread_qc_mergepairs` (optionally retaining un-merged pairs when in combination with `--shortread_qc_includeunmerged`).
 
 You will only find the `.fastq` files in the results directory if you provide ` --save_preprocessed_reads`. If this is selected, you may receive different combinations of `.fastq` files for each sample depending on the input types - e.g. whether you have merged or not, or if you're supplying both single- and paired-end reads. Alternatively, if you wish only to have the 'final' reads that go into classification/profiling (i.e., that may have additional processing), do not specify this flag but rather specify `--save_analysis_ready_fastqs`, in which case the reads will be in the folder `analysis_ready_reads`.
 
