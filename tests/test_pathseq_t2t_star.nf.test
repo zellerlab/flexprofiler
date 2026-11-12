@@ -60,14 +60,14 @@ nextflow_pipeline {
                 { assert pe_1 == pe_2 },
                 { assert pe_1.contains( "microbe_pair" ) && se.contains( "microbe_single" ) },
                 { assert pe_1.contains( "decoy_pair" ) && se.contains( "decoy_single" ) },
-                // the reads per host gene: each read (pair) of a gene counted for it, on the reverse strand (read 1
-                // antisense), none on the forward strand
-                { assert pe_genes == [ gene_spliced: [ 100, 0, 100 ], gene_unspliced: [ 100, 0, 100 ] ] },
-                { assert se_genes == [ gene_spliced: [ 100, 0, 100 ], gene_unspliced: [ 100, 0, 100 ] ] },
+                // the reads per host gene: each read (pair) of a gene counted for it (100 spliced and 60 unspliced, so the
+                // counts of swapped genes differ), on the reverse strand (read 1 antisense), none on the forward strand
+                { assert pe_genes == [ gene_spliced: [ 100, 0, 100 ], gene_unspliced: [ 60, 0, 60 ] ] },
+                { assert se_genes == [ gene_spliced: [ 100, 0, 100 ], gene_unspliced: [ 60, 0, 60 ] ] },
                 { assert path( "${params.outdir}/pathseq_t2t/grch38/lowbiomass_rna.grch38.Log.final.out" ).exists() },
                 // the raw reads are the primary reads of the STAR BAM, all the reads, each mate counted
-                { assert count( "lowbiomass_rna", "raw_reads" ) == 2 * 550 },
-                { assert count( "lowbiomass_rna_se", "raw_reads" ) == 550 },
+                { assert count( "lowbiomass_rna", "raw_reads" ) == 2 * 510 },
+                { assert count( "lowbiomass_rna_se", "raw_reads" ) == 510 },
                 { assert count( "lowbiomass_rna", "t2t_filter_reads" ) == 2 * pe_1.size() + singletons.size() },
                 { assert count( "lowbiomass_rna_se", "t2t_filter_reads" ) == se.size() },
                 { assert snapshot (

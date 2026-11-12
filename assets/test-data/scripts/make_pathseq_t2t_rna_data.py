@@ -13,16 +13,17 @@ microbe_genomes.fna.gz (microbe_genome), and writes:
   2 sense, as TruSeq stranded), shuffled:
   - spliced_pair_<i> (100): fragments of the mature transcript of gene_spliced that span its exon junction, removed by
     the alignment to "GRCh38" (STAR aligns them across the intron), counted for gene_spliced
-  - gene_pair_<i> (100): from the transcript of gene_unspliced, removed by the alignment to "GRCh38", counted for it
+  - gene_pair_<i> (60): from the transcript of gene_unspliced, removed by the alignment to "GRCh38", counted for it
   - microbe_pair_<i> (200): from the microbe genome, kept as pairs
   - decoy_pair_<i> (50): from the decoy contig, aligned to "GRCh38" and kept as pairs (decoy rescue)
   - t2t_pair_<i> (100): from the host genome after host_grch38, removed by the alignment to "T2T-CHM13"
 - <out_fastq_dir>/lowbiomass_rna_se.fastq.gz, single-end reads (antisense): spliced_single_<i> (100) and
-  gene_single_<i> (100), counted for their gene and removed, microbe_single_<i> (200) and decoy_single_<i> (50), kept,
+  gene_single_<i> (60), counted for their gene and removed, microbe_single_<i> (200) and decoy_single_<i> (50), kept,
   t2t_single_<i> (100), removed
 
 Error-free reads of 151 bp from fragments of 350 bp. The fragments of each class of a sample all start at different
-positions, so that no read is a duplicate.
+positions, so that no read is a duplicate. The two genes have different numbers of reads, so that the counts per gene
+show that the reads of each are counted for it.
 """
 import gzip
 import pathlib
@@ -104,13 +105,13 @@ def main(reference_dir, fastq_dir):
     def random_strand_fragments(seq, starts, n):
         return [frag if rng.random() < 0.5 else revcomp(frag) for frag in sense_fragments(seq, starts, n)]
 
-    def classes(n_host, n_microbe, n_decoy):
+    def classes(n_host, n_gene, n_microbe, n_decoy):
         # the fragments of each class, as [ (class, fragment) ], in the sense orientation for the genes
         # the fragments of the spliced transcript span the junction, at least 20 bases on each side
         spliced_starts = list(range(junction - FRAGMENT + 20, junction - 20))
         return (
             [("spliced", frag) for frag in sense_fragments(spliced, spliced_starts, n_host)]
-            + [("gene", frag) for frag in sense_fragments(unspliced, range(len(unspliced) - FRAGMENT), n_host)]
+            + [("gene", frag) for frag in sense_fragments(unspliced, range(len(unspliced) - FRAGMENT), n_gene)]
             + [("microbe", frag) for frag in random_strand_fragments(microbe, range(len(microbe) - FRAGMENT), n_microbe)]
             + [("decoy", frag) for frag in random_strand_fragments(decoy, range(len(decoy) - FRAGMENT), n_decoy)]
             + [("t2t", frag) for frag in random_strand_fragments(host_genome, range(T2T_START, len(host_genome) - FRAGMENT), n_host)]
@@ -125,13 +126,13 @@ def main(reference_dir, fastq_dir):
         return named
 
     # paired-end, reverse stranded: read 1 is the antisense end of the fragment, read 2 its sense start
-    pairs = numbered(classes(100, 200, 50), "pair")
+    pairs = numbered(classes(100, 60, 200, 50), "pair")
     rng.shuffle(pairs)
     write_fastq(fastq_dir / "lowbiomass_rna_1.fastq.gz", [fastq(name, revcomp(frag[-READ:]), 1) for name, frag in pairs])
     write_fastq(fastq_dir / "lowbiomass_rna_2.fastq.gz", [fastq(name, frag[:READ], 2) for name, frag in pairs])
 
     # single-end, reverse stranded: the antisense end of the fragment
-    singles = numbered(classes(100, 200, 50), "single")
+    singles = numbered(classes(100, 60, 200, 50), "single")
     rng.shuffle(singles)
     write_fastq(fastq_dir / "lowbiomass_rna_se.fastq.gz", [fastq(name, revcomp(frag[-READ:])) for name, frag in singles])
 
