@@ -13,8 +13,8 @@ nextflow_pipeline {
             .collect { line, _i -> line.substring( 1 ).split( /\s/ )[0].replaceAll( /(_\d+)+$/, '' ) }
     }
     // the classes that must all be removed: from the part of the host in "GRCh38" (alone, or the host mate of a
-    // chimera), of low complexity or quality, or too short
-    def removed_classes = [ "grch38_pair", "grch38_pair2", "grch38_single", "lowcomplexity_pair", "lowcomplexity_single", "lowquality_pair", "short_pair", "chimera_grch38_t2t" ]
+    // chimera) or only in "T2T-CHM13", of low complexity or quality, or too short
+    def removed_classes = [ "grch38_pair", "grch38_pair2", "grch38_single", "t2t_pair", "t2t_single", "lowcomplexity_pair", "lowcomplexity_single", "lowquality_pair", "short_pair", "chimera_grch38_t2t" ]
 
     test("test_pathseq_t2t") {
         when {
@@ -41,6 +41,24 @@ nextflow_pipeline {
             def kraken2_clade = { taxid, sample ->
                 def table = kraken2_table( "reads_clade" )
                 table.find { row -> row[0] == taxid }[table[0].indexOf( sample )] as int
+            }
+            // the taxid of a species, by its name in the taxonomy table (taxid, name, rank, lineage)
+            def kraken2_species = { name ->
+                def species = kraken2_table( "taxonomy" ).find { row -> row[1] == name && row[2] == "S" }
+                assert species : "no species '${name}' in the Kraken2 taxonomy table"
+                species[0]
+            }
+            def samples = [ "lowbiomass", "lowbiomass_se" ]
+            // the reads given to Kraken2 whose class matches (a closure on the class), as Kraken2 counts them: for the
+            // paired-end sample the R1 and R2 mates of the pairs and the singletons, for the single-end sample its reads
+            def kraken2_reads = { sample, matches ->
+                if ( sample == "lowbiomass" ) {
+                    return pe_1.count( matches ) + pe_2.count( matches ) + singletons.count( matches )
+                } else if ( sample == "lowbiomass_se" ) {
+                    return se.count( matches )
+                } else {
+                    throw new IllegalArgumentException( "unknown sample: ${sample}" )
+                }
             }
             assertAll(
                 { assert workflow.success },
@@ -73,9 +91,15 @@ nextflow_pipeline {
                 { assert kraken2_clade( "0", "lowbiomass" ) + kraken2_clade( "1", "lowbiomass" ) == count( "lowbiomass", "t2t_filter_reads" ) },
                 { assert kraken2_clade( "0", "lowbiomass_se" ) + kraken2_clade( "1", "lowbiomass_se" ) == count( "lowbiomass_se", "t2t_filter_reads" ) },
                 { assert kraken2_clade( "1", "lowbiomass" ) == count( "lowbiomass", "kraken2_test_kraken2_pathseq_reads" ) },
-                // the reads of the decoy contig are classified as the virus, and those of the microbial genome as it
-                { assert kraken2_clade( "900003", "lowbiomass" ) == 2 * pe_1.count( "decoy_pair" ) + singletons.count( "decoy_pair" ) },
-                { assert kraken2_clade( "900003", "lowbiomass_se" ) == se.count( "decoy_single" ) },
+                // the reads of each species in every sample, by where they are from: those of the microbial genome are
+                // classified as the bacterium, and those of the decoy contig as the virus
+                { assert [ "Testella microbica", "Decoyvirus testi" ].collectEntries { name -> [ ( name ): samples.collectEntries { sample -> [ ( sample ): kraken2_clade( kraken2_species( name ), sample ) ] } ] } == [
+                    "Testella microbica": samples.collectEntries { sample -> [ ( sample ): kraken2_reads( sample, { cls -> !cls.startsWith( "t2t" ) && !cls.startsWith( "decoy" ) } ) ] },
+                    "Decoyvirus testi":   samples.collectEntries { sample -> [ ( sample ): kraken2_reads( sample, { cls -> cls.startsWith( "decoy" ) } ) ] },
+                ] },
+                // no read is left unclassified: the host reads are all removed, and the others are from the genomes of
+                // the database
+                { assert samples.collectEntries { sample -> [ ( sample ): kraken2_clade( "0", sample ) ] } == [ "lowbiomass": 0, "lowbiomass_se": 0 ] },
                 { assert snapshot (
                     path( "${params.outdir}/kraken2/kraken2_test_kraken2_pathseq.reads_clade.tsv" ),
                     path( "${params.outdir}/kraken2/kraken2_test_kraken2_pathseq.reads_taxon.tsv" ),

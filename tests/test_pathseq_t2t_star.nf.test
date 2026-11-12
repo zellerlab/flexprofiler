@@ -46,6 +46,29 @@ nextflow_pipeline {
             def pe_genes = gene_counts( "${params.outdir}/pathseq_t2t/grch38/lowbiomass_rna.grch38.ReadsPerGene.out.tab" )
             def se_genes = gene_counts( "${params.outdir}/pathseq_t2t/grch38/lowbiomass_rna_se.grch38.ReadsPerGene.out.tab" )
             def tasks = workflow.trace.succeeded()*.name
+            def kraken2_table = { name -> path( "${params.outdir}/kraken2/kraken2_test_kraken2_pathseq.${name}.tsv" ).readLines().collect { line -> line.split( "\t" ) as List } }
+            def kraken2_clade = { taxid, sample ->
+                def table = kraken2_table( "reads_clade" )
+                table.find { row -> row[0] == taxid }[table[0].indexOf( sample )] as int
+            }
+            // the taxid of a species, by its name in the taxonomy table (taxid, name, rank, lineage)
+            def kraken2_species = { name ->
+                def species = kraken2_table( "taxonomy" ).find { row -> row[1] == name && row[2] == "S" }
+                assert species : "no species '${name}' in the Kraken2 taxonomy table"
+                species[0]
+            }
+            def samples = [ "lowbiomass_rna", "lowbiomass_rna_se" ]
+            // the reads given to Kraken2 whose class matches (a closure on the class), as Kraken2 counts them: for the
+            // paired-end sample the R1 and R2 mates of the pairs and the singletons, for the single-end sample its reads
+            def kraken2_reads = { sample, matches ->
+                if ( sample == "lowbiomass_rna" ) {
+                    return pe_1.count( matches ) + pe_2.count( matches ) + singletons.count( matches )
+                } else if ( sample == "lowbiomass_rna_se" ) {
+                    return se.count( matches )
+                } else {
+                    throw new IllegalArgumentException( "unknown sample: ${sample}" )
+                }
+            }
             assertAll(
                 { assert workflow.success },
                 { assert snapshot ( workflow.trace.succeeded().size() ).match( "number_of_tasks" ) },
@@ -70,6 +93,20 @@ nextflow_pipeline {
                 { assert count( "lowbiomass_rna_se", "raw_reads" ) == 510 },
                 { assert count( "lowbiomass_rna", "t2t_filter_reads" ) == 2 * pe_1.size() + singletons.size() },
                 { assert count( "lowbiomass_rna_se", "t2t_filter_reads" ) == se.size() },
+                // Kraken2 on the RNA reads left: the reads are counted once each, pairs as two reads and singletons as
+                // one, so that the classified and unclassified reads add up to the filtered reads
+                { assert kraken2_clade( "0", "lowbiomass_rna" ) + kraken2_clade( "1", "lowbiomass_rna" ) == count( "lowbiomass_rna", "t2t_filter_reads" ) },
+                { assert kraken2_clade( "0", "lowbiomass_rna_se" ) + kraken2_clade( "1", "lowbiomass_rna_se" ) == count( "lowbiomass_rna_se", "t2t_filter_reads" ) },
+                { assert kraken2_clade( "1", "lowbiomass_rna" ) == count( "lowbiomass_rna", "kraken2_test_kraken2_pathseq_reads" ) },
+                // the reads of each species in every sample, by where they are from: those of the microbial genome are
+                // classified as the bacterium, and those of the decoy contig as the virus
+                { assert [ "Testella microbica", "Decoyvirus testi" ].collectEntries { name -> [ ( name ): samples.collectEntries { sample -> [ ( sample ): kraken2_clade( kraken2_species( name ), sample ) ] } ] } == [
+                    "Testella microbica": samples.collectEntries { sample -> [ ( sample ): kraken2_reads( sample, { cls -> !cls.startsWith( "t2t" ) && !cls.startsWith( "decoy" ) } ) ] },
+                    "Decoyvirus testi":   samples.collectEntries { sample -> [ ( sample ): kraken2_reads( sample, { cls -> cls.startsWith( "decoy" ) } ) ] },
+                ] },
+                // no read is left unclassified: the host reads are all removed, and the others are from the genomes of
+                // the database
+                { assert samples.collectEntries { sample -> [ ( sample ): kraken2_clade( "0", sample ) ] } == [ "lowbiomass_rna": 0, "lowbiomass_rna_se": 0 ] },
                 { assert snapshot (
                     read_counts,
                     path( "${params.outdir}/pathseq_t2t/grch38/lowbiomass_rna.grch38.ReadsPerGene.out.tab" ),
