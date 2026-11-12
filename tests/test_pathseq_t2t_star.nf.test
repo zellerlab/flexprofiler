@@ -130,7 +130,7 @@ nextflow_pipeline {
         then {
             assertAll(
                 { assert workflow.failed },
-                { assert workflow.stdout.any { line -> line.contains( "--pathseq_t2t with --pathseq_t2t_grch38_aligner star needs GRCh38" ) } },
+                { assert ( workflow.stdout + workflow.stderr ).any { line -> line.contains( "--pathseq_t2t with --pathseq_t2t_grch38_aligner star needs GRCh38" ) } },
             )
         }
     }

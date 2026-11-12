@@ -168,7 +168,7 @@ nextflow_pipeline {
         then {
             assertAll(
                 { assert workflow.failed },
-                { assert workflow.stdout.any { line -> line.contains( "--pathseq_t2t filters the reads as they were sequenced, and cannot be used with --perform_shortread_qc, --perform_shortread_hostremoval" ) } },
+                { assert ( workflow.stdout + workflow.stderr ).any { line -> line.contains( "--pathseq_t2t filters the reads as they were sequenced, and cannot be used with --perform_shortread_qc, --perform_shortread_hostremoval" ) } },
             )
         }
     }
@@ -184,7 +184,7 @@ nextflow_pipeline {
         then {
             assertAll(
                 { assert workflow.failed },
-                { assert workflow.stdout.any { line -> line.contains( "--pathseq_t2t accepts only ILLUMINA FASTQ of WGS runs" ) } },
+                { assert ( workflow.stdout + workflow.stderr ).any { line -> line.contains( "--pathseq_t2t accepts only ILLUMINA FASTQ of WGS runs" ) } },
             )
         }
     }
@@ -200,7 +200,7 @@ nextflow_pipeline {
         then {
             assertAll(
                 { assert workflow.failed },
-                { assert workflow.stdout.any { line -> line.contains( "--pathseq_t2t needs GRCh38" ) } },
+                { assert ( workflow.stdout + workflow.stderr ).any { line -> line.contains( "--pathseq_t2t needs GRCh38" ) } },
             )
         }
     }
