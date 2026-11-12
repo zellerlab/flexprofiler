@@ -52,9 +52,9 @@ This directory will only be present if `--save_untarred_databases` is supplied. 
 <summary>Output files</summary>
 
 - `bbmap/`
-  - `<sample_id>_{1,2}_repaired.fastq.gz`: the paired-end reads with their order repaired
-  - `<sample_id>_singleton.fastq.gz`: the reads whose mate was not found
-  - `<sample_id>.repair.sh.log`: the log of repair.sh
+  - `<sample_id>_<run_accession>_{1,2}_repaired.fastq.gz`: the paired-end reads with their order repaired
+  - `<sample_id>_<run_accession>_singleton.fastq.gz`: the reads whose mate was not found
+  - `<sample_id>_<run_accession>.repair.sh.log`: the log of repair.sh
 
 </details>
 
