@@ -38,9 +38,12 @@ nextflow_pipeline {
             def se = read_classes( "${out}/lowbiomass_se.t2tfilt_unpaired.fastq.gz" )
             def tasks = workflow.trace.succeeded()*.name
             def kraken2_table = { name -> path( "${params.outdir}/kraken2/kraken2_test_kraken2_pathseq.${name}.tsv" ).readLines().collect { line -> line.split( "\t" ) as List } }
+            // the reads of a taxon in a sample, 0 for a taxon not in the table: it has a row only if it has reads in a
+            // sample (the reports of Kraken2 have no line for the unclassified reads when there are none)
             def kraken2_clade = { taxid, sample ->
                 def table = kraken2_table( "reads_clade" )
-                table.find { row -> row[0] == taxid }[table[0].indexOf( sample )] as int
+                def row = table.find { row -> row[0] == taxid }
+                row ? row[table[0].indexOf( sample )] as int : 0
             }
             // the taxid of a species, by its name in the taxonomy table (taxid, name, rank, lineage)
             def kraken2_species = { name ->
