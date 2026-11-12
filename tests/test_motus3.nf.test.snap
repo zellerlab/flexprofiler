@@ -75,12 +75,11 @@
                     "samtools": 1.25
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.0.5",
-                    "zellerlab/flexprofiler_commit": "c2e6fba314b28acd0f81a31d78cf3a857b48c0df-dirty"
+                    "zellerlab/flexprofiler": "v0.1.0"
                 }
             }
         ],
-        "timestamp": "2026-11-12T12:23:50.756751",
+        "timestamp": "2026-11-12T14:04:26.176352",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
