@@ -325,6 +325,12 @@
                     "description": "GTF of the genes of GRCh38, to build its STAR index if --pathseq_t2t_grch38_star_index is not given",
                     "help_text": "For GRCh38.d1.vd1, the GENCODE v36 annotation used by the NCI Genomic Data Commons (gencode.v36.annotation.gtf, https://gdc.cancer.gov/about-data/gdc-data-processing/gdc-reference-files). A gzipped FASTA or GTF is decompressed first."
                 },
+                "pathseq_t2t_merge_gene_counts": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-table",
+                    "description": "Merge the reads per host gene of all the samples into tables (--pathseq_t2t_grch38_aligner star)",
+                    "help_text": "Writes pathseq_t2t/grch38/grch38_gene_counts.{unstranded,forward,reverse}.tsv, the genes by samples, one table per strandedness of the library, and grch38_gene_counts.summary.tsv, the summary counts of STAR and the reads assigned to genes of each sample. Needs --pathseq_t2t with --pathseq_t2t_grch38_aligner star (an error otherwise). The per-sample tables are always published."
+                },
                 "pathseq_t2t_chm13_reference": {
                     "type": "string",
                     "format": "file-path",

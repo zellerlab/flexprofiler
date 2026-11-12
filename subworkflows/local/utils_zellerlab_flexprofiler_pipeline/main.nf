@@ -105,6 +105,10 @@ workflow PIPELINE_INITIALISATION {
     if (params.pathseq_t2t) {
         validatePathseqT2t(samplesheet_rows)
     }
+    // the reads per host gene are counted only by STAR, in PathSeq-T2T
+    if (params.pathseq_t2t_merge_gene_counts && !(params.pathseq_t2t && params.pathseq_t2t_grch38_aligner == 'star')) {
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t_merge_gene_counts merges the reads per host gene counted by STAR, and needs --pathseq_t2t with --pathseq_t2t_grch38_aligner star: please turn it off, or set them")
+    }
     validateAmpliconPrimers(samplesheet_rows)
     // Samples with more than one run are published as analysis-ready reads only after run merging. The runs of a
     // sample are merged separately for each library strategy, so they are counted per sample and strategy

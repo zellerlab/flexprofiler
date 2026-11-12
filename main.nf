@@ -91,6 +91,7 @@ params {
     pathseq_t2t_grch38_bwa_index:    String?
     pathseq_t2t_grch38_star_index:   String?
     pathseq_t2t_grch38_gtf:          String?
+    pathseq_t2t_merge_gene_counts:   Boolean
     pathseq_t2t_chm13_reference:     String?
     pathseq_t2t_chm13_bwa_index:     String?
     pathseq_host_dir:                String?

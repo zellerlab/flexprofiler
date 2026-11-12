@@ -79,8 +79,10 @@ top_modules:
   - "star":
       name: "STAR"
       path_filters:
-        # STAR_GRCH38 (--pathseq_t2t_grch38_aligner star): <sample>.grch38.Log.final.out
+        # STAR_GRCH38 (--pathseq_t2t_grch38_aligner star): <sample>.grch38.Log.final.out, and the reads per gene,
+        # <sample>.grch38.ReadsPerGene.out.tab
         - "*.Log.final.out"
+        - "*.ReadsPerGene.out.tab"
   - "kraken":
       name: "Kraken"
       path_filters:

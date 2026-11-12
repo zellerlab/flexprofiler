@@ -22,6 +22,7 @@ include { STAR_ALIGN as STAR_GRCH38         } from '../../modules/nf-core/star/a
 include { PATHSEQT2T_PREFILTER              } from '../../modules/local/pathseqt2t/prefilter/main'
 include { PATHSEQT2T_QCFILTER               } from '../../modules/local/pathseqt2t/qcfilter/main'
 include { PATHSEQT2T_T2TFILTER              } from '../../modules/local/pathseqt2t/t2tfilter/main'
+include { STAR_GENECOUNTSMERGE              } from '../../modules/local/star/genecountsmerge/main'
 include { publishFiles                      } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow PATHSEQ_T2T {
@@ -87,11 +88,23 @@ workflow PATHSEQ_T2T {
             // the genes are those of the index (built with the GTF), so the GTF is not given again
             STAR_GRCH38(reads, ch_grch38_index, [[], []], true)
             ch_grch38_bam = STAR_GRCH38.out.bam
-            ch_multiqc_files = ch_multiqc_files.mix(STAR_GRCH38.out.log_final)
+            ch_multiqc_files = ch_multiqc_files.mix(STAR_GRCH38.out.log_final, STAR_GRCH38.out.read_per_gene_tab)
             // the reads per host gene, and the alignment summary, are always published
             ch_published = ch_published
                 .mix(publishFiles(STAR_GRCH38.out.read_per_gene_tab, 'pathseq_t2t/grch38', '*.ReadsPerGene.out.tab'))
                 .mix(publishFiles(STAR_GRCH38.out.log_final, 'pathseq_t2t/grch38', '*.Log.final.out'))
+            // --pathseq_t2t_merge_gene_counts: the reads per host gene of all the samples (or runs, without run
+            // merging), merged into tables, the samples named as in the read counts
+            if (params.pathseq_t2t_merge_gene_counts) {
+                ch_gene_counts = STAR_GRCH38.out.read_per_gene_tab
+                    .map { meta, tab -> [params.perform_runmerging ? meta.id : "${meta.id}_${meta.run_accession}", tab] }
+                    .collect(flat: false, sort: { a, b -> a[0] <=> b[0] })
+                    // [ [name, tab], ... ] to [ meta, [names], [tabs] ]
+                    .map { sample_counts -> [[id: 'grch38']] + sample_counts.transpose() }
+                STAR_GENECOUNTSMERGE(ch_gene_counts)
+                ch_published = ch_published
+                    .mix(publishFiles(STAR_GENECOUNTSMERGE.out.counts.mix(STAR_GENECOUNTSMERGE.out.summary), 'pathseq_t2t/grch38', '*.tsv'))
+            }
         }
         else {
             BWA_GRCH38(reads, ch_grch38_index, [[], []], false)
