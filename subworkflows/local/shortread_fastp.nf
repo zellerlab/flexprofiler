@@ -46,8 +46,9 @@ workflow SHORTREAD_FASTP {
         .mix(params.save_preprocessed_reads ? publishFiles(ch_fastp_reads, 'fastp', '*.fastq.gz') : channel.empty())
 
     // the reads given to the profilers (--save_analysis_ready_fastqs) are those of fastp for the WGS runs without host
-    // removal, unless their sample has more than one run and the runs are merged (published by the run merging)
-    if (params.save_analysis_ready_fastqs && !params.perform_shortread_hostremoval) {
+    // removal (nor PathSeq-T2T), unless their sample has more than one run and the runs are merged (published by the run
+    // merging)
+    if (params.save_analysis_ready_fastqs && !params.perform_shortread_hostremoval && !params.pathseq_t2t) {
         def is_analysis_ready = { meta, _files -> meta.library_strategy == 'WGS' && !(params.perform_runmerging && meta.is_multirun) }
         ch_paired_analysis_ready = params.shortread_qc_mergepairs ? FASTP_PAIRED.out.reads_merged : FASTP_PAIRED.out.reads
         ch_published = ch_published

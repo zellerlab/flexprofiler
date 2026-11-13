@@ -603,8 +603,8 @@ def methodsDescriptionText(mqc_methods_yaml) {
 }
 
 //
-// PathSeq-T2T host filtering (--pathseq_t2t): it is for Illumina shotgun reads as they were sequenced, so the other
-// inputs and the steps that change the reads before it are errors, rather than being skipped silently
+// PathSeq-T2T host filtering (--pathseq_t2t): it is for Illumina shotgun reads, so the other inputs, and the steps that
+// would do again what it does or break its pairs, are errors, rather than being skipped silently
 //
 def validatePathseqT2t(samplesheet_rows) {
     // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
@@ -614,10 +614,14 @@ def validatePathseqT2t(samplesheet_rows) {
         error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t accepts only ILLUMINA FASTQ of WGS runs, please remove from the samplesheet: ${listed}")
     }
 
-    // the steps that PathSeq-T2T does itself (QC, host removal)
-    def conflicting = ['perform_shortread_qc', 'perform_shortread_hostremoval'].findAll { name -> params[name] }
+    // the steps that PathSeq-T2T does itself (host removal, deduplication over the whole sample), and the merging of the
+    // pairs, which would leave no pairs for its proper-pair filters. The adapter trimming of fastp (--perform_shortread_qc)
+    // can be used
+    def conflicting = ['perform_shortread_hostremoval']
+        .plus(params.perform_shortread_qc ? ['shortread_qc_dedup', 'shortread_qc_mergepairs'] : [])
+        .findAll { name -> params[name] }
     if (conflicting) {
-        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t filters the reads as they were sequenced, and cannot be used with ${conflicting.collect { name -> "--${name}" }.join(', ')}: please turn ${conflicting.size() > 1 ? 'them' : 'it'} off")
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t removes the host reads and the duplicates itself, and filters read pairs, so it cannot be used with ${conflicting.collect { name -> "--${name}" }.join(', ')}: please turn ${conflicting.size() > 1 ? 'them' : 'it'} off")
     }
 
     // the gene catalogue profilers are not supported on the reads filtered by PathSeq-T2T

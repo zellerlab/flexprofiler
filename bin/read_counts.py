@@ -219,8 +219,8 @@ DESCRIPTIONS = {
     ),
     "raw_reads": (
         "Raw reads",
-        "Reads before QC (fastp, or vsearch for PacBio reads), each mate counted; PathSeq-T2T: the primary reads"
-        " aligned to GRCh38 (samtools flagstat)",
+        "Reads before QC (fastp, or vsearch for PacBio reads), each mate counted; PathSeq-T2T without fastp: the"
+        " primary reads aligned to GRCh38 (samtools flagstat)",
     ),
     "qc_reads": ("QC reads", "Reads after QC (fastp, or vsearch and BBDuk for PacBio reads), each mate counted"),
     "oriented_reads": ("Oriented reads", "Long amplicon reads oriented as the reference sequences (vsearch), the others dropped"),

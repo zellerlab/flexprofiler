@@ -149,10 +149,11 @@ workflow PATHSEQ_T2T {
             .mix(ch_unpaired.single_end)
             .map { meta, fastqs -> [meta, [fastqs].flatten()] }
 
-        // the reads after each step, for the read counts: the primary reads given to the filtering (flagstat), the reads
-        // after each filter of PathSeqFilterSpark (the metrics of the reads not aligned to the host and of those aligned to
-        // its decoy contigs, which are summed), and the reads not aligned to T2T-CHM13
-        ch_read_count_logs = PATHSEQT2T_PREFILTER.out.flagstat
+        // the reads after each step, for the read counts: the primary reads given to the filtering (flagstat, the raw
+        // reads; with fastp, its reads after QC, which counts the raw reads itself), the reads after each filter of
+        // PathSeqFilterSpark (the metrics of the reads not aligned to the host and of those aligned to its decoy
+        // contigs, which are summed), and the reads not aligned to T2T-CHM13
+        ch_read_count_logs = (params.perform_shortread_qc ? channel.empty() : PATHSEQT2T_PREFILTER.out.flagstat)
             .map { meta, flagstat -> [meta + [tool: 'pathseq_flagstat'], flagstat] }
             .mix(
                 PATHSEQT2T_QCFILTER.out.metrics

@@ -91,7 +91,7 @@ nextflow_pipeline {
                 { assert pe_genes == [ gene_spliced: [ 100, 0, 100 ], gene_unspliced: [ 60, 0, 60 ] ] },
                 { assert se_genes == [ gene_spliced: [ 100, 0, 100 ], gene_unspliced: [ 60, 0, 60 ] ] },
                 { assert path( "${params.outdir}/pathseq_t2t/grch38/lowbiomass_rna.grch38.Log.final.out" ).exists() },
-                // the raw reads are the primary reads of the STAR BAM, all the reads, each mate counted
+                // the raw reads are those given to fastp, each mate counted
                 { assert count( "lowbiomass_rna", "raw_reads" ) == 2 * 510 },
                 { assert count( "lowbiomass_rna_se", "raw_reads" ) == 510 },
                 { assert count( "lowbiomass_rna", "t2t_filter_reads" ) == 2 * pe_1.size() + singletons.size() },

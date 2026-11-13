@@ -4,6 +4,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## Unreleased
+
+### Changed
+- `--pathseq_t2t` can be used with `--perform_shortread_qc`: fastp trims the adapters (and the poly-G tails of NovaSeq/NextSeq reads) of each run before the PathSeq-T2T filtering, without its quality filters (`--disable_quality_filtering`), as PathSeqFilterSpark filters the reads by quality. This departs from the paper, which does not trim the reads before the alignment; fewer host reads with adapter tails escape the GRCh38 prefilter, mostly with STAR (`--pathseq_t2t_grch38_aligner star`). It is on in the `zellerlab_pathseq_t2t` and `zellerlab_pathseq_t2t_rna` profiles, and in the `test_pathseq_t2t` (and `test_pathseq_t2t_star`) test profiles. With `--pathseq_t2t`, `--shortread_qc_dedup` (PathSeqFilterSpark removes the duplicates over the whole sample) and `--shortread_qc_mergepairs` (the filters need the read pairs) are errors, as `--perform_shortread_hostremoval` still is
+- Read counts with `--pathseq_t2t` and `--perform_shortread_qc`: `raw_reads` and `qc_reads` are those of fastp, and the primary reads aligned to GRCh38 (`samtools flagstat`) are no longer counted as `raw_reads` (they are the `qc_reads`); the flagstat files are still published in `pathseq_t2t/prefilter/`
+- With `--pathseq_t2t` and `--save_analysis_ready_fastqs`, the reads of fastp are not published in `analysis_ready_fastqs/` (the reads given to the profilers are those of the T2T-CHM13 filter)
+- `docs/pathseq_t2t.md`: the adapter trimming of PathSeqFilterSpark, and the differences of pathseq-t2t-nextflow in the minimum read length after clipping (45, flexprofiler and upstream 60) and in its trimming
+
 ## v0.1.0 [12-11-2026]
 
 This release breaks compatibility with v0.0.5. To upgrade:

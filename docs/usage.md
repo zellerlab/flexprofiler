@@ -289,8 +289,9 @@ If you have multiple taxa or sequences you wish to remove (e.g., the host genome
 #### PathSeq-T2T host filtering (low-biomass samples)
 
 For human samples with few microbial reads, such as tumour or blood whole-genome sequencing, a single alignment to the host genome leaves enough human reads to cause false microbial calls.
-`--pathseq_t2t` replaces the QC and host removal with the PathSeq-T2T host filtering of [Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015): alignment to GRCh38, GATK PathSeqFilterSpark (quality, complexity, host k-mer and duplicate filters), and alignment to T2T-CHM13.
-It needs the bwa indexes (or FASTAs) of GRCh38 and T2T-CHM13 (for RNA-seq, the STAR index of GRCh38 instead of its bwa index, with `--pathseq_t2t_grch38_aligner star`) and the GATK PathSeq host files, accepts only Illumina `WGS` FASTQ, and cannot be combined with `--perform_shortread_qc` or `--perform_shortread_hostremoval`, nor with `--run_cayman` or `--run_gqlib`.
+`--pathseq_t2t` replaces the host removal with the PathSeq-T2T host filtering of [Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015): alignment to GRCh38, GATK PathSeqFilterSpark (quality, complexity, host k-mer and duplicate filters), and alignment to T2T-CHM13.
+It needs the bwa indexes (or FASTAs) of GRCh38 and T2T-CHM13 (for RNA-seq, the STAR index of GRCh38 instead of its bwa index, with `--pathseq_t2t_grch38_aligner star`) and the GATK PathSeq host files, accepts only Illumina `WGS` FASTQ, and cannot be combined with `--perform_shortread_hostremoval`, `--shortread_qc_dedup` or `--shortread_qc_mergepairs`, nor with `--run_cayman` or `--run_gqlib`.
+With `--perform_shortread_qc` (set by the `zellerlab_pathseq_t2t` profiles), fastp trims the adapters before the filtering, without its quality filters, which PathSeqFilterSpark replaces.
 It runs after run merging, so that with `--perform_runmerging` the duplicates are removed over the whole sample.
 See [the PathSeq-T2T page](pathseq_t2t.md) for the references, the outputs, and the differences from the upstream implementation.
 
