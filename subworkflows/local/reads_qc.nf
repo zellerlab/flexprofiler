@@ -10,7 +10,7 @@ include { publishFiles } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow READS_QC {
     take:
-    raw_reads       // [ [ meta ], [ reads ] ], the reads as given in the samplesheet
+    raw_reads       // [ [ meta ], [ reads ] ], the reads as given in the samplesheet (before the pair repair)
     processed_reads // [ [ meta ], [ reads ] ], the reads given to the profilers
 
     main:
@@ -30,6 +30,8 @@ workflow READS_QC {
             .transpose()
             .filter { _meta, report -> report.name.endsWith('_data.txt') }
         ch_published = publishFiles(FALCO.out.html.mix(FALCO.out.txt), { meta -> "falco/${meta.qc_stage}" }, '*.{html,txt,zip}')
+        // the reads of each file (Total Sequences), for the read counts: falco_raw and falco_processed
+        ch_read_count_logs = ch_multiqc_files.map { meta, report -> [meta + [tool: "falco_${meta.qc_stage}"], report] }
     }
     else {
         FASTQC(ch_reads)
@@ -37,11 +39,14 @@ workflow READS_QC {
             .transpose()
             .filter { _meta, report -> report.name.endsWith('.zip') }
         ch_published = publishFiles(FASTQC.out.html.mix(FASTQC.out.zip), { meta -> "fastqc/${meta.qc_stage}" }, '*.{html,zip}')
+        // the reads of each file (Total Sequences, in the zip), for the read counts: fastqc_raw and fastqc_processed
+        ch_read_count_logs = ch_multiqc_files.map { meta, report -> [meta + [tool: "fastqc_${meta.qc_stage}"], report] }
     }
 
     emit:
-    mqc       = ch_multiqc_files // channel: [ val(meta), report ], one report per channel element; the versions go to the versions topic
-    published = ch_published     // channel: [ file, target ], the files to publish (publishFiles)
+    mqc             = ch_multiqc_files   // channel: [ val(meta), report ], one report per channel element; the versions go to the versions topic
+    read_count_logs = ch_read_count_logs // channel: [ val(meta), report ], with the tool in meta.tool
+    published       = ch_published       // channel: [ file, target ], the files to publish (publishFiles)
 }
 
 //

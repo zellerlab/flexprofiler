@@ -344,7 +344,7 @@ process {
 }
 ```
 
-The read counts give the reads after each step (`raw_reads`, `qc_reads`, `oriented_reads`, `primer_trimmed_reads`).
+The read counts give the reads after each step (`longread_qc_input_reads`, `longread_qc_reads`, `oriented_reads`, `primer_trimmed_reads`).
 
 :::warning
 The primer detection has some limitations, so check `amplicon_primers/primers.tsv` and the read counts (`primer_trimmed_reads`, `readthrough_trimmed_reads`):

@@ -73,8 +73,8 @@ nextflow_pipeline {
                 // (but some, oriented by chance, removed after by the primers), and the primer trimming the reads
                 // without both primers (17 trunc_, and the other_ oriented by chance) and those out of the length
                 // window (17 short_)
-                { assert count_of( "pacbio", "raw_reads" ) == "434" },
-                { assert count_of( "pacbio", "qc_reads" ) == "389" },
+                { assert count_of( "pacbio", "longread_qc_input_reads" ) == "434" && count_of( "pacbio", "raw_reads" ) == "434" },
+                { assert count_of( "pacbio", "longread_qc_reads" ) == "389" },
                 { assert count_of( "pacbio", "oriented_reads" ).toInteger() in 379..389 },
                 { assert count_of( "pacbio", "primer_trimmed_reads" ) == "345" },
                 // on the oriented reads PIMENTO finds the full-length pair, in --merged mode, as for single-end reads:
@@ -141,7 +141,7 @@ nextflow_pipeline {
                 // the same reads left as with the primers found by PIMENTO, trimmed of both primers and in the
                 // orientation of the forward primer: the given 1492R (19 bases) is shorter than 1492modR, but cutadapt
                 // removes the bases after it too
-                { assert count_of( "pacbio", "qc_reads" ) == "389" },
+                { assert count_of( "pacbio", "longread_qc_reads" ) == "389" },
                 { assert count_of( "pacbio", "primer_trimmed_reads" ) == "345" },
                 { assert ready_pacbio == expected_pacbio },
                 { assert genus_counts( "pacbio" ) == [ Bifidobacterium: 75, Streptococcus: 75, Clostridium: 75, Bacteroides: 75, Escherichia: 35, Akkermansia: 10 ] },

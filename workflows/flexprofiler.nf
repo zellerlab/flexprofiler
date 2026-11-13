@@ -102,14 +102,16 @@ workflow FLEXPROFILER {
         BBMAP_REPAIR(ch_input.fastq_pe, channel.value(false))
         ch_fastq_repaired = BBMAP_REPAIR.out.repaired.mix(ch_input.fastq_se)
         ch_repair_published = publishFiles(BBMAP_REPAIR.out.repaired.mix(BBMAP_REPAIR.out.singleton, BBMAP_REPAIR.out.log), 'bbmap')
+        ch_repair_read_count_logs = BBMAP_REPAIR.out.log.map { meta, log_file -> [meta + [tool: 'bbmap_repair_pe_order'], log_file] }
     }
     else {
         ch_fastq_repaired = ch_input.fastq_pe.mix(ch_input.fastq_se)
         ch_repair_published = channel.empty()
+        ch_repair_read_count_logs = channel.empty()
     }
     
-    // the short and long reads, for the QC of the raw reads
-    ch_input_for_fastqc = ch_fastq_repaired.mix(ch_input.pacbio)
+    // the short and long reads as given in the samplesheet (before the pair repair), for the QC of the raw reads
+    ch_input_for_fastqc = ch_input.fastq_pe.mix(ch_input.fastq_se, ch_input.pacbio)
 
     // Validate and decompress databases
     ch_dbs_for_untar = databases.branch { db_meta, db_path ->
@@ -231,7 +233,9 @@ workflow FLEXPROFILER {
 
     // the read counts after each step, from the logs of the steps, with the tool in meta.tool
     READ_COUNTING(
-        SHORTREAD_PREPROCESSING.out.read_count_logs
+        ch_repair_read_count_logs
+            .mix(READS_QC.out.read_count_logs)
+            .mix(SHORTREAD_PREPROCESSING.out.read_count_logs)
             .mix(LONGREAD_PREPROCESSING.out.read_count_logs)
             .mix(WGS_PREPROCESSING.out.read_count_logs)
             .mix(AMPLICON_PREPROCESSING.out.read_count_logs)

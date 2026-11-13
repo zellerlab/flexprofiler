@@ -86,9 +86,16 @@ nextflow_pipeline {
                 // merging: none of the 10 is left as a pair (a mate can be left, its copy having lost its mate)
                 { assert pe_1.count( "duplicate_pair" ) <= 10 && se.count( "duplicate_single" ) <= 10 },
                 { assert pe_1.count( "crossrun_duplicate" ) == 0 },
-                // the reads per step: the raw reads are those given to fastp, each mate counted
-                { assert count( "lowbiomass", "raw_reads" ) == 2 * ( 1110 ) },
-                { assert count( "lowbiomass_se", "raw_reads" ) == 840 },
+                // the reads per step, each mate counted: those given to fastp, and those it writes, which are all given to
+                // PathSeq-T2T
+                { assert count( "lowbiomass", "shortread_qc_input_reads" ) == 2 * ( 1110 ) },
+                { assert count( "lowbiomass_se", "shortread_qc_input_reads" ) == 840 },
+                { assert [ "lowbiomass", "lowbiomass_se" ].every { sample -> count( sample, "raw_reads" ) == count( sample, "shortread_qc_input_reads" ) } },
+                // the summary columns: after the QC (fastp), after the host removal and given to the profilers (the
+                // reads of PathSeq-T2T, counted by it and by Falco)
+                { assert [ "lowbiomass", "lowbiomass_se" ].every { sample -> count( sample, "qc_reads" ) == count( sample, "shortread_qc_reads" ) } },
+                { assert [ "lowbiomass", "lowbiomass_se" ].every { sample -> [ "hostremoval_reads", "profiler_input_reads" ].every { column -> count( sample, column ) == count( sample, "t2t_filter_reads" ) } } },
+                { assert [ "lowbiomass", "lowbiomass_se" ].every { sample -> count( sample, "pathseq_t2t_input_reads" ) == count( sample, "shortread_qc_reads" ) } },
                 { assert count( "lowbiomass", "t2t_filter_reads" ) == 2 * pe_1.size() + singletons.size() },
                 { assert count( "lowbiomass_se", "t2t_filter_reads" ) == se.size() },
                 { assert snapshot ( read_counts ).match( "read_counts" ) },
@@ -153,7 +160,7 @@ nextflow_pipeline {
                 { assert workflow.success },
                 // samples without reads go through every step, and give empty FASTQs
                 { assert fastqs.every { name -> path( "${out}/${name}" ).exists() && path( "${out}/${name}" ).linesGzip.isEmpty() } },
-                { assert [ "empty", "empty_se" ].every { sample -> count( sample, "raw_reads" ) == 0 && count( sample, "t2t_filter_reads" ) == 0 } },
+                { assert [ "empty", "empty_se" ].every { sample -> count( sample, "pathseq_t2t_input_reads" ) == 0 && count( sample, "t2t_filter_reads" ) == 0 } },
             )
         }
     }
