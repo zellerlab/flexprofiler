@@ -11,6 +11,7 @@ include { BWA_MEM as BWA_ALIGN         } from '../../modules/nf-core/bwa/mem/mai
 include { GQLIB_PROFILE_GENES           } from '../../modules/local/gqlib/profile_genes/main'
 include { IDTAXA_CLASSIFY               } from '../../modules/local/idtaxa/classify/main'
 include { KRAKEN2_KRAKEN2                } from '../../modules/nf-core/kraken2/kraken2/main'
+include { BRACKEN_BRACKEN               } from '../../modules/nf-core/bracken/bracken/main'
 include { toolLibraryStrategy           } from './utils_zellerlab_flexprofiler_pipeline'
 include { publishFiles                  } from './utils_zellerlab_flexprofiler_pipeline'
 
@@ -290,6 +291,33 @@ workflow PROFILING {
         ch_read_count_logs = ch_read_count_logs.mix(
             KRAKEN2_KRAKEN2.out.report.map { meta, report -> [meta + [tool: meta.single_end ? 'kraken2' : 'kraken2_pairs'], report] }
         )
+
+        // Bracken (--run_bracken, which needs --run_kraken2) re-estimates each Kraken2 report (of the pairs, and of the
+        // singletons, merged as those of Kraken2 by BRACKEN_MERGE), with the k-mer distribution in the Kraken2 database
+        if (params.run_bracken) {
+            ch_input_for_bracken = KRAKEN2_KRAKEN2.out.report
+                .map { meta, report -> [[meta.db_name, meta.type], meta, report] }
+                .combine(
+                    ch_dbs
+                        .filter { _key, db_meta, _db -> db_meta.tool == 'kraken2' }
+                        .map { _key, db_meta, db -> [[db_meta.db_name, db_meta.type], db] },
+                    by: 0
+                )
+                .multiMap { _key, meta, report, db ->
+                    report: [meta + [tool: 'bracken'], report]
+                    db: db
+                }
+
+            BRACKEN_BRACKEN(ch_input_for_bracken.report, ch_input_for_bracken.db)
+            ch_raw_profiles = ch_raw_profiles.mix(BRACKEN_BRACKEN.out.reports)
+            ch_published = ch_published.mix(
+                publishFiles(
+                    BRACKEN_BRACKEN.out.reports.mix(BRACKEN_BRACKEN.out.txt),
+                    { meta -> "bracken/${meta.db_name}" },
+                    '*.bracken.{tsv,kraken2.report_bracken.txt}',
+                )
+            )
+        }
     }
 
     emit:

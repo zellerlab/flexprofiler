@@ -1,5 +1,5 @@
 nextflow_pipeline {
-    name "Test Kraken2 on WGS reads, after the short-read QC and host removal"
+    name "Test Kraken2 and Bracken on WGS reads, after the short-read QC and host removal"
     script "../main.nf"
     tag "pipeline"
     tag "test_kraken2"
@@ -32,6 +32,10 @@ nextflow_pipeline {
                 assert species : "no species '${name}' in the Kraken2 taxonomy table"
                 species[0]
             }
+            def bracken_reads     = { taxid, sample ->
+                def table = path( "${params.outdir}/bracken/bracken_test_kraken2_wgs.reads.tsv" ).readLines().collect { line -> line.split( "\t" ) as List }
+                table.find { row -> row[0] == taxid }[table[0].indexOf( sample )] as int
+            }
             // Kraken2 counts each mate: the reads given to it are the pairs left by the host removal, as two reads each,
             // or the single-end reads left
             def kraken2_input     = [ "2612": 2 * count( "2612", "hostremoval_retained_pairs" ), "2612_se": count( "2612_se", "hostremoval_retained_pairs" ), "2613": 2 * count( "2613", "hostremoval_retained_pairs" ) ]
@@ -50,6 +54,13 @@ nextflow_pipeline {
                     "Methanobrevibacter smithii": [ "2612": 97700, "2612_se": 15674, "2613": 17598 ],
                     "Collinsella aerofaciens":    [ "2612": 66296, "2612_se": 7390,  "2613": 16908 ],
                 ] },
+                // Bracken: the k-mers of each genome of the test database are all of its species, so no read assigned above
+                // the species is redistributed, and the estimate of each species is its clade in Kraken2
+                { assert [ "Methanobrevibacter smithii", "Collinsella aerofaciens" ].every { name -> kraken2_input.keySet().every { sample -> bracken_reads( kraken2_species( name ), sample ) == kraken2_clade( kraken2_species( name ), sample ) } } },
+                { assert snapshot (
+                    path( "${params.outdir}/bracken/bracken_test_kraken2_wgs.reads.tsv" ),
+                    path( "${params.outdir}/bracken/bracken_test_kraken2_wgs.taxonomy.tsv" ),
+                ).match( "bracken_tables" ) },
                 { assert snapshot (
                     path( "${params.outdir}/kraken2/kraken2_test_kraken2_wgs.reads_clade.tsv" ),
                     path( "${params.outdir}/kraken2/kraken2_test_kraken2_wgs.reads_taxon.tsv" ),

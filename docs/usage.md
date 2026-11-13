@@ -389,6 +389,24 @@ With `--pathseq_t2t`, the reads left without their mate are classified too, on t
 With `--run_profile_standardisation`, the reports are merged into tables of reads per taxon (see [the output documentation](output.md#kraken2)).
 The PlusPF database needs about 80 GB of memory: `KRAKEN2_KRAKEN2` asks for 128 GB.
 
+##### Bracken
+
+To re-estimate the Kraken2 reports with [Bracken](https://ccb.jhu.edu/software/bracken/), specify `--run_bracken` with `--run_kraken2`.
+Bracken redistributes the reads that Kraken2 assigns above a rank (species by default) to the taxa of that rank, with the k-mer distribution of the read length in the directory of each `kraken2` database (`database<read_len>mers.kmer_distrib`), which needs no row of its own in the database sheet.
+The [prebuilt Kraken2 databases](https://benlangmead.github.io/aws-indexes/k2), such as PlusPF, include them for reads of 50 to 300 bp; for another database, make them with `bracken-build` (see [the database documentation](databases.md#kraken2)).
+The options are the defaults of Bracken (`-r 100 -l S -t 10`: read length, rank and minimum reads of a taxon before the re-estimation): set them with `ext.args` in a custom config, e.g. for 150 bp reads:
+
+```groovy
+process {
+    withName: BRACKEN_BRACKEN {
+        ext.args = '-r 150'
+    }
+}
+```
+
+A sample with no reads at the rank (none classified, or all its taxa below the threshold) has no taxa, instead of failing.
+With `--pathseq_t2t`, the reports of the reads left without their mate are re-estimated on their own too, and added to the pairs in the merged table.
+
 ##### mOTUs v4
 
 mOTUs v4 has a number of breaking changes compared to v3, in particular:

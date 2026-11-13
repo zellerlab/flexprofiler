@@ -26,6 +26,7 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 - [cayman](#cayman) - Profiling of carbohydrate-active enzymes from a gene catalogue
 - [gqlib](#gqlib) - Functional profiling from the annotation of a gene catalogue
 - [Kraken2](#kraken2) - Taxonomic classification of the reads, with merged tables of reads
+- [Bracken](#bracken) - Re-estimation of the Kraken2 reads at the species (or another) rank, with a merged table of reads
 - [IDTAXA](#idtaxa) - Taxonomic classification of the amplicon reads, with merged tables per rank
 - [Read counts](#read-counts) - Per-run read counts after each preprocessing step and for each profiler and database
 - [MultiQC](#multiqc) - Aggregate report describing results and QC from the whole pipeline
@@ -375,6 +376,23 @@ With paired-end reads, the same holds for each pair: a pair with both mates alig
 </details>
 
 `<sample>` is the sample, or `<sample>_<run_accession>` without run merging. The reports are also in the MultiQC report. The reads per million of PathSeq-T2T are not computed: with `--pathseq_t2t` they are `reads_clade` times 10^6 divided by the `raw_reads` of the [read counts](#read-counts), except that here the singletons are counted once instead of twice (see [the PathSeq-T2T page](pathseq_t2t.md#differences-from-upstream-pathseq-t2t)); the paper takes 0.1 reads per million as the background level of contamination.
+
+### Bracken
+
+[Bracken](https://ccb.jhu.edu/software/bracken/) re-estimates the reads of the taxa of one rank (species by default) from a Kraken2 report, redistributing those that Kraken2 assigned above that rank (`--run_bracken`).
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `bracken/`
+  - `<db_name>/<sample>_<db_name>[_singletons].bracken.tsv`: the Bracken table of a sample (name, taxid and rank of each taxon, the fragments of Kraken2, those added, the new estimate and its fraction), with the taxa of the rank above the threshold. Bracken counts a pair as one fragment, as Kraken2. Without reads at the rank, only the header
+  - `<db_name>/<sample>_<db_name>[_singletons].bracken.kraken2.report_bracken.txt`: the Kraken2 report with the estimates of Bracken (empty without reads at the rank)
+  - `bracken_<db_name>.reads.tsv` (`--run_profile_standardisation`): the reads estimated by Bracken for each taxon (taxid), by sample, each mate counted (the pairs counted twice, the singletons once). The reads that Bracken does not assign to a taxon of its rank (unclassified, not redistributed, or of taxa below its threshold) are not in the table
+  - `bracken_<db_name>.taxonomy.tsv`: the name and rank of each taxon of the table (its lineage is in the [Kraken2](#kraken2) taxonomy table)
+
+</details>
+
+`<sample>` is the sample, or `<sample>_<run_accession>` without run merging.
 
 ### IDTAXA
 

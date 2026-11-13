@@ -448,6 +448,12 @@
                     "help_text": "The database CSV can list several Kraken2 databases (e.g. PlusPF and Standard, or different releases), and this chooses among them by their db_name, e.g. `--kraken2_db_names pluspf` or `--kraken2_db_names pluspf,standard`. The other kraken2 rows are ignored. A name not among the kraken2 rows of the database CSV is an error.",
                     "fa_icon": "fas fa-database"
                 },
+                "run_bracken": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-toggle-on",
+                    "description": "Re-estimate the Kraken2 reports with Bracken (needs --run_kraken2)",
+                    "help_text": "Bracken (Lu et al. 2017, https://doi.org/10.7717/peerj-cs.104) redistributes the reads that Kraken2 assigns above a rank (species by default) to the taxa of that rank, with the k-mer distribution of the read length in the directory of each kraken2 database (database<read_len>mers.kmer_distrib, made with bracken-build, and included in the prebuilt databases of https://benlangmead.github.io/aws-indexes/k2). Its options are the defaults of Bracken (-r 100 -l S -t 10, read length, rank and threshold), changed with `ext.args` of BRACKEN_BRACKEN in a custom config, e.g. `-r 150` for 150 bp reads. With --pathseq_t2t, the reports of the reads left without their mate are re-estimated too. The estimates are merged into a table of reads per taxon (--run_profile_standardisation)."
+                },
                 "run_idtaxa": {
                     "type": "boolean",
                     "description": "Turn on taxonomic classification of amplicon reads with IDTAXA. Requires database CSV file passed to --databases",
