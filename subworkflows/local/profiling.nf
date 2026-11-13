@@ -14,6 +14,7 @@ include { KRAKEN2_KRAKEN2                } from '../../modules/nf-core/kraken2/k
 include { BRACKEN_BRACKEN               } from '../../modules/nf-core/bracken/bracken/main'
 include { toolLibraryStrategy           } from './utils_zellerlab_flexprofiler_pipeline'
 include { publishFiles                  } from './utils_zellerlab_flexprofiler_pipeline'
+include { runBracken                    } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow PROFILING {
     take:
@@ -292,9 +293,9 @@ workflow PROFILING {
             KRAKEN2_KRAKEN2.out.report.map { meta, report -> [meta + [tool: meta.single_end ? 'kraken2' : 'kraken2_pairs'], report] }
         )
 
-        // Bracken (--run_bracken, which needs --run_kraken2) re-estimates each Kraken2 report (of the pairs, and of the
+        // Bracken (--run_bracken, by default with --run_kraken2) re-estimates each Kraken2 report (of the pairs, and of the
         // singletons, merged as those of Kraken2 by BRACKEN_MERGE), with the k-mer distribution in the Kraken2 database
-        if (params.run_bracken) {
+        if (runBracken()) {
             ch_input_for_bracken = KRAKEN2_KRAKEN2.out.report
                 .map { meta, report -> [[meta.db_name, meta.type], meta, report] }
                 .combine(

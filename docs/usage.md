@@ -391,7 +391,7 @@ The PlusPF database needs about 80 GB of memory: `KRAKEN2_KRAKEN2` asks for 128 
 
 ##### Bracken
 
-To re-estimate the Kraken2 reports with [Bracken](https://ccb.jhu.edu/software/bracken/), specify `--run_bracken` with `--run_kraken2`.
+The Kraken2 reports are re-estimated with [Bracken](https://ccb.jhu.edu/software/bracken/) by default when `--run_kraken2` is set (`--run_bracken` defaults to `--run_kraken2`); turn it off with `--run_bracken false`, e.g. for a database without the k-mer distributions.
 Bracken redistributes the reads that Kraken2 assigns above a rank (species by default) to the taxa of that rank, with the k-mer distribution of the read length in the directory of each `kraken2` database (`database<read_len>mers.kmer_distrib`), which needs no row of its own in the database sheet.
 The [prebuilt Kraken2 databases](https://benlangmead.github.io/aws-indexes/k2), such as PlusPF, include them for reads of 50 to 300 bp; for another database, make them with `bracken-build` (see [the database documentation](databases.md#kraken2)).
 The options are the defaults of Bracken (`-r 100 -l S -t 10`: read length, rank and minimum reads of a taxon before the re-estimation): set them with `ext.args` in a custom config, e.g. for 150 bp reads:

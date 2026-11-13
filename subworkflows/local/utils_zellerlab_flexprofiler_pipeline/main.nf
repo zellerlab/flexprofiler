@@ -134,7 +134,8 @@ workflow PIPELINE_INITIALISATION {
     // Validate parameter inputs
     //
 
-    // Bracken re-estimates the Kraken2 reports, with the k-mer distribution in the kraken2 databases
+    // Bracken re-estimates the Kraken2 reports, with the k-mer distribution in the kraken2 databases. It follows
+    // --run_kraken2 when --run_bracken is not set (runBracken), so only an explicit --run_bracken needs Kraken2
     if (params.run_bracken && !params.run_kraken2) {
         error("[zellerlab/flexprofiler] ERROR: --run_bracken re-estimates the Kraken2 reports and needs --run_kraken2: please set it, or turn Bracken off")
     }
@@ -352,6 +353,13 @@ def toolLibraryStrategy(tool) {
 }
 
 //
+// Whether Bracken is run: --run_bracken if it is set, otherwise with Kraken2 (--run_kraken2)
+//
+def runBracken() {
+    return params.run_bracken != null ? params.run_bracken : params.run_kraken2
+}
+
+//
 // Validate that the reads and the databases of the enabled profilers match each other. In PROFILING, the reads meet
 // the databases with the same read type (short/long, from instrument_platform and db_type) and library strategy (of
 // the reads, and of the profiler, toolLibraryStrategy), and what has no match is dropped silently, so it is an error
@@ -477,7 +485,7 @@ def toolCitationText() {
         params.run_gqlib ? "gqlib (https://github.com/cschu/gqlib)," : "",
         params.run_idtaxa ? "IDTAXA (Murali et al. 2018) of DECIPHER (Wright 2016)," : "",
         params.run_kraken2 ? "Kraken2 (Wood et al. 2019)," : "",
-        params.run_bracken ? "Bracken (Lu et al. 2017)," : "",
+        runBracken() ? "Bracken (Lu et al. 2017)," : "",
         ".",
     ].join(' ').trim()
 
@@ -546,7 +554,7 @@ def toolBibliographyText() {
         params.run_gqlib ? "<li>Schudoma, C. gqlib: gene quantification library (gffquant). <a href=\"https://github.com/cschu/gqlib\">https://github.com/cschu/gqlib</a></li>" : "",
         params.run_idtaxa ? "<li>Murali, A., Bhargava, A., & Wright, E. S. (2018). IDTAXA: a novel approach for accurate taxonomic classification of microbiome sequences. Microbiome, 6(1), 140. <a href=\"https://doi.org/10.1186/s40168-018-0521-5\">10.1186/s40168-018-0521-5</a></li>" : "",
         params.run_kraken2 ? "<li>Wood, D. E., Lu, J., & Langmead, B. (2019). Improved metagenomic analysis with Kraken 2. Genome Biology, 20(1), 257. <a href=\"https://doi.org/10.1186/s13059-019-1891-0\">10.1186/s13059-019-1891-0</a></li>" : "",
-        params.run_bracken ? "<li>Lu, J., Breitwieser, F. P., Thielen, P., & Salzberg, S. L. (2017). Bracken: estimating species abundance in metagenomics data. PeerJ Computer Science, 3, e104. <a href=\"https://doi.org/10.7717/peerj-cs.104\">10.7717/peerj-cs.104</a></li>" : "",
+        runBracken() ? "<li>Lu, J., Breitwieser, F. P., Thielen, P., & Salzberg, S. L. (2017). Bracken: estimating species abundance in metagenomics data. PeerJ Computer Science, 3, e104. <a href=\"https://doi.org/10.7717/peerj-cs.104\">10.7717/peerj-cs.104</a></li>" : "",
         params.run_idtaxa ? "<li>Wright, E. S. (2016). Using DECIPHER v2.0 to Analyze Big Biological Sequence Data in R. The R Journal, 8(1), 352–359. <a href=\"https://doi.org/10.32614/RJ-2016-025\">10.32614/RJ-2016-025</a></li>" : "",
     ].join(' ').trim()
 
