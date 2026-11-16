@@ -278,16 +278,26 @@ workflow PROFILING {
                 db: db
             }
 
-        KRAKEN2_KRAKEN2(ch_input_for_kraken2.reads, ch_input_for_kraken2.db, false, false)
+        // with --pathseq_t2t, also the read-level output: the classified and unclassified reads (FASTQ) and the
+        // assignment of each read
+        KRAKEN2_KRAKEN2(ch_input_for_kraken2.reads, ch_input_for_kraken2.db, params.pathseq_t2t, params.pathseq_t2t)
         ch_raw_profiles = ch_raw_profiles.mix(KRAKEN2_KRAKEN2.out.report)
         ch_multiqc_files = ch_multiqc_files.mix(KRAKEN2_KRAKEN2.out.report)
-        ch_published = ch_published.mix(
-            publishFiles(
-                KRAKEN2_KRAKEN2.out.report.mix(KRAKEN2_KRAKEN2.out.classified_reads_assignment),
-                { meta -> "kraken2/${meta.db_name}" },
-                '*.txt',
+        ch_published = ch_published
+            .mix(
+                publishFiles(
+                    KRAKEN2_KRAKEN2.out.report.mix(KRAKEN2_KRAKEN2.out.classified_reads_assignment),
+                    { meta -> "kraken2/${meta.db_name}" },
+                    '*.txt',
+                )
             )
-        )
+            .mix(
+                publishFiles(
+                    KRAKEN2_KRAKEN2.out.classified_reads_fastq.mix(KRAKEN2_KRAKEN2.out.unclassified_reads_fastq),
+                    { meta -> "kraken2/${meta.db_name}" },
+                    '*.fastq.gz',
+                )
+            )
         // the reads of a pair are one fragment for Kraken2: counted twice in the read counts
         ch_read_count_logs = ch_read_count_logs.mix(
             KRAKEN2_KRAKEN2.out.report.map { meta, report -> [meta + [tool: meta.single_end ? 'kraken2' : 'kraken2_pairs'], report] }

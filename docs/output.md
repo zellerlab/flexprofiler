@@ -369,6 +369,8 @@ With paired-end reads, the same holds for each pair: a pair with both mates alig
 
 - `kraken2/`
   - `<db_name>/<sample>_<db_name>[_singletons].kraken2.report.txt`: the Kraken2 report of a sample (`_singletons`: of the reads left without their mate by `--pathseq_t2t`, classified on their own). Kraken2 counts a pair as one fragment.
+  - `<db_name>/<sample>_<db_name>[_singletons].kraken2.classifiedreads.txt` (`--pathseq_t2t`): the assignment of each read (or pair), as written by `kraken2 --output`: classified (`C`) or unclassified (`U`), read name, taxid, length and k-mer hits
+  - `<db_name>/<sample>_<db_name>[_singletons].{classified,unclassified}[_{1,2}].fastq.gz` (`--pathseq_t2t`): the reads that Kraken2 classified, and those it did not (`_1`, `_2`: the mates of the pairs)
   - `kraken2_<db_name>.reads_clade.tsv` (`--run_profile_standardisation`): the reads assigned to each taxon or to a taxon below it, by sample, each mate counted (the pairs counted twice, the singletons once), with the unclassified reads (taxid 0) first
   - `kraken2_<db_name>.reads_taxon.tsv`: the reads assigned to each taxon itself
   - `kraken2_<db_name>.taxonomy.tsv`: the name, rank and lineage (taxids from the root) of each taxon of the tables

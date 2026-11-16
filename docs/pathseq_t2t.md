@@ -166,6 +166,9 @@ PathSeqFilterSpark loads the BWA index image of the host bundle in memory: `PATH
 - `pathseq_t2t/t2tfilter/<sample>.t2tfilter.log`: the reads before and after the T2T-CHM13 filter
 - `analysis_ready_fastqs/<sample>.t2tfilt_{1,2,unpaired}.fastq.gz` (`--save_analysis_ready_fastqs`, or in
   `pathseq_t2t/t2tfilter/` with `--save_hostremoval_unmapped`): the filtered reads
+- `kraken2/<db>/<sample>_<db>[_singletons].kraken2.classifiedreads.txt` and
+  `kraken2/<db>/<sample>_<db>[_singletons].{classified,unclassified}[_{1,2}].fastq.gz`: the assignment of each read by
+  Kraken2, and the reads it classified and those it did not (see [the outputs](output.md#kraken2))
 - with `--save_pathseq_t2t_bams`, the BAMs of each step
 
 Without run merging, `<sample>` is `<sample>_<run_accession>`.
