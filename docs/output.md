@@ -420,10 +420,13 @@ With paired-end reads, the same holds for each pair: a pair with both mates alig
 
 - `read_counts/`
   - `read_counts.tsv`: one row per run, with the reads left after each step.
+  - `read_counts.png`, `read_counts.pdf`: the reads left after each step (log scale), one line per run joining its counts.
 
 </details>
 
 The counts are parsed from the logs of the tools. There is one row per sample and run (columns `sample` and `run_accession`): with `--perform_runmerging`, the runs of a sample with more than one run are summed into its merged run (`merged_WGS` or `merged_AMPLICON`), and a sample with a single run keeps its `run_accession`. The table is also in the MultiQC report, in the section Read counts. The first four columns summarise the others, and are always present (`NA` when their step was not run). Each other column is the count of one step, and is present whenever its step was run: the Falco or FastQC columns unless `--skip_preprocessing_qc` or `--skip_postprocessing_qc`, the pair repair columns with `--perform_repair_pe_order` (repair.sh), the short-read QC columns with `--perform_shortread_qc` (fastp), the long-read QC columns with `--perform_longread_qc` (vsearch and BBDuk), the PathSeq-T2T columns with `--pathseq_t2t`, the pairs retained by host removal only with `--perform_shortread_hostremoval`, the amplicon columns only for `AMPLICON` runs, and one column per profiler and database.
+
+The plot (`read_counts.png` and `.pdf`, and the section Read counts plot of the MultiQC report, an interactive line graph) has the steps on the x axis, in the order of the columns, and the reads on the y axis, with a dot per count and a line joining the counts of each sample and run. It shows the columns counting each mate: not the summary columns, which repeat those of the steps, nor those ending in `_pairs`. A step without a count for a run is skipped by its line. The legend of the PNG and PDF is drawn only for up to 30 runs.
 
 | Column                      | Unit                                     | Source                                                                                                     |
 | --------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |

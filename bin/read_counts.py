@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Per-run read counts after QC, host removal and alignment to each profiling database, parsed from the logs.
 
-usage: read_counts.py <manifest.tsv> <inputs_dir> <out.tsv> <out_mqc.tsv>
+usage: read_counts.py <manifest.tsv> <inputs_dir> <out.tsv> <out_mqc.tsv> <out_plot_mqc.json> <out_plot_prefix>
 
 The manifest has a header and one row per input file, with the columns file (its name in <inputs_dir>), sample,
 run_accession, kind and db_name. The run_accession is that of the run, or, with run merging, the merged run of a multi-
@@ -13,6 +13,10 @@ cutadapt_linked, and for the PathSeq-T2T host filtering pathseq_flagstat, pathse
 counts of the files of a sample and run (e.g. of the runs merged into it) are summed. A column of a step is written only
 if some file has its count; the summary columns (raw_reads, qc_reads, hostremoval_reads, profiler_input_reads) are always
 written, computed from the counts of the steps.
+
+The reads after each step are also plotted, one line per sample and run joining its counts in the order of the steps:
+the columns counting each mate (not the summary ones, which repeat those of the steps, nor those ending in _pairs),
+as a MultiQC line graph (<out_plot_mqc.json>) and as <out_plot_prefix>.png and .pdf.
 """
 import json
 import pathlib
@@ -21,7 +25,11 @@ import sys
 import textwrap
 import zipfile
 
+import matplotlib
 import pandas as pd
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
 
 PROFILERS = ["motus4", "motus3", "cayman", "gqlib", "kraken2", "kraken2_pairs", "idtaxa"]
 # the summary columns, each mate counted, computed from those of the steps (summed, NA if none of them was run):
@@ -371,7 +379,80 @@ def read_log(path):
     return ANSI_ESCAPE.sub("", path.read_text())
 
 
-def main(manifest, inputs_dir, out_tsv, out_mqc):
+def plot_columns(counts):
+    # the columns plotted: those of the steps counting each mate, in the order of the table
+    return [c for c in counts.columns if c not in SUMMARY_COLUMNS and not c.endswith("_pairs")]
+
+
+def write_plot_mqc(counts, titles, out_plot_mqc):
+    # MultiQC custom content: a line graph with the steps as categories, the counts of each sample and run, skipping
+    # the steps without a count for it
+    columns = plot_columns(counts)
+    data = {
+        sample: {titles[c]: int(row[c]) for c in columns if not pd.isna(row[c])}
+        for sample, row in counts.iterrows()
+    }
+    config = {
+        "id": "read_counts_plot",
+        "section_name": "Read counts plot",
+        "description": "Reads after each step, each mate counted (the columns of the read counts table that do not end"
+        " in _pairs, without the summary ones), joined by sample. Steps without a count for a sample are skipped.",
+        "plot_type": "linegraph",
+        "pconfig": {
+            "id": "read_counts_plot",
+            "title": "Read counts: reads after each step",
+            "xlab": "Step",
+            "ylab": "Reads",
+            "categories": True,
+            "style": "lines+markers",
+            "logswitch": True,
+            "logswitch_active": True,
+            "ymin": 0,
+            "tt_decimals": 0,
+        },
+        "data": data,
+    }
+    with open(out_plot_mqc, "w") as handle:
+        json.dump(config, handle, indent=4)
+
+
+def write_plot(counts, titles, out_prefix):
+    # one line per sample and run joining its counts (dots), the steps without a count for it skipped
+    columns = plot_columns(counts)
+    figure, ax = plt.subplots(figsize=(max(6, 0.6 * len(columns) + 3), 6))
+    colours = plt.get_cmap("tab20" if len(counts) > 10 else "tab10")
+    for i, (sample, row) in enumerate(counts[columns].iterrows()):
+        values = row.astype("Float64")
+        present = [j for j, c in enumerate(columns) if not pd.isna(values[c])]
+        ax.plot(
+            present,
+            [values.iloc[j] for j in present],
+            marker="o",
+            markersize=4,
+            linewidth=1,
+            alpha=0.8,
+            color=colours(i % colours.N),
+            label=sample,
+        )
+    ax.set_xticks(range(len(columns)), [titles[c] for c in columns], rotation=45, ha="right")
+    ax.set_xlim(-0.5, len(columns) - 0.5)
+    # log scale, the zero counts not shown
+    ax.set_yscale("log")
+    ax.set_xlabel("Step")
+    ax.set_ylabel("Reads (each mate counted)")
+    ax.set_title("Reads after each step")
+    ax.grid(axis="y", which="major", alpha=0.3)
+    ax.grid(axis="x", alpha=0.15)
+    # a legend only for a few samples: with many it hides the plot
+    if 0 < len(counts) <= 30:
+        ax.legend(fontsize="x-small", loc="upper left", bbox_to_anchor=(1.01, 1), frameon=False)
+    figure.tight_layout()
+    for suffix in ("png", "pdf"):
+        figure.savefig(f"{out_prefix}.{suffix}", dpi=150)
+    plt.close(figure)
+
+
+def main(manifest, inputs_dir, out_tsv, out_mqc, out_plot_mqc, out_plot_prefix):
     entries = pd.read_csv(manifest, sep="\t", dtype=str, keep_default_na=False)
 
     # the counts are joined to the entries by file
@@ -439,13 +520,17 @@ def main(manifest, inputs_dir, out_tsv, out_mqc):
         "pconfig": {"id": "read_counts_table", "title": "Read counts", "col1_header": "Sample"},
         "headers": {column: headers[column] for column in counts.columns},
     }
+    # MultiQC needs a single id column
+    counts.index = counts.index.map("_".join)
     with open(out_mqc, "w") as handle:
         print(textwrap.indent(json.dumps(config, indent=4), "# "), file=handle)
-        # MultiQC needs a single id column
-        counts.index = counts.index.map("_".join)
         counts.to_csv(handle, sep="\t", na_rep="", index_label="sample")
+
+    titles = {column: headers[column]["title"] for column in counts.columns}
+    write_plot_mqc(counts, titles, out_plot_mqc)
+    write_plot(counts, titles, out_plot_prefix)
 
 
 if __name__ == "__main__":
-    assert len(sys.argv) == 5, __doc__
+    assert len(sys.argv) == 7, __doc__
     main(*sys.argv[1:])

@@ -12,6 +12,8 @@ report_section_order:
     order: 1000
   read_counts:
     order: 950
+  read_counts_plot:
+    order: 949
   fastqc:
     order: 900
   fastqc-1:

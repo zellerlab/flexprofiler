@@ -14,7 +14,8 @@ process READ_COUNTS {
 
     output:
     path "read_counts.tsv"    , emit: tsv
-    path "read_counts_mqc.tsv", emit: mqc
+    path "read_counts{_mqc.tsv,_plot_mqc.json}", emit: mqc
+    path "read_counts.{png,pdf}", emit: plot
     tuple val("${task.process}"), val('pandas'), eval('python -c "import pandas; print(pandas.__version__)"'), emit: versions_pandas, topic: versions
 
     script:
@@ -23,12 +24,17 @@ process READ_COUNTS {
         ${manifest} \\
         inputs \\
         read_counts.tsv \\
-        read_counts_mqc.tsv
+        read_counts_mqc.tsv \\
+        read_counts_plot_mqc.json \\
+        read_counts
     """
 
     stub:
     """
     touch read_counts.tsv
     touch read_counts_mqc.tsv
+    touch read_counts_plot_mqc.json
+    touch read_counts.png
+    touch read_counts.pdf
     """
 }
