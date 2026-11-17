@@ -89,11 +89,11 @@ workflow PROFILING {
     }
 
     // mOTUs takes the reads left without their mate by --pathseq_t2t in the same run as the pairs, as unpaired reads:
-    // [ meta, [ fwd, rev, singletons ] ], or [ meta, [ singletons ] ] if no pair is left. The empty files are left out.
-    // They are not renamed for mOTUs v4, as the unpaired reads are not matched by name
-    ch_singletons_for_motus = singletons.filter { _meta, fastq -> fastq.countFastq() > 0 }
-    ch_reads_for_motus4 = addSingletons(ch_reads_for_motus4, ch_singletons_for_motus)
-    ch_reads_for_motus3 = addSingletons(reads, ch_singletons_for_motus)
+    // [ meta, [ fwd, rev, singletons ] ], or [ meta, [ singletons ] ] if no pair is left. The mOTUs modules leave out
+    // the singletons when the file has no reads (checked in the task, not here, so that the head job does not read
+    // them). They are not renamed for mOTUs v4, as the unpaired reads are not matched by name
+    ch_reads_for_motus4 = addSingletons(ch_reads_for_motus4, singletons)
+    ch_reads_for_motus3 = addSingletons(reads, singletons)
 
     // cayman and gqlib databases are the gene catalogue fasta (db_path), with its bwa index alongside,
     // and the annotation file (annot_db_path). The alignment is shared by all the annotations of a

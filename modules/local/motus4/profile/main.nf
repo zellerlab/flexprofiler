@@ -25,11 +25,33 @@ process MOTUS4_PROFILE {
     // followed by the reads left without their mate by --pathseq_t2t, given as unpaired reads, or be only those if no
     // pair is left (a single file is staged as a path, not a list)
     def fastqs = reads instanceof List ? reads : [reads]
-    def inputs = meta.single_end || fastqs.size() == 1 ? "-s ${fastqs.join(' ')}" : "-f ${fastqs[0]} -r ${fastqs[1]}" + (fastqs.size() > 2 ? " -s ${fastqs[2]}" : "")
+    def inputs = meta.single_end || fastqs.size() == 1 ? "-s ${fastqs.join(' ')}" : "-f ${fastqs[0]} -r ${fastqs[1]}"
+    // the unpaired reads after the pairs (the singletons of --pathseq_t2t), given with -s only if the file has reads:
+    // it is empty when no read was left without its mate, and mOTUs fails on an empty file (ZeroDivisionError)
+    def unpaired = !meta.single_end && fastqs.size() > 2 ? fastqs[2] : ''
     """
+    # whether a FASTQ (gzipped or not) has any read: only its first byte is read, not the whole file. With python3, as
+    # the container has no gzip
+    has_reads() {
+        python3 - "\$1" <<'END_PYTHON'
+    import gzip, sys
+    with open(sys.argv[1], 'rb') as f:
+        gzipped = f.read(2) == b'\\x1f\\x8b'
+        f.seek(0)
+        content = gzip.open(f) if gzipped else f
+        sys.exit(0 if content.read(1) else 1)
+    END_PYTHON
+    }
+
+    unpaired=""
+    if [ -n "${unpaired}" ] && has_reads "${unpaired}"; then
+        unpaired="-s ${unpaired}"
+    fi
+
     motus4_patch.py profile \\
         $args \\
         $inputs \\
+        \$unpaired \\
         -t $task.cpus \\
         -n $prefix \\
         -o ${prefix}.out \\
