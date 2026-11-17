@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Changed
-- `zellerlab_shark`: each task is submitted to all the SLURM partitions it fits (`process.queue`) and starts in the first one with room, instead of only the default `all`: `all` and `highmem` (with nodes outside `all`), the GPU partitions within their limits (`gpu-long` for tasks of at most 7 days, `gpu-medium` 2 days, both at most 64 CPUs, `gpu` 10 h and 18 CPUs, and `gpu-short` 30 min and 4 CPUs, all at most 740 GB), `medium` for tasks of at most 4 h, 4 CPUs and 8 GB (its QOS limit per user), and `short` for tasks of at most 1 h. The partition is not part of the task hash, so `-resume` still reuses the tasks of earlier runs
+- `zellerlab_shark`: each task is submitted to all the SLURM partitions it fits (`process.queue`) and starts in the first one with room, instead of only the default `all`: `all` and `highmem` (with nodes outside `all`), the GPU partitions within their limits (`gpu-long` for tasks of at most 7 days, `gpu-medium` 2 days, both at most 64 CPUs, `gpu` 10 h and 18 CPUs, and `gpu-short` 30 min and 4 CPUs, all at most 740 GB), `medium` for tasks of at most 4 h, 4 CPUs and 8 GB (its QOS limit per user), and `short` for tasks of at most 1 h
+- `zellerlab_alice`: likewise, each task is submitted to all the CPU partitions it fits instead of one chosen by its memory, time and CPUs: `cpu-short` (at most 4 h, 64 CPUs and 370 GB), `cpu-skylake` (at most 48 CPUs and 370 GB), `cpu-zen4` (at most 128 CPUs and 370 GB) and `mem` (at most 14 days and 48 CPUs, and for any task fitting no other partition). The `gpu-*` partitions of ALICE reject jobs that request no GPU. The partition is not part of the task hash, so `-resume` still reuses the tasks of earlier runs
 
 ## v0.1.1 [17-11-2026]
 
