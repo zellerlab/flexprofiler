@@ -31,6 +31,18 @@ nextflow run . -profile test_motus4,docker --outdir results
 - `CHANGELOG.md` (Keep a Changelog, `Unreleased` section) is updated with detailed entries for user-facing changes.
 - At every version bump (`manifest.version` in `nextflow.config`), also update `VERSION` in `utils/run_shark.sh` (the example SHARK launcher in `docs/zellerlab.md`), in `utils/run_alice.sh` (the ALICE launcher, which also sets `NXF_VER`) and in `utils/pull_images.sh` (pulls all the images into the shared apptainer cache) to the new release, and, if `nextflowVersion` was raised, their `NXF_VER` (the launcher of SHARK's Nextflow module downloads that version; SHARK has no module newer than 25.04.6), or its Nextflow module if SHARK gets one recent enough.
 
+## Releasing
+
+Work happens on `dev`; releases are squash-merged into `main` on `zellerlab/flexprofiler`. The `all` remote pushes to `origin` (github saulpierotti), `zellerlab` and `backup-gitlab`. `gh` is not logged in: the user opens and merges PRs in the browser, so give them links (`https://github.com/zellerlab/flexprofiler/compare/main...dev?expand=1&title=vX.Y.Z`) and the text to paste.
+
+1. On `dev`: bump `manifest.version` and the launchers (see above); in `CHANGELOG.md` rename `## Unreleased` to `## vX.Y.Z [DD-MM-YYYY]` (fold in any entries added since); replace `"zellerlab/flexprofiler": "vOLD"` with the new version in `tests/*.snap` (the snapshots record it). Point out if the changes call for a minor rather than a patch bump.
+2. Run all pipeline tests without `--update-snapshot` (in the background, wrapped in `caffeinate -dims`, ~50 min) and give the user a table of the results. All must pass.
+3. The user commits. Push `dev` to all remotes (`git push all dev`) before the PR: a PR on `zellerlab` built from a stale `zellerlab/dev` misses commits (v0.1.1 needed a second PR for the changelog).
+4. PR `dev` → `main` on `zellerlab`, titled `vX.Y.Z`, with a description summarising the changelog section; the user squash-merges it (commit `vX.Y.Z (#N)`). Check that `zellerlab/main` has the same content as `dev` (`git diff --quiet dev zellerlab/main`) before tagging.
+5. Tag the merged `main` commit with a GPG-signed annotated tag named without `v` and with the message `vX.Y.Z`: `git tag -s X.Y.Z -m "vX.Y.Z"` (key in `user.signingkey`). Signing needs the passphrase cached: the user runs `export GPG_TTY=$(tty); echo test | gpg --clearsign --local-user <key> > /dev/null` in their own terminal first. Verify with `git tag -v`, then `git push all main refs/tags/X.Y.Z`.
+6. Give the release notes (the PR description, with a link to the `CHANGELOG.md` at the tag and the compare link `PREV...X.Y.Z`) and the link `https://github.com/zellerlab/flexprofiler/releases/new?tag=X.Y.Z`; the user creates the release.
+7. Sync `dev`: fast-forward it to `zellerlab/dev` (GitHub's "Update branch" may have added merges), `git merge --no-ff -m "after release Merge branch 'main' into dev" main`, and `git push all dev`.
+
 ## Architecture
 
 Entry: `main.nf` → `PIPELINE_INITIALISATION` (`subworkflows/local/utils_zellerlab_flexprofiler_pipeline`, parses and validates `--input` against `assets/schema_input.json` and `--databases` against `assets/schema_database.json`) → `FLEXPROFILER` (`workflows/flexprofiler.nf`) → `PIPELINE_COMPLETION`.
