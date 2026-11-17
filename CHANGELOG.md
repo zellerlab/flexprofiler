@@ -4,6 +4,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## Unreleased
+
+### Changed
+- `zellerlab_shark`: each task is submitted to all the SLURM partitions it fits (`process.queue`) and starts in the first one with room, instead of only the default `all`: `all` and `highmem` (with nodes outside `all`), the GPU partitions within their limits (`gpu-long` for tasks of at most 7 days, `gpu-medium` 2 days, both at most 64 CPUs, `gpu` 10 h and 18 CPUs, and `gpu-short` 30 min and 4 CPUs, all at most 740 GB), `medium` for tasks of at most 4 h, 4 CPUs and 8 GB (its QOS limit per user), and `short` for tasks of at most 1 h. The partition is not part of the task hash, so `-resume` still reuses the tasks of earlier runs
+
 ## v0.1.1 [17-11-2026]
 
 ### Added
