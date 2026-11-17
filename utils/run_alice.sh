@@ -139,6 +139,13 @@ parallel_rsync "$FILES_DIR/inputs.txt" "$SHARK_HOST:/" "$INPUTS_DIR/" --copy-lin
 # 2. the pipeline, in the background so that a SIGTERM to this script (scancel --batch --signal=TERM) is passed on to
 # Nextflow, which then cancels its tasks; the script waits for it to finish
 cd "$RUN_DIR"
+# sbatch is run through the wrapper of the pipeline (utils/sbatch_wrapper), which keeps a task from being submitted
+# twice when sbatch times out although the job was submitted; versions without it run with the plain sbatch
+"$NEXTFLOW" pull "$PIPELINE" -r "$VERSION"
+SBATCH_WRAPPER_DIR="${NXF_ASSETS:-${NXF_HOME:-$HOME/.nextflow}/assets}/$PIPELINE/utils/sbatch_wrapper"
+if [ -x "$SBATCH_WRAPPER_DIR/sbatch" ]; then
+    export PATH="$SBATCH_WRAPPER_DIR:$PATH"
+fi
 "$NEXTFLOW" run "$PIPELINE" -r "$VERSION" -resume -params-file "$FILES_DIR/params.yaml" -profile "$PROFILE" -w "$WORKDIR" &
 NF_PID=$!
 trap 'kill -TERM "$NF_PID" 2> /dev/null || true' TERM

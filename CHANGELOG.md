@@ -4,6 +4,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## Unreleased
+
+### Fixed
+- A task whose `sbatch` timed out ("Socket timed out on send/recv operation") could run twice at once in the same work directory, the two jobs writing the same files (e.g. Kraken2 failing with `pigz: skipping: ... exists`, or outputs mixed from the two runs): the `sbatch` had submitted the job anyway, and Nextflow ran `sbatch` again for the same task. `utils/run_shark.sh` and `utils/run_alice.sh` now run Nextflow with an `sbatch` wrapper (`utils/sbatch_wrapper/sbatch`, put first in `PATH`): when `sbatch` times out, it looks (for up to 60 s, with `squeue` and `sacct`) for a job of the user submitted from the work directory of the task since the call started, and gives its id to Nextflow, which takes it as the submitted job (same work directory and attempt); if there is none, it fails as `sbatch` did, and Nextflow submits again. The launchers pull the pipeline version before running it, to find the wrapper in it
+
 ## v0.1.1 [17-11-2026]
 
 ### Added

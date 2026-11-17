@@ -24,6 +24,13 @@ export NXF_VER="26.10.5"
 
 PIPELINE="zellerlab/flexprofiler"
 mkdir -p $WORKDIR
+# sbatch is run through the wrapper of the pipeline (utils/sbatch_wrapper), which keeps a task from being submitted
+# twice when sbatch times out although the job was submitted; versions without it run with the plain sbatch
+nextflow pull $PIPELINE -r $VERSION
+SBATCH_WRAPPER_DIR="${NXF_ASSETS:-${NXF_HOME:-$HOME/.nextflow}/assets}/$PIPELINE/utils/sbatch_wrapper"
+if [ -x "$SBATCH_WRAPPER_DIR/sbatch" ]; then
+    export PATH="$SBATCH_WRAPPER_DIR:$PATH"
+fi
 # exec: Nextflow replaces this script as the main process of the job, so that stopping the job with
 #   scancel --batch --signal=TERM <job id>
 # sends the signal to Nextflow, which cancels its tasks (nf-* jobs) and closes its cache. Without exec (or with a plain

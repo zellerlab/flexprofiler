@@ -19,3 +19,8 @@
     - only the entry workflow can publish (a named workflow cannot have a `publish:` section), so every published channel is emitted up to `main.nf`
     - a topic channel cannot replace this plumbing: only process outputs can send to a topic, not a workflow channel (`ch >> 'topic'` fails), and the nf-core modules cannot be given a `topic:` output
     - files outside the work directory are published only with `includeInputs`: it is set only on `amplicon_analysis_ready_fastqs`, the amplicon analysis-ready reads, which are the input FASTQs for a run that no step changes, so that no other input file is published by mistake
+- Kraken2 is I/O-bound on loading the database: every KRAKEN2_KRAKEN2 task reads the whole database (PlusPF 20241228: ~92 GB `rchar`, ~91 GB peak RSS) from NFS to classify a few GB of reads, so realtime is 7-12 min with only 35-450% CPU of the 8 cores (iga_nephropathy_radboud PathSeq-T2T run, SHARK, 2026-11-17). With `--pathseq_t2t` it is twice as many loads, since the singletons are classified in their own task. Options:
+    - load the database once per node: copy it to node-local `/dev/shm` or local disk and run with `--memory-mapping`, so that the tasks on the node share it instead of each pulling it over NFS
+    - fewer loads: classify the singletons in the same `kraken2` call as the pairs (or merge their reports), and/or batch several samples per task
+    - lower `cpus` (2-4 instead of 8): the tasks do not use 8 cores, and smaller jobs are scheduled sooner
+    - all of these change the task script (`--threads $task.cpus`, `ext.args`), so they invalidate the cached Kraken2 tasks of running analyses: change them between runs, not mid-run
