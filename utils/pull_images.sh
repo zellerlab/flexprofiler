@@ -16,7 +16,7 @@ set -euo pipefail
 
 # be sure that this points to the pipeline version you want to run (as VERSION in run_shark.sh): a release tag, a
 # branch or a commit
-VERSION="0.1.0"
+VERSION="0.1.1"
 PROFILE="zellerlab_shark"
 
 # as in run_shark.sh

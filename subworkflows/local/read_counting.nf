@@ -46,7 +46,11 @@ workflow READ_COUNTING {
 
     emit:
     tsv       = READ_COUNTS.out.tsv // channel: path(read_counts.tsv)
-    mqc       = READ_COUNTS.out.mqc // channel: path(read_counts_mqc.tsv)
-    // read_counts_mqc.tsv goes only to MultiQC
-    published = publishFiles(READ_COUNTS.out.tsv, 'read_counts', 'read_counts.tsv') // channel: [ file, target ], the files to publish (publishFiles)
+    mqc       = READ_COUNTS.out.mqc // channel: [ path(read_counts_mqc.tsv), path(read_counts_plot_mqc.json) ]
+    // the MultiQC files go only to MultiQC
+    published = publishFiles(
+        READ_COUNTS.out.tsv.mix(READ_COUNTS.out.plot),
+        'read_counts',
+        'read_counts.{tsv,png,pdf}',
+    ) // channel: [ file, target ], the files to publish (publishFiles)
 }

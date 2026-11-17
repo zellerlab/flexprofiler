@@ -1,0 +1,53 @@
+Changes in component 'nf-core/bracken/bracken'
+'modules/nf-core/bracken/bracken/meta.yml' is unchanged
+'modules/nf-core/bracken/bracken/environment.yml' is unchanged
+Changes in 'bracken/bracken/main.nf':
+--- modules/nf-core/bracken/bracken/main.nf
++++ modules/nf-core/bracken/bracken/main.nf
+@@ -27,13 +27,35 @@
+     def prefix = task.ext.prefix ?: "${meta.id}"
+     bracken_report = "${prefix}.tsv"
+     bracken_kraken_style_report = "${prefix}.kraken2.report_bracken.txt"
++    // A report with no reads at the rank of the estimation (an empty report, none classified, or all the taxa of the
++    // rank below the threshold, which Bracken fails on with "no reads found") gives a table with only the header and an
++    // empty report, so that the sample is kept. The errors of the bracken script, which exits with status 0 (e.g. no
++    // k-mer distribution for the read length), fail the task.
+     """
+-    bracken \\
+-        ${args} \\
+-        -d '${database}' \\
+-        -i '${kraken_report}' \\
+-        -o '${bracken_report}' \\
+-        -w '${bracken_kraken_style_report}'
++    if [ ! -s '${kraken_report}' ]; then
++        echo "Empty Kraken2 report: no taxa"
++    else
++        status=0
++        bracken \\
++            ${args} \\
++            -d '${database}' \\
++            -i '${kraken_report}' \\
++            -o '${bracken_report}' \\
++            -w '${bracken_kraken_style_report}' \\
++            > bracken.log 2>&1 \\
++            || status=\$?
++        cat bracken.log
++        if grep -q ' ERROR:' bracken.log; then
++            exit 1
++        fi
++        if [ \$status -ne 0 ]; then
++            grep -q '^Error: no reads found' bracken.log || exit \$status
++        fi
++    fi
++    if [ ! -s '${bracken_report}' ]; then
++        printf 'name\\ttaxonomy_id\\ttaxonomy_lvl\\tkraken_assigned_reads\\tadded_reads\\tnew_est_reads\\tfraction_total_reads\\n' > '${bracken_report}'
++        : > '${bracken_kraken_style_report}'
++    fi
+     """
+ 
+     stub:
+'modules/nf-core/bracken/bracken/tests/main.nf.test' is unchanged
+'modules/nf-core/bracken/bracken/tests/main.nf.test.snap' is unchanged
+'modules/nf-core/bracken/bracken/tests/nextflow.config' is unchanged
+'modules/nf-core/bracken/bracken/tests/genus_test.config' is unchanged
+************************************************************

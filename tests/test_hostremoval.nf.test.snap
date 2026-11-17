@@ -36,7 +36,7 @@
                     "samtools": 1.25
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.1.0"
+                    "zellerlab/flexprofiler": "v0.1.1"
                 }
             }
         ],
@@ -101,6 +101,7 @@
                 "multiqc/multiqc_data/multiqc_fastqc.txt",
                 "multiqc/multiqc_data/multiqc_fastqc_fastqc-1.txt",
                 "multiqc/multiqc_data/multiqc_general_stats.txt",
+                "multiqc/multiqc_data/multiqc_read_counts_plot.txt",
                 "multiqc/multiqc_data/multiqc_read_counts_table.txt",
                 "multiqc/multiqc_data/multiqc_samtools_stats.txt",
                 "multiqc/multiqc_data/multiqc_software_versions.txt",
@@ -111,6 +112,8 @@
                 "pipeline_info",
                 "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml",
                 "read_counts",
+                "read_counts/read_counts.pdf",
+                "read_counts/read_counts.png",
                 "read_counts/read_counts.tsv",
                 "samtools",
                 "samtools/stats",
@@ -118,7 +121,7 @@
                 "samtools/stats/host_contaminated_se_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-11-12T13:46:41.866808",
+        "timestamp": "2026-11-17T11:57:34.30007",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -130,24 +133,45 @@
                 [
                     "sample",
                     "run_accession",
-                    "hostremoval_retained_pairs"
+                    "raw_reads",
+                    "qc_reads",
+                    "hostremoval_reads",
+                    "profiler_input_reads",
+                    "falco_raw_reads",
+                    "hostremoval_retained_reads",
+                    "hostremoval_retained_pairs",
+                    "falco_processed_reads"
                 ],
                 [
                     "host_contaminated",
                     "ERR5766181",
-                    "2000"
+                    "4800",
+                    "NA",
+                    "4000",
+                    "4000",
+                    "4800",
+                    "4000",
+                    "2000",
+                    "4000"
                 ],
                 [
                     "host_contaminated_se",
                     "ERR5766181",
+                    "2200",
+                    "NA",
+                    "2000",
+                    "2000",
+                    "2200",
+                    "2000",
+                    "2000",
                     "2000"
                 ]
             ]
         ],
-        "timestamp": "2026-10-28T18:02:16.945129",
+        "timestamp": "2026-11-17T11:57:34.328256",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
         }
     },
     "hostremoval_retained_fastqs": {

@@ -41,6 +41,12 @@ tar -xzf k2_pluspf_20241228.tar.gz -C k2_pluspf_20241228
 
 Database sheet row: `kraken2,k2_pluspf_20241228,,<path>/k2_pluspf_20241228,,`
 
+Bracken (`--run_bracken`) uses the k-mer distributions in the directory of the Kraken2 database (`database<read_len>mers.kmer_distrib`), which the prebuilt databases include for reads of 50, 75, 100, 150, 200, 250 and 300 bp. For a database built with `kraken2-build`, make the one of the read length with `bracken-build` in its directory (it needs the `library/` and `taxonomy/` of the build):
+
+```
+bracken-build -d <path>/<database> -t <threads> -k 35 -l 150
+```
+
 ## Cayman
 
 ```

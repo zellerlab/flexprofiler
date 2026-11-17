@@ -1,9 +1,9 @@
 {
     "number_of_tasks": {
         "content": [
-            43
+            47
         ],
-        "timestamp": "2026-11-12T14:32:02.293445",
+        "timestamp": "2026-11-17T12:01:29.40093",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -22,6 +22,12 @@
                 },
                 "BOWTIE2_BUILD": {
                     "bowtie2": "2.5.5"
+                },
+                "BRACKEN_BRACKEN": {
+                    "bracken": "3.0.1"
+                },
+                "BRACKEN_MERGE": {
+                    "pandas": "2.2.1"
                 },
                 "FALCO": {
                     "falco": "1.2.5"
@@ -52,11 +58,11 @@
                     "samtools": 1.25
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.1.0"
+                    "zellerlab/flexprofiler": "v0.1.1"
                 }
             }
         ],
-        "timestamp": "2026-11-12T14:32:02.307574",
+        "timestamp": "2026-11-17T12:01:29.41577",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -77,6 +83,16 @@
                 "bowtie2/align/2613_ERR5766181.unmapped.repair.sh.log",
                 "bowtie2/align/2613_ERR5766181_1.bowtie2.log",
                 "bowtie2/align/2613_ERR5766181_2.bowtie2.log",
+                "bracken",
+                "bracken/bracken_test_kraken2_wgs.reads.tsv",
+                "bracken/bracken_test_kraken2_wgs.taxonomy.tsv",
+                "bracken/test_kraken2_wgs",
+                "bracken/test_kraken2_wgs/2612_se_test_kraken2_wgs.bracken.kraken2.report_bracken.txt",
+                "bracken/test_kraken2_wgs/2612_se_test_kraken2_wgs.bracken.tsv",
+                "bracken/test_kraken2_wgs/2612_test_kraken2_wgs.bracken.kraken2.report_bracken.txt",
+                "bracken/test_kraken2_wgs/2612_test_kraken2_wgs.bracken.tsv",
+                "bracken/test_kraken2_wgs/2613_test_kraken2_wgs.bracken.kraken2.report_bracken.txt",
+                "bracken/test_kraken2_wgs/2613_test_kraken2_wgs.bracken.tsv",
                 "falco",
                 "falco/processed",
                 "falco/processed/2612_merged_WGS_processed_1_fastqc_data.txt",
@@ -184,6 +200,7 @@
                 "multiqc/multiqc_data/multiqc_fastqc_fastqc-1.txt",
                 "multiqc/multiqc_data/multiqc_general_stats.txt",
                 "multiqc/multiqc_data/multiqc_kraken.txt",
+                "multiqc/multiqc_data/multiqc_read_counts_plot.txt",
                 "multiqc/multiqc_data/multiqc_read_counts_table.txt",
                 "multiqc/multiqc_data/multiqc_samtools_stats.txt",
                 "multiqc/multiqc_data/multiqc_software_versions.txt",
@@ -194,6 +211,8 @@
                 "pipeline_info",
                 "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml",
                 "read_counts",
+                "read_counts/read_counts.pdf",
+                "read_counts/read_counts.png",
                 "read_counts/read_counts.tsv",
                 "samtools",
                 "samtools/stats",
@@ -203,7 +222,7 @@
                 "samtools/stats/2613_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-11-12T14:32:02.299088",
+        "timestamp": "2026-11-17T12:01:29.40936",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -221,6 +240,17 @@
             "nextflow": "26.10.5"
         }
     },
+    "bracken_tables": {
+        "content": [
+            "bracken_test_kraken2_wgs.reads.tsv:md5,a2072847fcf10df9ca10377fec286b62",
+            "bracken_test_kraken2_wgs.taxonomy.tsv:md5,47692b3f8f850ea2fb1b7f50884dddb9"
+        ],
+        "timestamp": "2026-11-17T11:44:35.997368",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
+        }
+    },
     "read_counts": {
         "content": [
             [
@@ -229,7 +259,14 @@
                     "run_accession",
                     "raw_reads",
                     "qc_reads",
+                    "hostremoval_reads",
+                    "profiler_input_reads",
+                    "falco_raw_reads",
+                    "shortread_qc_input_reads",
+                    "shortread_qc_reads",
+                    "hostremoval_retained_reads",
                     "hostremoval_retained_pairs",
+                    "falco_processed_reads",
                     "kraken2_test_kraken2_wgs_reads"
                 ],
                 [
@@ -237,7 +274,14 @@
                     "merged_WGS",
                     "2528240",
                     "2513136",
+                    "2512456",
+                    "2512456",
+                    "2528240",
+                    "2528240",
+                    "2513136",
+                    "2512456",
                     "1256228",
+                    "2512456",
                     "163996"
                 ],
                 [
@@ -246,6 +290,13 @@
                     "801532",
                     "800818",
                     "800776",
+                    "800776",
+                    "801532",
+                    "801532",
+                    "800818",
+                    "800776",
+                    "800776",
+                    "800776",
                     "23064"
                 ],
                 [
@@ -253,12 +304,19 @@
                     "ERR5766181",
                     "1075088",
                     "1067004",
+                    "1066842",
+                    "1066842",
+                    "1075088",
+                    "1075088",
+                    "1067004",
+                    "1066842",
                     "533421",
+                    "1066842",
                     "34508"
                 ]
             ]
         ],
-        "timestamp": "2026-11-12T14:32:02.314564",
+        "timestamp": "2026-11-17T12:01:29.42215",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"

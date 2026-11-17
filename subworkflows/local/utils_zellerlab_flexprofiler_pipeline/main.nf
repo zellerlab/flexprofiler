@@ -134,6 +134,12 @@ workflow PIPELINE_INITIALISATION {
     // Validate parameter inputs
     //
 
+    // Bracken re-estimates the Kraken2 reports, with the k-mer distribution in the kraken2 databases. It follows
+    // --run_kraken2 when --run_bracken is not set (runBracken), so only an explicit --run_bracken needs Kraken2
+    if (params.run_bracken && !params.run_kraken2) {
+        error("[zellerlab/flexprofiler] ERROR: --run_bracken re-estimates the Kraken2 reports and needs --run_kraken2: please set it, or turn Bracken off")
+    }
+
     // Preprocessing
     if (params.run_idtaxa && params.amplicon_pair_handling == 'none') {
         error("[zellerlab/flexprofiler] ERROR: IDTAXA classifies single sequences, so --run_idtaxa needs the read pairs of the amplicon reads made into single sequences: please set --amplicon_pair_handling to merged_plus_joined or merged_plus_unmerged")
@@ -347,6 +353,13 @@ def toolLibraryStrategy(tool) {
 }
 
 //
+// Whether Bracken is run: --run_bracken if it is set, otherwise with Kraken2 (--run_kraken2)
+//
+def runBracken() {
+    return params.run_bracken != null ? params.run_bracken : params.run_kraken2
+}
+
+//
 // Validate that the reads and the databases of the enabled profilers match each other. In PROFILING, the reads meet
 // the databases with the same read type (short/long, from instrument_platform and db_type) and library strategy (of
 // the reads, and of the profiler, toolLibraryStrategy), and what has no match is dropped silently, so it is an error
@@ -472,6 +485,7 @@ def toolCitationText() {
         params.run_gqlib ? "gqlib (https://github.com/cschu/gqlib)," : "",
         params.run_idtaxa ? "IDTAXA (Murali et al. 2018) of DECIPHER (Wright 2016)," : "",
         params.run_kraken2 ? "Kraken2 (Wood et al. 2019)," : "",
+        runBracken() ? "Bracken (Lu et al. 2017)," : "",
         ".",
     ].join(' ').trim()
 
@@ -540,6 +554,7 @@ def toolBibliographyText() {
         params.run_gqlib ? "<li>Schudoma, C. gqlib: gene quantification library (gffquant). <a href=\"https://github.com/cschu/gqlib\">https://github.com/cschu/gqlib</a></li>" : "",
         params.run_idtaxa ? "<li>Murali, A., Bhargava, A., & Wright, E. S. (2018). IDTAXA: a novel approach for accurate taxonomic classification of microbiome sequences. Microbiome, 6(1), 140. <a href=\"https://doi.org/10.1186/s40168-018-0521-5\">10.1186/s40168-018-0521-5</a></li>" : "",
         params.run_kraken2 ? "<li>Wood, D. E., Lu, J., & Langmead, B. (2019). Improved metagenomic analysis with Kraken 2. Genome Biology, 20(1), 257. <a href=\"https://doi.org/10.1186/s13059-019-1891-0\">10.1186/s13059-019-1891-0</a></li>" : "",
+        runBracken() ? "<li>Lu, J., Breitwieser, F. P., Thielen, P., & Salzberg, S. L. (2017). Bracken: estimating species abundance in metagenomics data. PeerJ Computer Science, 3, e104. <a href=\"https://doi.org/10.7717/peerj-cs.104\">10.7717/peerj-cs.104</a></li>" : "",
         params.run_idtaxa ? "<li>Wright, E. S. (2016). Using DECIPHER v2.0 to Analyze Big Biological Sequence Data in R. The R Journal, 8(1), 352–359. <a href=\"https://doi.org/10.32614/RJ-2016-025\">10.32614/RJ-2016-025</a></li>" : "",
     ].join(' ').trim()
 
@@ -603,8 +618,8 @@ def methodsDescriptionText(mqc_methods_yaml) {
 }
 
 //
-// PathSeq-T2T host filtering (--pathseq_t2t): it is for Illumina shotgun reads as they were sequenced, so the other
-// inputs and the steps that change the reads before it are errors, rather than being skipped silently
+// PathSeq-T2T host filtering (--pathseq_t2t): it is for Illumina shotgun reads, so the other inputs, and the steps that
+// would do again what it does or break its pairs, are errors, rather than being skipped silently
 //
 def validatePathseqT2t(samplesheet_rows) {
     // rows: [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]
@@ -614,10 +629,14 @@ def validatePathseqT2t(samplesheet_rows) {
         error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t accepts only ILLUMINA FASTQ of WGS runs, please remove from the samplesheet: ${listed}")
     }
 
-    // the steps that PathSeq-T2T does itself (QC, host removal)
-    def conflicting = ['perform_shortread_qc', 'perform_shortread_hostremoval'].findAll { name -> params[name] }
+    // the steps that PathSeq-T2T does itself (host removal, deduplication over the whole sample), and the merging of the
+    // pairs, which would leave no pairs for its proper-pair filters. The adapter trimming of fastp (--perform_shortread_qc)
+    // can be used
+    def conflicting = ['perform_shortread_hostremoval']
+        .plus(params.perform_shortread_qc ? ['shortread_qc_dedup', 'shortread_qc_mergepairs'] : [])
+        .findAll { name -> params[name] }
     if (conflicting) {
-        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t filters the reads as they were sequenced, and cannot be used with ${conflicting.collect { name -> "--${name}" }.join(', ')}: please turn ${conflicting.size() > 1 ? 'them' : 'it'} off")
+        error("[zellerlab/flexprofiler] ERROR: --pathseq_t2t removes the host reads and the duplicates itself, and filters read pairs, so it cannot be used with ${conflicting.collect { name -> "--${name}" }.join(', ')}: please turn ${conflicting.size() > 1 ? 'them' : 'it'} off")
     }
 
     // the gene catalogue profilers are not supported on the reads filtered by PathSeq-T2T

@@ -1,12 +1,12 @@
 {
     "number_of_tasks": {
         "content": [
-            23
+            26
         ],
-        "timestamp": "2026-11-10T13:34:26.545245",
+        "timestamp": "2026-11-17T12:30:23.43294",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
         }
     },
     "software_versions": {
@@ -24,6 +24,12 @@
                 },
                 "FALCO": {
                     "falco": "1.2.5"
+                },
+                "FASTP_PAIRED": {
+                    "fastp": "1.4.0"
+                },
+                "FASTP_SINGLE": {
+                    "fastp": "1.4.0"
                 },
                 "KRAKEN2_KRAKEN2": {
                     "kraken2": "2.1.6",
@@ -49,11 +55,11 @@
                     "pandas": "2.2.1"
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.1.0"
+                    "zellerlab/flexprofiler": "v0.1.1"
                 }
             }
         ],
-        "timestamp": "2026-11-12T14:19:29.86452",
+        "timestamp": "2026-11-17T12:30:23.444786",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -68,14 +74,35 @@
                 "analysis_ready_fastqs/lowbiomass.t2tfilt_unpaired.fastq.gz",
                 "analysis_ready_fastqs/lowbiomass_se.t2tfilt_unpaired.fastq.gz",
                 "falco",
+                "fastp",
+                "fastp/lowbiomass_run1.fastp.html",
+                "fastp/lowbiomass_run1.fastp.json",
+                "fastp/lowbiomass_run1.fastp.log",
+                "fastp/lowbiomass_run2.fastp.html",
+                "fastp/lowbiomass_run2.fastp.json",
+                "fastp/lowbiomass_run2.fastp.log",
+                "fastp/lowbiomass_se_run1.fastp.html",
+                "fastp/lowbiomass_se_run1.fastp.json",
+                "fastp/lowbiomass_se_run1.fastp.log",
                 "kraken2",
                 "kraken2/kraken2_test_kraken2_pathseq.reads_clade.tsv",
                 "kraken2/kraken2_test_kraken2_pathseq.reads_taxon.tsv",
                 "kraken2/kraken2_test_kraken2_pathseq.taxonomy.tsv",
                 "kraken2/test_kraken2_pathseq",
+                "kraken2/test_kraken2_pathseq/lowbiomass_se_test_kraken2_pathseq.classified.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_se_test_kraken2_pathseq.kraken2.classifiedreads.txt",
                 "kraken2/test_kraken2_pathseq/lowbiomass_se_test_kraken2_pathseq.kraken2.report.txt",
+                "kraken2/test_kraken2_pathseq/lowbiomass_se_test_kraken2_pathseq.unclassified.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq.classified_1.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq.classified_2.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq.kraken2.classifiedreads.txt",
                 "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq.kraken2.report.txt",
+                "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq.unclassified_1.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq.unclassified_2.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq_singletons.classified.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq_singletons.kraken2.classifiedreads.txt",
                 "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq_singletons.kraken2.report.txt",
+                "kraken2/test_kraken2_pathseq/lowbiomass_test_kraken2_pathseq_singletons.unclassified.fastq.gz",
                 "multiqc",
                 "pathseq_t2t",
                 "pathseq_t2t/prefilter",
@@ -91,10 +118,12 @@
                 "pathseq_t2t/t2tfilter/lowbiomass_se.t2tfilter.log",
                 "pipeline_info",
                 "read_counts",
+                "read_counts/read_counts.pdf",
+                "read_counts/read_counts.png",
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-11-12T14:19:29.861122",
+        "timestamp": "2026-11-17T12:30:23.439364",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -119,17 +148,32 @@
                     "sample",
                     "run_accession",
                     "raw_reads",
+                    "qc_reads",
+                    "hostremoval_reads",
+                    "profiler_input_reads",
+                    "falco_raw_reads",
+                    "shortread_qc_input_reads",
+                    "shortread_qc_reads",
+                    "pathseq_t2t_input_reads",
                     "grch38_unaligned_reads",
                     "prealigned_host_filter_reads",
                     "quality_complexity_filter_reads",
                     "host_kmer_filter_reads",
                     "deduplication_filter_reads",
                     "t2t_filter_reads",
+                    "falco_processed_reads",
                     "kraken2_test_kraken2_pathseq_reads"
                 ],
                 [
                     "lowbiomass",
                     "merged_WGS",
+                    "2220",
+                    "2220",
+                    "921",
+                    "921",
+                    "2220",
+                    "2220",
+                    "2220",
                     "2220",
                     "1780",
                     "1630",
@@ -137,11 +181,19 @@
                     "1353",
                     "1294",
                     "921",
+                    "921",
                     "921"
                 ],
                 [
                     "lowbiomass_se",
                     "run1",
+                    "840",
+                    "840",
+                    "369",
+                    "369",
+                    "840",
+                    "840",
+                    "840",
                     "840",
                     "640",
                     "640",
@@ -149,11 +201,12 @@
                     "554",
                     "540",
                     "369",
+                    "369",
                     "369"
                 ]
             ]
         ],
-        "timestamp": "2026-11-12T15:01:28.479625",
+        "timestamp": "2026-11-17T12:30:23.470755",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"

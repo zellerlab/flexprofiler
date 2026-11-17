@@ -3,8 +3,8 @@ process READ_COUNTS {
 
     conda "${moduleDir}/environment.yml"
     container "${workflow.containerEngine in ['singularity', 'apptainer'] && !task.ext.singularity_pull_docker_container
-        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/84/84e799e45917de0293324e738f0c0b7d1fd0f85ac0536d39d1161d7ef372fbaa/data'
-        : 'community.wave.seqera.io/library/pandas:2.2.1--2558de69969e58b9'}"
+        ? 'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/bd/bdb4d8c79866b73925b2a5b70b17fdfb04d873b078eb1f030c987c4ef932e035/data'
+        : 'community.wave.seqera.io/library/pandas_matplotlib:2ef9b2c7a64400ba'}"
 
     input:
     // named uniquely, as in the manifest
@@ -14,7 +14,8 @@ process READ_COUNTS {
 
     output:
     path "read_counts.tsv"    , emit: tsv
-    path "read_counts_mqc.tsv", emit: mqc
+    path "read_counts{_mqc.tsv,_plot_mqc.json}", emit: mqc
+    path "read_counts.{png,pdf}", emit: plot
     tuple val("${task.process}"), val('pandas'), eval('python -c "import pandas; print(pandas.__version__)"'), emit: versions_pandas, topic: versions
 
     script:
@@ -23,12 +24,17 @@ process READ_COUNTS {
         ${manifest} \\
         inputs \\
         read_counts.tsv \\
-        read_counts_mqc.tsv
+        read_counts_mqc.tsv \\
+        read_counts_plot_mqc.json \\
+        read_counts
     """
 
     stub:
     """
     touch read_counts.tsv
     touch read_counts_mqc.tsv
+    touch read_counts_plot_mqc.json
+    touch read_counts.png
+    touch read_counts.pdf
     """
 }

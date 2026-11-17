@@ -25,6 +25,12 @@
                         "git_sha": "7b3452a23773f687ededb4befd037920e5a51341",
                         "installed_by": ["modules"]
                     },
+                    "bracken/bracken": {
+                        "branch": "master",
+                        "git_sha": "7b3452a23773f687ededb4befd037920e5a51341",
+                        "installed_by": ["modules"],
+                        "patch": "modules/nf-core/bracken/bracken/bracken-bracken.diff"
+                    },
                     "bwa/index": {
                         "branch": "master",
                         "git_sha": "7b3452a23773f687ededb4befd037920e5a51341",
@@ -69,7 +75,8 @@
                     "kraken2/kraken2": {
                         "branch": "master",
                         "git_sha": "1b52056300c8c4758970226e57979dbc1903ee95",
-                        "installed_by": ["modules"]
+                        "installed_by": ["modules"],
+                        "patch": "modules/nf-core/kraken2/kraken2/kraken2-kraken2.diff"
                     },
                     "motus/downloaddb": {
                         "branch": "master",

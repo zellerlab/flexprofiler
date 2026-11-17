@@ -55,7 +55,7 @@
                     "samtools": 1.25
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.1.0"
+                    "zellerlab/flexprofiler": "v0.1.1"
                 }
             }
         ],
@@ -359,6 +359,7 @@
                 "multiqc/multiqc_data/multiqc_fastqc.txt",
                 "multiqc/multiqc_data/multiqc_fastqc_fastqc-1.txt",
                 "multiqc/multiqc_data/multiqc_general_stats.txt",
+                "multiqc/multiqc_data/multiqc_read_counts_plot.txt",
                 "multiqc/multiqc_data/multiqc_read_counts_table.txt",
                 "multiqc/multiqc_data/multiqc_samtools_stats.txt",
                 "multiqc/multiqc_data/multiqc_software_versions.txt",
@@ -369,6 +370,8 @@
                 "pipeline_info",
                 "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml",
                 "read_counts",
+                "read_counts/read_counts.pdf",
+                "read_counts/read_counts.png",
                 "read_counts/read_counts.tsv",
                 "samtools",
                 "samtools/stats",
@@ -378,7 +381,7 @@
                 "samtools/stats/2613_ERR5766181.stats"
             ]
         ],
-        "timestamp": "2026-11-12T13:46:14.078321",
+        "timestamp": "2026-11-17T11:57:01.425708",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -392,7 +395,14 @@
                     "run_accession",
                     "raw_reads",
                     "qc_reads",
+                    "hostremoval_reads",
+                    "profiler_input_reads",
+                    "falco_raw_reads",
+                    "shortread_qc_input_reads",
+                    "shortread_qc_reads",
+                    "hostremoval_retained_reads",
                     "hostremoval_retained_pairs",
+                    "falco_processed_reads",
                     "gqlib_GMGC10.human-gut.95nr.0.5.percent.prevalence_pairs"
                 ],
                 [
@@ -400,7 +410,14 @@
                     "merged_WGS",
                     "2528240",
                     "2513136",
+                    "2512456",
+                    "2512456",
+                    "2528240",
+                    "2528240",
+                    "2513136",
+                    "2512456",
                     "1256228",
+                    "2512456",
                     "60"
                 ],
                 [
@@ -409,6 +426,13 @@
                     "801532",
                     "800818",
                     "800776",
+                    "800776",
+                    "801532",
+                    "801532",
+                    "800818",
+                    "800776",
+                    "800776",
+                    "800776",
                     "20"
                 ],
                 [
@@ -416,15 +440,22 @@
                     "ERR5766181",
                     "1075088",
                     "1067004",
+                    "1066842",
+                    "1066842",
+                    "1075088",
+                    "1075088",
+                    "1067004",
+                    "1066842",
                     "533421",
+                    "1066842",
                     "20"
                 ]
             ]
         ],
-        "timestamp": "2026-10-28T18:01:41.483258",
+        "timestamp": "2026-11-17T11:57:01.439932",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
         }
     },
     "gqlib": {

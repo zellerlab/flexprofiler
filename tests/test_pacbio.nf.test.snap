@@ -17,10 +17,18 @@
                     "run_accession",
                     "raw_reads",
                     "qc_reads",
+                    "hostremoval_reads",
+                    "profiler_input_reads",
+                    "falco_raw_reads",
+                    "shortread_qc_input_reads",
+                    "shortread_qc_reads",
+                    "longread_qc_input_reads",
+                    "longread_qc_reads",
                     "primer_trimmed_reads",
                     "readthrough_trimmed_reads",
                     "merged_pairs",
                     "joined_pairs",
+                    "falco_processed_reads",
                     "idtaxa_test_16s_pairs"
                 ],
                 [
@@ -28,10 +36,18 @@
                     "clean_pe",
                     "966",
                     "966",
+                    "NA",
+                    "483",
+                    "966",
+                    "966",
+                    "966",
+                    "NA",
+                    "NA",
                     "14",
                     "15",
                     "345",
                     "138",
+                    "483",
                     "483"
                 ],
                 [
@@ -39,18 +55,26 @@
                     "pacbio_amplicon",
                     "434",
                     "389",
+                    "NA",
+                    "345",
+                    "434",
+                    "NA",
+                    "NA",
+                    "434",
+                    "389",
                     "345",
                     "NA",
                     "NA",
                     "NA",
+                    "345",
                     "345"
                 ]
             ]
         ],
-        "timestamp": "2026-11-02T18:57:03.111586188",
+        "timestamp": "2026-11-17T12:28:47.66658",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
         }
     },
     "software_versions": {
@@ -91,7 +115,7 @@
                     "vsearch": "2.32.0"
                 },
                 "Workflow": {
-                    "zellerlab/flexprofiler": "v0.1.0"
+                    "zellerlab/flexprofiler": "v0.1.1"
                 }
             }
         ],
@@ -205,6 +229,7 @@
                 "multiqc/multiqc_data/multiqc_fastqc.txt",
                 "multiqc/multiqc_data/multiqc_fastqc_fastqc-1.txt",
                 "multiqc/multiqc_data/multiqc_general_stats.txt",
+                "multiqc/multiqc_data/multiqc_read_counts_plot.txt",
                 "multiqc/multiqc_data/multiqc_read_counts_table.txt",
                 "multiqc/multiqc_data/multiqc_software_versions.txt",
                 "multiqc/multiqc_data/multiqc_sources.txt",
@@ -212,6 +237,8 @@
                 "pipeline_info",
                 "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml",
                 "read_counts",
+                "read_counts/read_counts.pdf",
+                "read_counts/read_counts.png",
                 "read_counts/read_counts.tsv",
                 "vsearch",
                 "vsearch/illumina_clean_pe.vsearch.log",
@@ -219,7 +246,7 @@
                 "vsearch_fastqfilter/pacbio_pacbio_amplicon.vsearch_fastqfilter.log"
             ]
         ],
-        "timestamp": "2026-11-12T15:19:12.152784",
+        "timestamp": "2026-11-17T12:28:15.687525",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -233,10 +260,18 @@
                     "run_accession",
                     "raw_reads",
                     "qc_reads",
+                    "hostremoval_reads",
+                    "profiler_input_reads",
+                    "falco_raw_reads",
+                    "shortread_qc_input_reads",
+                    "shortread_qc_reads",
+                    "longread_qc_input_reads",
+                    "longread_qc_reads",
                     "oriented_reads",
                     "primer_trimmed_reads",
                     "merged_pairs",
                     "joined_pairs",
+                    "falco_processed_reads",
                     "idtaxa_test_16s_pairs"
                 ],
                 [
@@ -245,9 +280,17 @@
                     "966",
                     "966",
                     "NA",
+                    "483",
+                    "966",
+                    "966",
+                    "966",
+                    "NA",
+                    "NA",
+                    "NA",
                     "NA",
                     "345",
                     "138",
+                    "483",
                     "483"
                 ],
                 [
@@ -255,18 +298,26 @@
                     "pacbio_amplicon",
                     "434",
                     "389",
+                    "NA",
+                    "345",
+                    "434",
+                    "NA",
+                    "NA",
+                    "434",
+                    "389",
                     "380",
                     "345",
                     "NA",
                     "NA",
+                    "345",
                     "345"
                 ]
             ]
         ],
-        "timestamp": "2026-11-02T18:52:11.390904417",
+        "timestamp": "2026-11-17T12:28:15.716139",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
         }
     },
     "genus_table": {

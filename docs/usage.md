@@ -289,8 +289,9 @@ If you have multiple taxa or sequences you wish to remove (e.g., the host genome
 #### PathSeq-T2T host filtering (low-biomass samples)
 
 For human samples with few microbial reads, such as tumour or blood whole-genome sequencing, a single alignment to the host genome leaves enough human reads to cause false microbial calls.
-`--pathseq_t2t` replaces the QC and host removal with the PathSeq-T2T host filtering of [Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015): alignment to GRCh38, GATK PathSeqFilterSpark (quality, complexity, host k-mer and duplicate filters), and alignment to T2T-CHM13.
-It needs the bwa indexes (or FASTAs) of GRCh38 and T2T-CHM13 (for RNA-seq, the STAR index of GRCh38 instead of its bwa index, with `--pathseq_t2t_grch38_aligner star`) and the GATK PathSeq host files, accepts only Illumina `WGS` FASTQ, and cannot be combined with `--perform_shortread_qc` or `--perform_shortread_hostremoval`, nor with `--run_cayman` or `--run_gqlib`.
+`--pathseq_t2t` replaces the host removal with the PathSeq-T2T host filtering of [Dohlman et al. 2026](https://doi.org/10.1016/j.cell.2026.04.015): alignment to GRCh38, GATK PathSeqFilterSpark (quality, complexity, host k-mer and duplicate filters), and alignment to T2T-CHM13.
+It needs the bwa indexes (or FASTAs) of GRCh38 and T2T-CHM13 (for RNA-seq, the STAR index of GRCh38 instead of its bwa index, with `--pathseq_t2t_grch38_aligner star`) and the GATK PathSeq host files, accepts only Illumina `WGS` FASTQ, and cannot be combined with `--perform_shortread_hostremoval`, `--shortread_qc_dedup` or `--shortread_qc_mergepairs`, nor with `--run_cayman` or `--run_gqlib`.
+With `--perform_shortread_qc` (set by the `zellerlab_pathseq_t2t` profiles), fastp trims the adapters before the filtering, without its quality filters, which PathSeqFilterSpark replaces.
 It runs after run merging, so that with `--perform_runmerging` the duplicates are removed over the whole sample.
 See [the PathSeq-T2T page](pathseq_t2t.md) for the references, the outputs, and the differences from the upstream implementation.
 
@@ -343,7 +344,7 @@ process {
 }
 ```
 
-The read counts give the reads after each step (`raw_reads`, `qc_reads`, `oriented_reads`, `primer_trimmed_reads`).
+The read counts give the reads after each step (`longread_qc_input_reads`, `longread_qc_reads`, `oriented_reads`, `primer_trimmed_reads`).
 
 :::warning
 The primer detection has some limitations, so check `amplicon_primers/primers.tsv` and the read counts (`primer_trimmed_reads`, `readthrough_trimmed_reads`):
@@ -387,6 +388,24 @@ The options of a database (`db_params`) default to `--report-minimizer-data`, wi
 With `--pathseq_t2t`, the reads left without their mate are classified too, on their own, and added to the pairs in the merged tables.
 With `--run_profile_standardisation`, the reports are merged into tables of reads per taxon (see [the output documentation](output.md#kraken2)).
 The PlusPF database needs about 80 GB of memory: `KRAKEN2_KRAKEN2` asks for 128 GB.
+
+##### Bracken
+
+The Kraken2 reports are re-estimated with [Bracken](https://ccb.jhu.edu/software/bracken/) by default when `--run_kraken2` is set (`--run_bracken` defaults to `--run_kraken2`); turn it off with `--run_bracken false`, e.g. for a database without the k-mer distributions.
+Bracken redistributes the reads that Kraken2 assigns above a rank (species by default) to the taxa of that rank, with the k-mer distribution of the read length in the directory of each `kraken2` database (`database<read_len>mers.kmer_distrib`), which needs no row of its own in the database sheet.
+The [prebuilt Kraken2 databases](https://benlangmead.github.io/aws-indexes/k2), such as PlusPF, include them for reads of 50 to 300 bp; for another database, make them with `bracken-build` (see [the database documentation](databases.md#kraken2)).
+The options are the defaults of Bracken (`-r 100 -l S -t 10`: read length, rank and minimum reads of a taxon before the re-estimation): set them with `ext.args` in a custom config, e.g. for 150 bp reads:
+
+```groovy
+process {
+    withName: BRACKEN_BRACKEN {
+        ext.args = '-r 150'
+    }
+}
+```
+
+A sample with no reads at the rank (none classified, or all its taxa below the threshold) has no taxa, instead of failing.
+With `--pathseq_t2t`, the reports of the reads left without their mate are re-estimated on their own too, and added to the pairs in the merged table.
 
 ##### mOTUs v4
 

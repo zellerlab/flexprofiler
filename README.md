@@ -32,7 +32,7 @@ We plan to contribute to **nf-core** modules or other components of more general
    - [mOTUs v4](https://motus-tool.org/)
    - [Cayman](https://github.com/zellerlab/cayman)
    - [gqlib](https://github.com/cschu/gqlib) (gene-based functional profiling)
-   - [Kraken2](https://ccb.jhu.edu/software/kraken2/)
+   - [Kraken2](https://ccb.jhu.edu/software/kraken2/), with [Bracken](https://ccb.jhu.edu/software/bracken/)
    - [IDTAXA](https://doi.org/10.1186/s40168-018-0521-5) (16S amplicons)
 6. Standardises and collates output tables (tool-specific)
 7. Reports the read counts of each sample after each step

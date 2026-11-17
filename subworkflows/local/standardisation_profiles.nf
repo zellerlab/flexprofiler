@@ -9,6 +9,7 @@ include { GQLIB_MERGE                  } from '../../modules/local/gqlib/merge/m
 include { GQLIB_MERGE  as CAYMAN_MERGE } from '../../modules/local/gqlib/merge/main'
 include { IDTAXA_MERGE                 } from '../../modules/local/idtaxa/merge/main'
 include { KRAKEN2_MERGE                } from '../../modules/local/kraken2/merge/main'
+include { BRACKEN_MERGE                } from '../../modules/local/bracken/merge/main'
 include { publishFiles                 } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow STANDARDISATION_PROFILES {
@@ -29,6 +30,7 @@ workflow STANDARDISATION_PROFILES {
         gqlib: meta.tool == 'gqlib'
         idtaxa: meta.tool == 'idtaxa'
         kraken2: meta.tool == 'kraken2'
+        bracken: meta.tool == 'bracken'
         unknown: true
     }
 
@@ -68,12 +70,16 @@ workflow STANDARDISATION_PROFILES {
     // and added to the single reads of the same sample
     KRAKEN2_MERGE(groupProfilesByEndedness(ch_input_profiles.kraken2))
 
+    // Bracken, merged separately for each Kraken2 database, as Kraken2
+    BRACKEN_MERGE(groupProfilesByEndedness(ch_input_profiles.bracken))
+
     ch_published = publishFiles(MOTUS4_MERGE.out.txt, 'motus4/merge', '*.txt')
         .mix(publishFiles(MOTUS3_MERGE.out.txt, 'motus3/merge', '*.txt'))
         .mix(publishFiles(CAYMAN_MERGE.out.txt, { meta -> "cayman/merge/${meta.db_name}/${meta.annot_db_name}" }, '*.txt.gz'))
         .mix(publishFiles(GQLIB_MERGE.out.txt, { meta -> "gqlib/merge/${meta.db_name}/${meta.annot_db_name}" }, '*.txt.gz'))
         .mix(publishFiles(IDTAXA_MERGE.out.tsv, { meta -> "idtaxa/merge/${meta.id}" }, '*.tsv'))
         .mix(publishFiles(KRAKEN2_MERGE.out.reads_clade.mix(KRAKEN2_MERGE.out.reads_taxon, KRAKEN2_MERGE.out.taxonomy), 'kraken2', '*.tsv'))
+        .mix(publishFiles(BRACKEN_MERGE.out.reads.mix(BRACKEN_MERGE.out.taxonomy), 'bracken', '*.tsv'))
 
     emit:
     mqc       = ch_multiqc_files
@@ -116,9 +122,9 @@ def groupProfiles(ch_profiles, groupTupleOptions = [:]) {
 /**
 * Group all profiles per reference database, the profiles of read pairs apart from those of single reads.
 *
-* For the profilers whose counts are not the same for a pair and for a single read (e.g. Kraken2, which counts a pair
-* as one fragment), and that are run apart on the pairs and on the reads left without their mate by --pathseq_t2t,
-* whose profiles are then added to those of the pairs of the same sample.
+* For the profilers whose counts are not the same for a pair and for a single read (e.g. Kraken2 and Bracken, which
+* count a pair as one fragment), and that are run apart on the pairs and on the reads left without their mate by
+* --pathseq_t2t, whose profiles are then added to those of the pairs of the same sample.
 *
 * @param ch_profiles A channel containing pairs of a meta map, where meta must contain the keys `db_name` and
 *   `single_end`, and the report of a given profiler.

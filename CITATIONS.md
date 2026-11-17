@@ -86,6 +86,10 @@ zellerlab/flexprofiler started as a fork of nf-core/taxprofiler.
 
   > Wood, D. E., Lu, J., & Langmead, B. (2019). Improved metagenomic analysis with Kraken 2. Genome Biology, 20(1), 257. https://doi.org/10.1186/s13059-019-1891-0
 
+- [Bracken](https://doi.org/10.7717/peerj-cs.104)
+
+  > Lu, J., Breitwieser, F. P., Thielen, P., & Salzberg, S. L. (2017). Bracken: estimating species abundance in metagenomics data. PeerJ Computer Science, 3, e104. https://doi.org/10.7717/peerj-cs.104
+
 - [mOTUs](https://doi.org/10.1186/s40168-022-01410-z)
 
   > Ruscheweyh, H.-J., Milanese, A., Paoli, L., Karcher, N., Clayssen, Q., Keller, M. I., Wirbel, J., Bork, P., Mende, D. R., Zeller, G., & Sunagawa, S. (2022). Cultivation-independent genomes greatly expand taxonomic-profiling capabilities of mOTUs across various environments. Microbiome, 10(1), 212. https://doi.org/10.1186/s40168-022-01410-z
