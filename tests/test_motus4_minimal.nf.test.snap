@@ -135,13 +135,15 @@
                 "pipeline_info",
                 "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml",
                 "read_counts",
+                "read_counts/read_counts.pdf",
+                "read_counts/read_counts.png",
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-10-28T19:32:49.028111",
+        "timestamp": "2026-11-17T12:27:43.072303",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
         }
     },
     "read_counts": {
@@ -152,39 +154,59 @@
                     "run_accession",
                     "raw_reads",
                     "qc_reads",
+                    "hostremoval_reads",
+                    "profiler_input_reads",
+                    "shortread_qc_input_reads",
+                    "shortread_qc_reads",
+                    "hostremoval_retained_reads",
                     "hostremoval_retained_pairs",
                     "motus4_db_mOTU_pairs"
                 ],
                 [
                     "2612",
                     "merged_WGS",
+                    "NA",
+                    "2513136",
+                    "2512456",
+                    "NA",
                     "2528240",
                     "2513136",
+                    "2512456",
                     "1256228",
                     "601"
                 ],
                 [
                     "2612_se",
                     "ERR5766180",
+                    "NA",
+                    "800818",
+                    "800776",
+                    "NA",
                     "801532",
                     "800818",
+                    "800776",
                     "800776",
                     "132"
                 ],
                 [
                     "2613",
                     "ERR5766181",
+                    "NA",
+                    "1067004",
+                    "1066842",
+                    "NA",
                     "1075088",
                     "1067004",
+                    "1066842",
                     "533421",
                     "310"
                 ]
             ]
         ],
-        "timestamp": "2026-10-28T18:35:23.816897",
+        "timestamp": "2026-11-17T12:27:43.07881",
         "meta": {
             "nf-test": "0.9.5",
-            "nextflow": "26.04.2"
+            "nextflow": "26.10.5"
         }
     }
 }

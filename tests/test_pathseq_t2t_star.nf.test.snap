@@ -1,9 +1,9 @@
 {
     "number_of_tasks": {
         "content": [
-            23
+            25
         ],
-        "timestamp": "2026-11-12T12:40:39.080028",
+        "timestamp": "2026-11-17T12:33:50.714332",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -17,6 +17,12 @@
                 },
                 "FALCO": {
                     "falco": "1.2.5"
+                },
+                "FASTP_PAIRED": {
+                    "fastp": "1.4.0"
+                },
+                "FASTP_SINGLE": {
+                    "fastp": "1.4.0"
                 },
                 "GUNZIP_GRCH38_FASTA": {
                     "gunzip": 1.13
@@ -59,7 +65,7 @@
                 }
             }
         ],
-        "timestamp": "2026-11-12T14:23:16.311517",
+        "timestamp": "2026-11-17T12:33:50.731647",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -74,14 +80,32 @@
                 "analysis_ready_fastqs/lowbiomass_rna.t2tfilt_unpaired.fastq.gz",
                 "analysis_ready_fastqs/lowbiomass_rna_se.t2tfilt_unpaired.fastq.gz",
                 "falco",
+                "fastp",
+                "fastp/lowbiomass_rna_run1.fastp.html",
+                "fastp/lowbiomass_rna_run1.fastp.json",
+                "fastp/lowbiomass_rna_run1.fastp.log",
+                "fastp/lowbiomass_rna_se_run1.fastp.html",
+                "fastp/lowbiomass_rna_se_run1.fastp.json",
+                "fastp/lowbiomass_rna_se_run1.fastp.log",
                 "kraken2",
                 "kraken2/kraken2_test_kraken2_pathseq.reads_clade.tsv",
                 "kraken2/kraken2_test_kraken2_pathseq.reads_taxon.tsv",
                 "kraken2/kraken2_test_kraken2_pathseq.taxonomy.tsv",
                 "kraken2/test_kraken2_pathseq",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_se_test_kraken2_pathseq.classified.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_se_test_kraken2_pathseq.kraken2.classifiedreads.txt",
                 "kraken2/test_kraken2_pathseq/lowbiomass_rna_se_test_kraken2_pathseq.kraken2.report.txt",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_se_test_kraken2_pathseq.unclassified.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq.classified_1.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq.classified_2.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq.kraken2.classifiedreads.txt",
                 "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq.kraken2.report.txt",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq.unclassified_1.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq.unclassified_2.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq_singletons.classified.fastq.gz",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq_singletons.kraken2.classifiedreads.txt",
                 "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq_singletons.kraken2.report.txt",
+                "kraken2/test_kraken2_pathseq/lowbiomass_rna_test_kraken2_pathseq_singletons.unclassified.fastq.gz",
                 "multiqc",
                 "pathseq_t2t",
                 "pathseq_t2t/grch38",
@@ -106,10 +130,12 @@
                 "pathseq_t2t/t2tfilter/lowbiomass_rna_se.t2tfilter.log",
                 "pipeline_info",
                 "read_counts",
+                "read_counts/read_counts.pdf",
+                "read_counts/read_counts.png",
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-11-12T14:23:16.296072",
+        "timestamp": "2026-11-17T12:33:50.72142",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -122,17 +148,32 @@
                     "sample",
                     "run_accession",
                     "raw_reads",
+                    "qc_reads",
+                    "hostremoval_reads",
+                    "profiler_input_reads",
+                    "falco_raw_reads",
+                    "shortread_qc_input_reads",
+                    "shortread_qc_reads",
+                    "pathseq_t2t_input_reads",
                     "grch38_unaligned_reads",
                     "prealigned_host_filter_reads",
                     "quality_complexity_filter_reads",
                     "host_kmer_filter_reads",
                     "deduplication_filter_reads",
                     "t2t_filter_reads",
+                    "falco_processed_reads",
                     "kraken2_test_kraken2_pathseq_reads"
                 ],
                 [
                     "lowbiomass_rna",
                     "run1",
+                    "1020",
+                    "1020",
+                    "460",
+                    "460",
+                    "1020",
+                    "1020",
+                    "1020",
                     "1020",
                     "700",
                     "700",
@@ -140,11 +181,19 @@
                     "634",
                     "628",
                     "460",
+                    "460",
                     "460"
                 ],
                 [
                     "lowbiomass_rna_se",
                     "run1",
+                    "510",
+                    "510",
+                    "224",
+                    "224",
+                    "510",
+                    "510",
+                    "510",
                     "510",
                     "350",
                     "350",
@@ -152,13 +201,14 @@
                     "311",
                     "311",
                     "224",
+                    "224",
                     "224"
                 ]
             ],
             "lowbiomass_rna.grch38.ReadsPerGene.out.tab:md5,56745f1df44b919a21c0a872a1b17875",
             "lowbiomass_rna_se.grch38.ReadsPerGene.out.tab:md5,56745f1df44b919a21c0a872a1b17875"
         ],
-        "timestamp": "2026-11-12T15:05:19.433842",
+        "timestamp": "2026-11-17T12:33:50.743948",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"

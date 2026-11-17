@@ -174,6 +174,7 @@
                 "multiqc/multiqc_data/multiqc_fastqc.txt",
                 "multiqc/multiqc_data/multiqc_fastqc_fastqc-1.txt",
                 "multiqc/multiqc_data/multiqc_general_stats.txt",
+                "multiqc/multiqc_data/multiqc_read_counts_plot.txt",
                 "multiqc/multiqc_data/multiqc_read_counts_table.txt",
                 "multiqc/multiqc_data/multiqc_software_versions.txt",
                 "multiqc/multiqc_data/multiqc_sources.txt",
@@ -181,10 +182,12 @@
                 "pipeline_info",
                 "pipeline_info/zellerlab_flexprofiler_software_mqc_versions.yml",
                 "read_counts",
+                "read_counts/read_counts.pdf",
+                "read_counts/read_counts.png",
                 "read_counts/read_counts.tsv"
             ]
         ],
-        "timestamp": "2026-11-12T14:12:37.080795",
+        "timestamp": "2026-11-17T12:34:30.512634",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
@@ -198,16 +201,28 @@
                     "run_accession",
                     "raw_reads",
                     "qc_reads",
+                    "hostremoval_reads",
+                    "profiler_input_reads",
+                    "falco_raw_reads",
+                    "shortread_qc_input_reads",
+                    "shortread_qc_reads",
                     "primer_trimmed_reads",
-                    "readthrough_trimmed_reads"
+                    "readthrough_trimmed_reads",
+                    "falco_processed_reads"
                 ],
                 [
                     "mixed_orientation",
                     "mixed_pe",
                     "1104",
                     "1104",
+                    "NA",
                     "1104",
-                    "153"
+                    "1104",
+                    "1104",
+                    "1104",
+                    "1104",
+                    "153",
+                    "1104"
                 ],
                 [
                     "no_primers",
@@ -215,27 +230,45 @@
                     "966",
                     "966",
                     "NA",
-                    "NA"
+                    "966",
+                    "966",
+                    "966",
+                    "966",
+                    "NA",
+                    "NA",
+                    "966"
                 ],
                 [
                     "primers_pe",
                     "primers_pe",
                     "1104",
                     "1104",
+                    "NA",
                     "1104",
-                    "153"
+                    "1104",
+                    "1104",
+                    "1104",
+                    "1104",
+                    "153",
+                    "1104"
                 ],
                 [
                     "primers_se",
                     "primers_se",
                     "552",
                     "552",
+                    "NA",
                     "552",
-                    "6"
+                    "552",
+                    "552",
+                    "552",
+                    "552",
+                    "6",
+                    "552"
                 ]
             ]
         ],
-        "timestamp": "2026-11-12T14:12:37.254088",
+        "timestamp": "2026-11-17T12:34:30.587278",
         "meta": {
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
