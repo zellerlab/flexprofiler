@@ -2,7 +2,8 @@
 
 ## Running the pipeline on the SHARK cluster
 To run zellerlab/flexprofiler on the SHARK cluster, copy [this example run file](../utils/run_shark.sh) and edit as required.
-You can then run it with `sbatch run_shark.sh`, or start an interactive shell on a worker (not login!) node and just execute it with `./run_shark.sh`
+You can then run it with `sbatch run_shark.sh`, or start an interactive shell on a worker (not login!) node and just execute it with `./run_shark.sh`.
+To stop a run, use `scancel --batch --signal=TERM <job id>`: Nextflow (which the script runs with `exec`) then cancels its tasks before exiting. A plain `scancel <job id>` kills Nextflow before it can, leaving its tasks (the `nf-*` jobs) running and queued: check afterwards with `squeue -u $USER` that none of them is left, and cancel those that are
 
 ## Params file
 To run the pipeline you need to set up a `params.yaml` file with the required parameters.

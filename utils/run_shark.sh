@@ -24,4 +24,9 @@ export NXF_VER="26.10.5"
 
 PIPELINE="zellerlab/flexprofiler"
 mkdir -p $WORKDIR
-nextflow run $PIPELINE -r $VERSION -resume -params-file $PARAMS -profile $PROFILE -w $WORKDIR
+# exec: Nextflow replaces this script as the main process of the job, so that stopping the job with
+#   scancel --batch --signal=TERM <job id>
+# sends the signal to Nextflow, which cancels its tasks (nf-* jobs) and closes its cache. Without exec (or with a plain
+# scancel), the script exits at once and Nextflow is killed before cancelling them: check afterwards that
+# `squeue -u $USER` shows no nf-* jobs of the run left
+exec nextflow run $PIPELINE -r $VERSION -resume -params-file $PARAMS -profile $PROFILE -w $WORKDIR
