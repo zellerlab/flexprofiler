@@ -36,7 +36,7 @@ RUN_DIR="/projects/pi-zeller/<YOUR USER NAME>/<PROJECT NAME>/flexprofiler"
 # and usually either zellerlab_metagenomics or zellerlab_amplicon
 PROFILE="zellerlab_alice,zellerlab_metagenomics"
 # be sure that this points to the pipeline version you want to run
-VERSION="0.1.0"
+VERSION="0.1.1"
 
 # you should not need to edit this
 SHARK_HOST="shark"

@@ -4,7 +4,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## Unreleased
+## v0.1.1 [17-11-2026]
 
 ### Added
 - Bracken (`--run_bracken`, with `--run_kraken2`, which it defaults to: Bracken runs with Kraken2 unless `--run_bracken false`): re-estimates each Kraken2 report at a rank (species by default) with the k-mer distribution in the directory of the kraken2 database (`database<read_len>mers.kmer_distrib`, included in the prebuilt databases such as PlusPF), with the defaults of Bracken (`-r 100 -l S -t 10`, changed with `ext.args` of `BRACKEN_BRACKEN`). The nf-core bracken/bracken module, patched (`modules/nf-core/bracken/bracken/bracken-bracken.diff`) so that a report with no reads at the rank gives a table with no taxa instead of failing, and that the errors of the bracken script, which exits with status 0, fail the task, and the local module `BRACKEN_MERGE` (`bin/bracken_merge.py`): with `--pathseq_t2t`, the reports of the singletons are re-estimated on their own and, as for Kraken2, the estimates are merged into a table of reads per taxon (`bracken/bracken_<db_name>.{reads,taxonomy}.tsv`, the pairs counted twice). `test_kraken2` runs it, with the k-mer distribution of its database made by `assets/test-data/scripts/make_bracken_wgs_db.sh`
