@@ -36,7 +36,9 @@ process KRAKEN2_KRAKEN2 {
     def classified_option = save_output_fastqs ? "--classified-out ${classified}" : ""
     def unclassified_option = save_output_fastqs ? "--unclassified-out ${unclassified}" : ""
     def readclassification_option = save_reads_assignment ? "--output ${prefix}.kraken2.classifiedreads.txt" : "--output /dev/null"
-    def compress_reads_command = save_output_fastqs ? "pigz -p $task.cpus *.fastq" : ""
+    // kraken2 writes no FASTQ when the input has no reads: create empty ones so that pigz does not fail
+    def output_fastqs = meta.single_end ? "${classified} ${unclassified}" : [classified, unclassified].collect { f -> [1, 2].collect { i -> f.replace('#', "_${i}") } }.flatten().join(' ')
+    def compress_reads_command = save_output_fastqs ? "touch ${output_fastqs}\n    pigz -p $task.cpus *.fastq" : ""
 
     """
     kraken2 \\
