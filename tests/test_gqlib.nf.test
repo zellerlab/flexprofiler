@@ -71,4 +71,42 @@ nextflow_pipeline {
             )
         }
     }
+
+    // a sample of which no read aligns or is classified: one read pair and one single-end read of random bases
+    test("test_gqlib_no_hits") {
+        when {
+            params {
+                outdir = "${outputDir}"
+                input  = "${baseDir}/assets/test-data/samplesheet_no_hits.csv"
+            }
+        }
+
+        then {
+            def samples     = [ 'no_hits_pe', 'no_hits_se' ]
+            def read_counts = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def count_of    = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
+            def prefix            = "GMGC10.human-gut.95nr.0.5.percent.prevalence_emapper_v2.1.7"
+            def gqlib_profile_dir = "${params.outdir}/gqlib/profile_genes/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7"
+            def gqlib_merge_dir   = "${params.outdir}/gqlib/merge/GMGC10.human-gut.95nr.0.5.percent.prevalence/emapper_v2.1.7"
+            def gqlib_merge       = { norm -> path( "${gqlib_merge_dir}/${prefix}.gene_counts.uniq_${norm}.txt.gz" ).linesGzip }
+            def norms             = [ 'raw', 'lnorm', 'scaled', 'rpkm' ]
+            assertAll(
+                { assert workflow.success },
+                // for each sample, the gene counts with only their header (gqlib_patch.py), and no table of the functional
+                // categories, as gqlib writes them only for the categories with counts
+                { assert getAllFilesFromDir( gqlib_profile_dir, include: [ '*.txt.gz' ] ).collect { file -> file.getName() }.sort() == samples.collectMany { sample -> [ 'aln_stats', 'gene_counts' ].collect { kind -> "${sample}_${prefix}.${kind}.txt.gz".toString() } } },
+                { assert samples.every { sample -> path( "${gqlib_profile_dir}/${sample}_${prefix}.gene_counts.txt.gz" ).linesGzip == [ "gene\tuniq_raw\tuniq_lnorm\tuniq_scaled\tuniq_rpkm" ] } },
+                { assert samples.every { sample -> path( "${gqlib_profile_dir}/${sample}_${prefix}.aln_stats.txt.gz" ).linesGzip == [ "Total\t0", "Passed\t0", "Seqid\t0", "Length\t0" ] } },
+                { assert samples.every { sample -> def log_text = path( "${gqlib_profile_dir}/${sample}_${prefix}.gqlib.log" ).text; log_text.contains( "No alignments present in stream." ) && log_text.contains( "Finished." ) } },
+                // only the merged tables of the gene counts, for each normalisation: the two samples, and no gene
+                { assert getAllFilesFromDir( gqlib_merge_dir, include: [ '*.txt.gz' ] ).collect { file -> file.getName() }.sort() == norms.collect { norm -> "${prefix}.gene_counts.uniq_${norm}.txt.gz".toString() }.sort() },
+                { assert norms.every { norm -> gqlib_merge( norm ) == [ "gene\tno_hits_pe\tno_hits_se" ] } },
+                // the reads reach the profiler (each mate counted), which counts none of them
+                { assert read_counts.collect { row -> row[0] } == [ 'sample' ] + samples },
+                { assert samples.collect { sample -> [ count_of( sample, 'hostremoval_retained_pairs' ), count_of( sample, 'profiler_input_reads' ), count_of( sample, 'gqlib_GMGC10.human-gut.95nr.0.5.percent.prevalence_pairs' ) ] } == [ [ '1', '2', '0' ], [ '1', '1', '0' ] ] },
+                { assert snapshot ( read_counts ).match( "read_counts_no_hits" ) },
+                { assert snapshot ( norms.collectEntries { norm -> [ norm, gqlib_merge( norm ) ] } ).match( "counts_no_hits" ) },
+            )
+        }
+    }
 }

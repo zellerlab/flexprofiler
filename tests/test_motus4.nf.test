@@ -52,4 +52,40 @@ nextflow_pipeline {
             )
         }
     }
+
+    // a sample of which no read aligns or is classified: one read pair and one single-end read of random bases
+    test("test_motus4_no_hits") {
+        when {
+            params {
+                outdir = "${outputDir}"
+                input  = "${baseDir}/assets/test-data/samplesheet_no_hits.csv"
+            }
+        }
+
+        then {
+            def samples     = [ 'no_hits_pe', 'no_hits_se' ]
+            def read_counts = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def count_of    = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
+            def motus4_dir    = "${params.outdir}/motus4/profile/db_mOTU"
+            def motus4_merge  = path( "${params.outdir}/motus4/merge/motus4_db_mOTU_combined_reports.txt" ).readLines()
+            def motus4_header = "#tool_version=4.0.4\tdatabase_version=4.0\tmin_alignment_length=75\tmin_mgcs=3\tcount_mode=INSERT_SCALED\tvalue_type=counts"
+            assertAll(
+                { assert workflow.success },
+                // a profile for each sample, with only its two header lines, as mOTUs v4 writes only the mOTUs with reads
+                { assert getAllFilesFromDir( motus4_dir, include: [ '*.out' ] ).collect { file -> file.getName() }.sort() == samples.collect { sample -> "${sample}_db_mOTU.out".toString() } },
+                { assert samples.every { sample -> path( "${motus4_dir}/${sample}_db_mOTU.out" ).readLines() == [ motus4_header, "mOTU\tTaxonomy\t${sample}_db_mOTU".toString() ] } },
+                // the empty table of marker gene cluster counts written by motus4_patch.py, and its log
+                { assert samples.every { sample -> path( "${motus4_dir}/${sample}_db_mOTU.out.mgc" ).readLines() == [ "#tool_version=4.0.4\tdatabase_version=4.0\tmin_alignment_length=75", "MGC\tINSERT_RAW\tINSERT_NORM\tINSERT_SCALED\tBASE_RAW\tBASE_NORM" ] } },
+                { assert samples.every { sample -> path( "${motus4_dir}/${sample}_db_mOTU.log" ).text.contains( "No read aligned to the marker genes: writing an empty profile" ) } },
+                { assert samples.every { sample -> path( "${motus4_dir}/${sample}_db_mOTU.log" ).text.contains( "Read 0 aligned inserts of which 0.0% are multimappers" ) } },
+                // the merged table: the header lines, with the two samples, and no mOTU
+                { assert motus4_merge == [ motus4_header, "mOTU\tTaxonomy\tno_hits_pe_db_mOTU\tno_hits_se_db_mOTU" ] },
+                // the reads reach the profiler (each mate counted), which counts none of them
+                { assert read_counts.collect { row -> row[0] } == [ 'sample' ] + samples },
+                { assert samples.collect { sample -> [ count_of( sample, 'hostremoval_retained_pairs' ), count_of( sample, 'profiler_input_reads' ), count_of( sample, 'motus4_db_mOTU_pairs' ) ] } == [ [ '1', '2', '0' ], [ '1', '1', '0' ] ] },
+                { assert snapshot ( read_counts ).match( "read_counts_no_hits" ) },
+                { assert snapshot ( motus4_merge ).match( "counts_no_hits" ) },
+            )
+        }
+    }
 }

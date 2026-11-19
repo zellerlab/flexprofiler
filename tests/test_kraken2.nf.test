@@ -69,4 +69,51 @@ nextflow_pipeline {
             )
         }
     }
+
+    // a sample of which no read aligns or is classified: one read pair and one single-end read of random bases
+    test("test_kraken2_no_hits") {
+        when {
+            params {
+                outdir = "${outputDir}"
+                input  = "${baseDir}/assets/test-data/samplesheet_no_hits.csv"
+            }
+        }
+
+        then {
+            def samples     = [ 'no_hits_pe', 'no_hits_se' ]
+            def read_counts = path( "${params.outdir}/read_counts/read_counts.tsv" ).readLines().collect { line -> line.split( "\t", -1 ) as List }
+            def count_of    = { sample, column -> read_counts.find { row -> row[0] == sample }[read_counts[0].indexOf( column )] }
+            def kraken2_dir   = "${params.outdir}/kraken2/test_kraken2_wgs"
+            def bracken_dir   = "${params.outdir}/bracken/test_kraken2_wgs"
+            def kraken2_table = { name -> path( "${params.outdir}/kraken2/kraken2_test_kraken2_wgs.${name}.tsv" ).readLines() }
+            def bracken_table = { name -> path( "${params.outdir}/bracken/bracken_test_kraken2_wgs.${name}.tsv" ).readLines() }
+            assertAll(
+                { assert workflow.success },
+                // Kraken2: for each sample, a report with only the unclassified fragment (the pair is one fragment)
+                { assert samples.every { sample -> path( "${kraken2_dir}/${sample}_test_kraken2_wgs.kraken2.report.txt" ).readLines() == [ "100.00\t1\t1\t0\t0\tU\t0\tunclassified" ] } },
+                // the merged tables: all the reads unclassified (taxid 0), the pair counted twice
+                { assert [ "reads_clade", "reads_taxon" ].every { name -> kraken2_table( name ) == [ "taxid\tno_hits_pe\tno_hits_se", "0\t2\t1" ] } },
+                { assert kraken2_table( "taxonomy" ) == [ "taxid\tname\trank\tlineage", "0\tunclassified\tU\t0" ] },
+                // Bracken: no reads at the species rank, so for each sample a table with only its header and an empty
+                // report, and merged tables with the two samples and no taxon
+                { assert samples.every { sample -> path( "${bracken_dir}/${sample}_test_kraken2_wgs.bracken.tsv" ).readLines() == [ "name\ttaxonomy_id\ttaxonomy_lvl\tkraken_assigned_reads\tadded_reads\tnew_est_reads\tfraction_total_reads" ] } },
+                { assert samples.every { sample -> path( "${bracken_dir}/${sample}_test_kraken2_wgs.bracken.kraken2.report_bracken.txt" ).text == "" } },
+                { assert bracken_table( "reads" ) == [ "taxid\tno_hits_pe\tno_hits_se" ] },
+                { assert bracken_table( "taxonomy" ) == [ "taxid\tname\trank" ] },
+                // the reads reach the profiler (each mate counted), which counts none of them
+                { assert read_counts.collect { row -> row[0] } == [ 'sample' ] + samples },
+                { assert samples.collect { sample -> [ count_of( sample, 'hostremoval_retained_pairs' ), count_of( sample, 'profiler_input_reads' ), count_of( sample, 'kraken2_test_kraken2_wgs_reads' ) ] } == [ [ '1', '2', '0' ], [ '1', '1', '0' ] ] },
+                { assert snapshot ( read_counts ).match( "read_counts_no_hits" ) },
+                { assert snapshot (
+                    kraken2_table( "reads_clade" ),
+                    kraken2_table( "reads_taxon" ),
+                    kraken2_table( "taxonomy" ),
+                ).match( "kraken2_tables_no_hits" ) },
+                { assert snapshot (
+                    bracken_table( "reads" ),
+                    bracken_table( "taxonomy" ),
+                ).match( "bracken_tables_no_hits" ) },
+            )
+        }
+    }
 }

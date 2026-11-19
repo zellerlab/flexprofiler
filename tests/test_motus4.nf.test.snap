@@ -317,5 +317,74 @@
             "nf-test": "0.9.5",
             "nextflow": "26.10.5"
         }
+    },
+    "read_counts_no_hits": {
+        "content": [
+            [
+                [
+                    "sample",
+                    "run_accession",
+                    "raw_reads",
+                    "qc_reads",
+                    "hostremoval_reads",
+                    "profiler_input_reads",
+                    "falco_raw_reads",
+                    "shortread_qc_input_reads",
+                    "shortread_qc_reads",
+                    "hostremoval_retained_reads",
+                    "hostremoval_retained_pairs",
+                    "falco_processed_reads",
+                    "motus4_db_mOTU_pairs"
+                ],
+                [
+                    "no_hits_pe",
+                    "random_pe",
+                    "2",
+                    "2",
+                    "2",
+                    "2",
+                    "2",
+                    "2",
+                    "2",
+                    "2",
+                    "1",
+                    "2",
+                    "0"
+                ],
+                [
+                    "no_hits_se",
+                    "random_se",
+                    "1",
+                    "1",
+                    "1",
+                    "1",
+                    "1",
+                    "1",
+                    "1",
+                    "1",
+                    "1",
+                    "1",
+                    "0"
+                ]
+            ]
+        ],
+        "timestamp": "2026-11-19T14:00:00.000000",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
+        }
+    },
+    "counts_no_hits": {
+        "content": [
+            [
+                "#tool_version=4.0.4\tdatabase_version=4.0\tmin_alignment_length=75\tmin_mgcs=3\tcount_mode=INSERT_SCALED\tvalue_type=counts",
+                "mOTU\tTaxonomy\tno_hits_pe_db_mOTU\tno_hits_se_db_mOTU"
+            ]
+        ],
+        "timestamp": "2026-11-19T14:00:00.000000",
+        "meta": {
+            "nf-test": "0.9.5",
+            "nextflow": "26.10.5"
+        }
     }
 }
