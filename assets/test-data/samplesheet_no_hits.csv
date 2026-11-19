@@ -1,0 +1,3 @@
+sample,run_accession,instrument_platform,fastq_1,fastq_2
+no_hits_pe,random_pe,ILLUMINA,../../../assets/test-data/data/fastq/no_hits/no_hits_1.fastq.gz,../../../assets/test-data/data/fastq/no_hits/no_hits_2.fastq.gz
+no_hits_se,random_se,ILLUMINA,../../../assets/test-data/data/fastq/no_hits/no_hits_se.fastq.gz,

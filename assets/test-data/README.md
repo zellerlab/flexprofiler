@@ -122,6 +122,14 @@ python3 scripts/make_adapter_reads.py data/hostremoval/NC_012920.1.fna.gz data/f
 
 `data/fastq/adapters/adapters.fasta`, written by hand, has the TruSeq R1 and R2 adapters and the Nextera adapter, for the test with an adapter list (`--shortread_qc_adapterlist`).
 
+### Reads matching no database
+
+To test that each profiler handles a sample of which no read aligns or is classified (the `test_<tool>_no_hits` test of each profiler test: mOTUs v4 and v3, cayman, gqlib, Kraken2 and Bracken, IDTAXA), `data/fastq/no_hits/` has reads of random bases, of good quality and without adapters, so that they pass the QC and the host removal and reach the profilers: `no_hits_{1,2}.fastq.gz`, one 2x150 pair (both mates named `random_pair`), and `no_hits_se.fastq.gz`, one 150 bp read. They are used as a paired-end and a single-end sample in `samplesheet_no_hits.csv` (shotgun) and `samplesheet_amplicon_no_hits.csv` (AMPLICON, IDTAXA test; PIMENTO finds no primer in them, so they are not trimmed, and the pair does not overlap, so it is joined). They were made with [`scripts/make_no_hits_reads.py`](scripts/make_no_hits_reads.py) (Python 3 standard library only):
+
+```bash
+python3 scripts/make_no_hits_reads.py data/fastq/no_hits
+```
+
 ### 16S amplicon reads and IDtaxa training set
 
 The amplicon tests (`tests/test_primer_removal.nf.test`, `tests/test_idtaxa.nf.test`, `tests/test_pacbio.nf.test`) use 16S V3-V4 reads (and full-length PacBio reads) simulated from a small set of 16S reference sequences, and an IDtaxa training set trained on the same sequences, so that the genus of each read is known.

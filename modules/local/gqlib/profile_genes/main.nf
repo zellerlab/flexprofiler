@@ -23,8 +23,10 @@ process GQLIB_PROFILE_GENES {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
     """
-    # alignment is done separately by BWA_MEM, gqlib takes the alignment file as input
-    python -m gqlib \\
+    # alignment is done separately by BWA_MEM, gqlib takes the alignment file as input. gqlib_patch.py runs gqlib,
+    # writing the gene counts also when no alignment passes the filters (the tables of the functional categories are
+    # written only for the categories with counts)
+    gqlib_patch.py \\
         --mode genes \\
         --bam $bam \\
         --db $annot \\

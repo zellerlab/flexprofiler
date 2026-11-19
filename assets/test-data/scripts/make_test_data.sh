@@ -6,7 +6,7 @@
 # The steps run in the order below, whatever the order given. Without steps, the `local` group runs.
 #
 # groups:
-#   local      suffixed unordered mixed hostremoval pathseqt2t adapters amplicon idtaxa
+#   local      suffixed unordered mixed hostremoval pathseqt2t adapters nohits amplicon idtaxa
 #              made only from files in the repo (needs python3, Rscript with DECIPHER for idtaxa, and docker for pathseqt2t)
 #   download   hostref ref16s
 #              downloaded from NCBI, which may change over time and then change the files made from them
@@ -22,6 +22,7 @@
 #   hostremoval  data/fastq/hostremoval/ (from hostref)
 #   pathseqt2t   data/pathseq_t2t/, data/fastq/pathseq_t2t/ and data/kraken2_pathseq/ (from hostref)
 #   adapters     data/fastq/adapters/adapters_*.fastq.gz (from hostref)
+#   nohits       data/fastq/no_hits/
 #   ref16s       data/idtaxa/reference_16s.fasta.gz
 #   amplicon     data/fastq/amplicon/ (from ref16s)
 #   idtaxa       data/idtaxa/trainingset.RData (from ref16s)
@@ -42,8 +43,8 @@
 # regenerated, nor are the hand-written files (data/fastq/adapters/adapters.fasta, data/gmgc10/genes.txt).
 set -euo pipefail
 
-STEPS=(suffixed unordered mixed hostref hostremoval pathseqt2t adapters ref16s amplicon idtaxa motus4 motus3 gmgc10 cayman gqlib)
-LOCAL=(suffixed unordered mixed hostremoval pathseqt2t adapters amplicon idtaxa)
+STEPS=(suffixed unordered mixed hostref hostremoval pathseqt2t adapters nohits ref16s amplicon idtaxa motus4 motus3 gmgc10 cayman gqlib)
+LOCAL=(suffixed unordered mixed hostremoval pathseqt2t adapters nohits amplicon idtaxa)
 DOWNLOAD=(hostref ref16s)
 DATABASES=(motus4 motus3 gmgc10 cayman gqlib)
 
@@ -153,6 +154,10 @@ step_pathseqt2t() {
 
 step_adapters() {
     python3 scripts/make_adapter_reads.py data/hostremoval/NC_012920.1.fna.gz data/fastq/adapters
+}
+
+step_nohits() {
+    python3 scripts/make_no_hits_reads.py data/fastq/no_hits
 }
 
 step_ref16s() {

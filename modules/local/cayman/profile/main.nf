@@ -24,8 +24,9 @@ process CAYMAN_PROFILE {
     """
     # `cayman profile` runs bwa mem itself, then the gqlib domain profiler: the alignment is done
     # separately by BWA_ALIGN, and the gqlib domain profiler is run directly on it, as cayman 0.13.0
-    # does. The cayman annotation csv is in the hmmer format.
-    python -m gqlib \\
+    # does. The cayman annotation csv is in the hmmer format. gqlib_patch.py runs gqlib, writing the gene counts also
+    # when no alignment passes the filters
+    gqlib_patch.py \\
         --mode domain \\
         --db_format hmmer \\
         --bam $bam \\
@@ -35,10 +36,18 @@ process CAYMAN_PROFILE {
         &> ${prefix}.cayman.log
 
     # gqlib names the category of the annotation `feature`, cayman names it `cazy`, and cayman does
-    # not report the `category` row (the counts of the reads assigned to any CAZy domain)
-    gzip -cd ${prefix}.feature.txt.gz \\
-        | awk -F '\\t' '\$1 != "category"' \\
-        | gzip -n > ${prefix}.cazy.txt.gz
+    # not report the `category` row (the counts of the reads assigned to any CAZy domain). gqlib writes
+    # no table for the category without counts (no read aligned, or none to a CAZy domain): the table
+    # then has only its header, the columns of the gene counts
+    if [ -e ${prefix}.feature.txt.gz ]; then
+        gzip -cd ${prefix}.feature.txt.gz \\
+            | awk -F '\\t' '\$1 != "category"' \\
+            | gzip -n > ${prefix}.cazy.txt.gz
+    else
+        gzip -cd ${prefix}.gene_counts.txt.gz \\
+            | awk -F '\\t' -v OFS='\\t' 'NR == 1 { \$1 = "feature"; print }' \\
+            | gzip -n > ${prefix}.cazy.txt.gz
+    fi
     """
 
     stub:
