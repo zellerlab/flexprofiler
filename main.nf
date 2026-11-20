@@ -14,8 +14,10 @@
 */
 
 include { FLEXPROFILER            } from './workflows/flexprofiler'
+include { AGGREGATE_PUBLISHED     } from './subworkflows/local/aggregate_published'
 include { PIPELINE_INITIALISATION } from './subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
 include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
+include { largeScalePlan          } from './subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     PARAMETERS
@@ -29,6 +31,7 @@ include { PIPELINE_COMPLETION     } from './subworkflows/local/utils_zellerlab_f
 // a boolean or the name of a parameter
 params {
     input:                           String?
+    processing_batch:                String?
     skip_multiqc:                    Boolean
     multiqc_config:                  String?
     multiqc_title:                   String?
@@ -113,6 +116,8 @@ params {
     idtaxa_threshold:                Integer
     idtaxa_ranks:                    String?
     run_profile_standardisation:     Boolean
+    large_scale:                     Boolean
+    large_scale_cleanup:             Boolean
 }
 
 /*
@@ -123,6 +128,15 @@ params {
 
 workflow {
     main:
+    //
+    // --large_scale: which processing batch this run processes, or whether it makes the tables of all the samples, and
+    // the task directories of the batches done deleted (largeScalePlan). Not for --help and --version
+    //
+    def large_scale_plan = params.large_scale && !params.help && !params.help_full && !params.version
+        ? largeScalePlan(params.input, params.processing_batch)
+        : null
+    def processing_batch = large_scale_plan ? large_scale_plan.batch : params.processing_batch
+
     //
     // SUBWORKFLOW: Run initialisation tasks
     //
@@ -137,6 +151,7 @@ workflow {
         params.help_full,
         params.show_hidden,
         params.databases,
+        processing_batch,
     )
 
     //
@@ -145,6 +160,7 @@ workflow {
     ZELLERLAB_FLEXPROFILER(
         PIPELINE_INITIALISATION.out.samplesheet,
         PIPELINE_INITIALISATION.out.databases,
+        large_scale_plan ? large_scale_plan.aggregate : false,
     )
     //
     // SUBWORKFLOW: Run completion tasks
@@ -156,6 +172,7 @@ workflow {
         params.outdir,
         params.monochrome_logs,
         ZELLERLAB_FLEXPROFILER.out.multiqc_report,
+        large_scale_plan,
     )
 
     // the files to publish, as [ file, target ] (publishFiles), see the output block below
@@ -200,19 +217,38 @@ workflow ZELLERLAB_FLEXPROFILER {
     take:
     samplesheet // channel: samplesheet read in from --input
     databases   // channel: databases in from --databases
+    aggregate   // boolean: --large_scale with all the batches done: make the tables of all the samples
 
     main:
 
-    //
-    // WORKFLOW: Run pipeline
-    //
-    FLEXPROFILER(
-        samplesheet,
-        databases,
-    )
+    if (aggregate) {
+        //
+        // WORKFLOW: no processing, only the tables of all the samples (profiles and read counts), made from the
+        // per-sample outputs published by the earlier --large_scale runs, one per processing batch
+        //
+        AGGREGATE_PUBLISHED(
+            samplesheet,
+            databases,
+        )
+        ch_multiqc_report          = AGGREGATE_PUBLISHED.out.multiqc_report
+        ch_published               = AGGREGATE_PUBLISHED.out.published
+        ch_amplicon_analysis_ready = channel.empty()
+    }
+    else {
+        //
+        // WORKFLOW: Run pipeline
+        //
+        FLEXPROFILER(
+            samplesheet,
+            databases,
+        )
+        ch_multiqc_report          = FLEXPROFILER.out.multiqc_report
+        ch_published               = FLEXPROFILER.out.published
+        ch_amplicon_analysis_ready = FLEXPROFILER.out.amplicon_analysis_ready
+    }
 
     emit:
-    multiqc_report          = FLEXPROFILER.out.multiqc_report          // channel: /path/to/multiqc_report.html
-    published               = FLEXPROFILER.out.published               // channel: [ file, target ], the files to publish
-    amplicon_analysis_ready = FLEXPROFILER.out.amplicon_analysis_ready // channel: [ file, target ], which can be input files
+    multiqc_report          = ch_multiqc_report          // channel: /path/to/multiqc_report.html
+    published               = ch_published               // channel: [ file, target ], the files to publish
+    amplicon_analysis_ready = ch_amplicon_analysis_ready // channel: [ file, target ], which can be input files
 }

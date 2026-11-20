@@ -23,6 +23,12 @@
                     "help_text": "You will need to create a design file with information about the samples and libraries/runs you want to running in your pipeline run. Use this parameter to specify its location. It has to be a comma-separated file with 6 columns, and a header row. See [usage docs](docs/usage.md).",
                     "fa_icon": "fas fa-file-csv"
                 },
+                "processing_batch": {
+                    "type": "string",
+                    "fa_icon": "fas fa-layer-group",
+                    "description": "Process only the runs of the samplesheet with this processing_batch",
+                    "help_text": "With --large_scale, the batch to process, instead of the next one not done; without it, the runs of the batch are processed as a samplesheet of their own. The batch of each run is given in the optional processing_batch column of the samplesheet; all the runs of a sample must be in the same batch. The column is not part of the meta map of the runs, so adding it to a samplesheet does not change what -resume reuses."
+                },
                 "databases": {
                     "type": "string",
                     "mimetype": "text/csv",
@@ -497,6 +503,19 @@
                     "fa_icon": "fas fa-toggle-on",
                     "description": "Turn on standardisation of taxon tables across profilers",
                     "help_text": "Turns on standardisation of output OTU tables across all tools."
+                },
+                "large_scale": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-layer-group",
+                    "description": "Process a large samplesheet one processing_batch at a time, one batch per run, deleting the task directories of each batch once it is done, and make the tables of all the samples after the last batch",
+                    "help_text": "For datasets too large for the work directory to hold all their intermediate files. Each run with --large_scale (profile zellerlab_large_scale) processes the next batch of the samplesheet that is not done (the processing_batch column, which every run must have; the batch with the fewest runs first), or --processing_batch if given. It publishes, per sample, the profiles and the manifests of the profiles and read count logs (`aggregation_inputs/`), but no table across the samples. A batch is done when a run processing it succeeds (`aggregation_inputs/batches/<batch>.json`, with its samples: it is processed again if they change). At its start, a run deletes the task directories of the batches done (--large_scale_cleanup), from the traces of the runs that processed them (cached tasks too). When all the batches are done, the run makes the merged profiles and the read counts table of all the samples from the published outputs, processing none (`aggregation_inputs/aggregated.json` when done). Needs --run_profile_standardisation (set by the profile). Run the same command, with -resume and the same --outdir (an error otherwise), until it reports that nothing is left to do."
+                },
+                "large_scale_cleanup": {
+                    "type": "boolean",
+                    "default": true,
+                    "fa_icon": "fas fa-broom",
+                    "description": "With --large_scale, delete the task directories of the processing batches done",
+                    "help_text": "At the start of each --large_scale run, the task directories of the batches done (listed in the traces of the runs that processed them, with the cached tasks: the profile zellerlab_large_scale adds the work directory to the trace) are deleted, once per batch, so that the work directory holds the intermediate files of one batch at most. The UNTAR tasks, shared by the batches, are kept. Turn it off to keep them, e.g. to check the intermediate files."
                 }
             },
             "fa_icon": "fas fa-chart-line"

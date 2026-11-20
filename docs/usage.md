@@ -97,6 +97,7 @@ This will allow classification optimisation for each data type, and make MultiQC
 | `library_strategy`    | `WGS` (shotgun metagenomics) or `AMPLICON` (e.g. 16S), from the EBI ENA [controlled vocabulary](https://www.ebi.ac.uk/ena/portal/api/controlledVocab?field=library_strategy). Defaults to `WGS` when empty or when the column is missing [optional]. |
 | `fastq_1`             | Path or URL to sequencing reads or for Illumina R1 sequencing reads in FASTQ format. Must be gzipped [required].                                                                       |
 | `fastq_2`             | Path or URL to Illumina R2 sequencing reads in FASTQ format. Must be gzipped. Can be left empty if single end data.                                                                     |
+| `processing_batch`    | The batch of the run, for large datasets processed one batch at a time with `--large_scale` (see [Large datasets](zellerlab.md#large-datasets-processed-in-batches)), or a batch processed alone with `--processing_batch <batch>`. All the runs of a sample must be in the same batch. Ignored otherwise [optional]. |
 
 An [example samplesheet](../assets/samplesheet.csv) has been provided with the pipeline.
 

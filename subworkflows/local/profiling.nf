@@ -15,6 +15,7 @@ include { BRACKEN_BRACKEN               } from '../../modules/nf-core/bracken/br
 include { toolLibraryStrategy           } from './utils_zellerlab_flexprofiler_pipeline'
 include { publishFiles                  } from './utils_zellerlab_flexprofiler_pipeline'
 include { runBracken                    } from './utils_zellerlab_flexprofiler_pipeline'
+include { profileDirectory              } from './utils_zellerlab_flexprofiler_pipeline'
 
 workflow PROFILING {
     take:
@@ -155,7 +156,7 @@ workflow PROFILING {
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS4_PROFILE.out.log)
         ch_read_count_logs = ch_read_count_logs.mix(MOTUS4_PROFILE.out.log)
         ch_published = ch_published.mix(
-            publishFiles(MOTUS4_PROFILE.out.out.mix(MOTUS4_PROFILE.out.log, MOTUS4_PROFILE.out.mgc), { meta -> "motus4/profile/${meta.db_name}" }, '*.{out,log,mgc}')
+            publishFiles(MOTUS4_PROFILE.out.out.mix(MOTUS4_PROFILE.out.log, MOTUS4_PROFILE.out.mgc), { meta -> profileDirectory(meta) }, '*.{out,log,mgc}')
         )
     }
 
@@ -171,7 +172,7 @@ workflow PROFILING {
         ch_multiqc_files = ch_multiqc_files.mix(MOTUS3_PROFILE.out.log)
         ch_read_count_logs = ch_read_count_logs.mix(MOTUS3_PROFILE.out.log)
         ch_published = ch_published.mix(
-            publishFiles(MOTUS3_PROFILE.out.out.mix(MOTUS3_PROFILE.out.log), { meta -> "motus3/profile/${meta.db_name}" }, '*.{out,log}')
+            publishFiles(MOTUS3_PROFILE.out.out.mix(MOTUS3_PROFILE.out.log), { meta -> profileDirectory(meta) }, '*.{out,log}')
         )
     }
 
@@ -214,7 +215,7 @@ workflow PROFILING {
         ch_published = ch_published.mix(
             publishFiles(
                 CAYMAN_PROFILE.out.out.mix(CAYMAN_PROFILE.out.aln_stats, CAYMAN_PROFILE.out.gene_counts, CAYMAN_PROFILE.out.log),
-                { meta -> "cayman/profile/${meta.db_name}/${meta.annot_db_name}" },
+                { meta -> profileDirectory(meta) },
                 '*.{cazy.txt.gz,aln_stats.txt.gz,gene_counts.txt.gz,log}',
             )
         )
@@ -236,14 +237,14 @@ workflow PROFILING {
             .mix(
                 publishFiles(
                     GQLIB_PROFILE_GENES.out.profiles.mix(GQLIB_PROFILE_GENES.out.log),
-                    { meta -> "gqlib/profile_genes/${meta.db_name}/${meta.annot_db_name}" },
+                    { meta -> profileDirectory(meta) },
                     '*.{txt.gz,log}',
                 )
             )
             .mix(
                 publishFiles(
                     GQLIB_PROFILE_GENES.out.aln_stats,
-                    { meta -> "gqlib/profile_genes/${meta.db_name}/${meta.annot_db_name}" },
+                    { meta -> profileDirectory(meta) },
                     '*.aln_stats.txt.gz',
                 ).map { file_path, target -> [file_path, "${target}${file_path.name}"] }
             )
@@ -260,7 +261,7 @@ workflow PROFILING {
         ch_raw_profiles = ch_raw_profiles.mix(IDTAXA_CLASSIFY.out.profile)
         ch_read_count_logs = ch_read_count_logs.mix(IDTAXA_CLASSIFY.out.log)
         ch_published = ch_published.mix(
-            publishFiles(IDTAXA_CLASSIFY.out.profile.mix(IDTAXA_CLASSIFY.out.log), { meta -> "idtaxa/${meta.db_name}" }, '*.{tsv,tsv.gz,log}')
+            publishFiles(IDTAXA_CLASSIFY.out.profile.mix(IDTAXA_CLASSIFY.out.log), { meta -> profileDirectory(meta) }, '*.{tsv,tsv.gz,log}')
         )
     }
 
@@ -287,14 +288,14 @@ workflow PROFILING {
             .mix(
                 publishFiles(
                     KRAKEN2_KRAKEN2.out.report.mix(KRAKEN2_KRAKEN2.out.classified_reads_assignment),
-                    { meta -> "kraken2/${meta.db_name}" },
+                    { meta -> profileDirectory(meta) },
                     '*.txt',
                 )
             )
             .mix(
                 publishFiles(
                     KRAKEN2_KRAKEN2.out.classified_reads_fastq.mix(KRAKEN2_KRAKEN2.out.unclassified_reads_fastq),
-                    { meta -> "kraken2/${meta.db_name}" },
+                    { meta -> profileDirectory(meta) },
                     '*.fastq.gz',
                 )
             )
@@ -324,7 +325,7 @@ workflow PROFILING {
             ch_published = ch_published.mix(
                 publishFiles(
                     BRACKEN_BRACKEN.out.reports.mix(BRACKEN_BRACKEN.out.txt),
-                    { meta -> "bracken/${meta.db_name}" },
+                    { meta -> profileDirectory(meta) },
                     '*.bracken.{tsv,kraken2.report_bracken.txt}',
                 )
             )

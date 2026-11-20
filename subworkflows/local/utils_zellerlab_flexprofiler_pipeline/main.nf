@@ -35,6 +35,7 @@ workflow PIPELINE_INITIALISATION {
     help_full         // boolean: Show the full help message
     show_hidden       // boolean: Show hidden parameters in the help message
     databases         //  string: Path to databases
+    processing_batch  //  string: the processing_batch of the samplesheet to process (all the runs if null): --processing_batch, or the batch chosen by --large_scale (largeScalePlan)
 
     main:
 
@@ -96,7 +97,9 @@ workflow PIPELINE_INITIALISATION {
     // Validate and create channel from input file provided through params.input
     //
 
-    def samplesheet_rows = samplesheetToList(input, "assets/schema_input.json")
+    // only the runs of the processing batch, if given; the processing_batch column is then dropped, so that it is not
+    // in the meta map (which would change the hash of every task, and so what -resume reuses)
+    def samplesheet_rows = selectProcessingBatch(samplesheetToList(input, "assets/schema_input.json"), processing_batch)
     validatePacbio(samplesheet_rows)
     if (params.perform_runmerging) {
         validateRunMerging(samplesheet_rows)
@@ -180,6 +183,7 @@ workflow PIPELINE_COMPLETION {
     outdir          //    path: Path to output directory where results will be published
     monochrome_logs // boolean: Disable ANSI colour codes in log output
     multiqc_report  //  string: Path to MultiQC report
+    large_scale_plan //    map: the plan of a --large_scale run (largeScalePlan), null otherwise
 
     main:
     summary_params = paramsSummaryMap(parameters_schema: "nextflow_schema.json")
@@ -202,6 +206,11 @@ workflow PIPELINE_COMPLETION {
         }
 
         completionSummary(monochrome_logs)
+
+        // --large_scale: the batch processed, or the aggregation, is recorded as done only if the run succeeded
+        if (large_scale_plan && workflow.success) {
+            recordLargeScaleRun(large_scale_plan)
+        }
     }
 
     workflow.onError {
@@ -232,6 +241,354 @@ def publishFiles(ch, directory, pattern = '*') {
             .findAll { item -> item instanceof Path && matcher.matches(item.fileName) }
             .collect { file_path -> [file_path, "${target}/"] }
     }
+}
+
+//
+// The directory, under the output directory, where PROFILING publishes the profiles of a profiler (meta.tool), as
+// recorded by the profile manifests of --large_scale
+//
+def profileDirectory(meta) {
+    def directories = [
+        motus4:  "motus4/profile/${meta.db_name}",
+        motus3:  "motus3/profile/${meta.db_name}",
+        cayman:  "cayman/profile/${meta.db_name}/${meta.annot_db_name}",
+        gqlib:   "gqlib/profile_genes/${meta.db_name}/${meta.annot_db_name}",
+        idtaxa:  "idtaxa/${meta.db_name}",
+        kraken2: "kraken2/${meta.db_name}",
+        bracken: "bracken/${meta.db_name}",
+    ]
+    if (!directories.containsKey(meta.tool)) {
+        error("[zellerlab/flexprofiler] ERROR: no output directory known for the profiles of '${meta.tool}'")
+    }
+    return directories[meta.tool].toString()
+}
+
+//
+// Whether the profiles of a profiler (meta.tool of the profiles) are made in this run: run_<tool>, and for Bracken
+// runBracken()
+//
+def profilerEnabled(tool) {
+    return tool == 'bracken' ? runBracken() : params["run_${tool}"] as Boolean
+}
+
+//
+// A value made fit for JSON: the paths and strings (GStrings) as strings, in maps and lists too
+//
+def toJsonValue(value) {
+    if (value instanceof Map) {
+        return value.collectEntries { key, item -> [key.toString(), toJsonValue(item)] }
+    }
+    if (value instanceof Path || value instanceof CharSequence) {
+        return value.toString()
+    }
+    if (value instanceof Collection) {
+        return value.collect { item -> toJsonValue(item) }
+    }
+    return value
+}
+
+//
+// The columns of the read counts manifest (read_counts.py), also those of the read count manifests of --large_scale
+//
+def readCountColumns() {
+    return ['file', 'sample', 'run_accession', 'kind', 'db_name']
+}
+
+//
+// The row of the read counts manifest of a log of a step ([ meta, log ], with the tool in meta.tool), as a map of its
+// columns (readCountColumns). Logs of different steps can have the same name, so each is renamed (file): a hash of its
+// path, unique, and stable with -resume, the work directories being kept. With run merging, the steps before it (QC,
+// host removal, primer trimming, pair handling) still have the run_accession of each run: the counts of the runs of a
+// multi-run sample go to its merged run, named as by the run merging. The database names are defined only for the
+// profiler logs, and are left empty for the other steps
+//
+def readCountLabel(meta, log_file) {
+    def run = params.perform_runmerging && meta.is_multirun ? "merged_${meta.library_strategy}" : meta.run_accession
+    def label = [
+        file: "${log_file.toString().md5()}_${log_file.name}".toString(),
+        sample: meta.id,
+        run_accession: run,
+        kind: meta.tool,
+        db_name: meta.db_name,
+    ]
+    // only null or blank values count as missing, not falsy ones such as 0
+    def missing = ['sample', 'run_accession', 'kind'].findAll { column ->
+        def value = label[column]
+        value == null || value.toString().trim().isEmpty()
+    }
+    if (missing) {
+        error("Read counts: ${missing.join(', ')} not defined for ${log_file}")
+    }
+    return label
+}
+
+//
+// The output directory (--outdir) as an absolute path, without a trailing slash: recorded in the manifests of
+// --large_scale, and checked by AGGREGATE_PUBLISHED against its own
+//
+def aggregationOutdir() {
+    return file(params.outdir).toAbsolutePath().normalize().toString()
+}
+
+//
+// Whether two output directories are the same: the same absolute path, or the same directory through a symlink
+//
+def sameOutdir(a, b) {
+    if (a == b) {
+        return true
+    }
+    def path_a = file(a)
+    def path_b = file(b)
+    return path_a.exists() && path_b.exists() && path_a.toRealPath() == path_b.toRealPath()
+}
+
+//
+// The entries of the per-sample manifests written by the --large_scale runs of the batches, of the samples with these ids:
+// <outdir>/aggregation_inputs/<kind>/<sample>.jsonl, one JSON object per line. Errors, each listing all the samples
+// concerned:
+// - a sample without its manifest (its batch not processed with --large_scale and this --outdir)
+// - a sample whose manifest records another output directory than the --outdir of this run (outdir of each entry):
+//   the batches and the aggregation must all use the same --outdir, so that the tables are published with the
+//   per-sample outputs they are made from
+//
+def readAggregationManifests(kind, ids) {
+    def outdir = aggregationOutdir()
+    def directory = "${outdir}/aggregation_inputs/${kind}"
+    def shorten = { list -> list.take(20).join(', ') + (list.size() > 20 ? ", ... (${list.size()} in all)" : '') }
+    def missing = ids.findAll { id -> !file("${directory}/${id}.jsonl").exists() }
+    if (missing) {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale: no ${kind} manifest in ${directory}/ for ${missing.size()} of the ${ids.size()} samples of the samplesheet, although their batches are recorded as done: ${shorten.call(missing)}")
+    }
+    def slurper = new groovy.json.JsonSlurper()
+    def entries = ids.collectMany { id ->
+        file("${directory}/${id}.jsonl").readLines()
+            .findAll { line -> line.trim() }
+            .collect { line -> [sample: id, manifest: slurper.parseText(line)] }
+    }
+    // the output directories recorded, each checked once
+    def recorded = entries.collect { entry -> entry.manifest.outdir?.toString() }.unique()
+    def other = recorded.findAll { recorded_outdir -> !recorded_outdir || !sameOutdir(recorded_outdir, outdir) }
+    if (other) {
+        def samples = entries.findAll { entry -> entry.manifest.outdir?.toString() in other }.collect { entry -> entry.sample }.unique()
+        def outdirs = other.collect { recorded_outdir -> recorded_outdir ?: 'none recorded' }
+        error("[zellerlab/flexprofiler] ERROR: --large_scale: the ${kind} manifests of ${samples.size()} samples were written by runs with another --outdir (${outdirs.join(', ')}) than this one (${outdir}): the runs of the processing batches and the aggregation must use the same --outdir. Samples: ${shorten.call(samples)}")
+    }
+    return entries.collect { entry -> entry.manifest }
+}
+
+//
+// --large_scale: the plan of this run, made before anything else (main.nf). The samplesheet is processed one
+// processing_batch at a time, one batch per run, so that the task directories of a batch can be deleted once it is done:
+// - a batch is done if a run processing it succeeded, which wrote its record (aggregation_inputs/batches/<batch>.json,
+//   recordLargeScaleRun) with the samples it had: if its samples changed since, it is processed again. A record written
+//   with another --outdir is an error
+// - the task directories of the batches done are deleted (--large_scale_cleanup), once per batch: those listed in the
+//   traces of all the runs that processed it (aggregation_inputs/batches/<batch>.traces, recorded when each run
+//   starts, so also those of the runs that failed or were killed). The traces of the earlier runs are complete, unlike
+//   that of the current run, which is why this is done here and not when a run ends. The UNTAR tasks, shared by the
+//   batches, are kept
+// - the batch processed is --processing_batch if given, else the batch not done with the fewest runs (then by name);
+//   when all the batches are done, the run makes the tables of all the samples instead (AGGREGATE_PUBLISHED)
+// Returns [ aggregate: whether to aggregate, batch: the batch to process (null to aggregate), samples: its samples ]
+//
+def largeScalePlan(input, processing_batch) {
+    if (!input || !params.outdir) {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale needs --input and --outdir")
+    }
+    // the run after the last batch merges the profiles of all the batches: checked first, before anything is deleted
+    if (!params.run_profile_standardisation) {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale merges the profiles of all the samples once all the batches are done, and needs --run_profile_standardisation: please set it (the profile zellerlab_large_scale does, unless --run_profile_standardisation false is given)")
+    }
+    def rows = samplesheetToList(input, "assets/schema_input.json").collect { row -> samplesheetRow(row) }
+    def without_batch = rows.findAll { row -> row.processing_batch == null }
+    if (without_batch) {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale processes the samplesheet one processing_batch at a time: ${without_batch.size()} runs have no processing_batch, e.g. ${without_batch.take(5).collect { row -> "${row.meta.id} ${row.run_accession}" }.join(', ')}")
+    }
+    def bad_names = rows.collect { row -> row.processing_batch }.unique().findAll { b -> !(b ==~ /[A-Za-z0-9._-]+/) }
+    if (bad_names) {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale: the processing_batch names are file names, and can have only letters, digits, '.', '_' and '-': ${bad_names.join(', ')}")
+    }
+    // the samples of each batch, sorted (all the runs of a sample are in one batch, checked by selectProcessingBatch)
+    def batch_rows = rows.groupBy { row -> row.processing_batch }
+    def batch_samples = batch_rows.collectEntries { b, b_rows -> [b, b_rows.collect { row -> row.meta.id.toString() }.unique().sort()] }
+    if (processing_batch != null && !batch_samples.containsKey(processing_batch.toString())) {
+        error("[zellerlab/flexprofiler] ERROR: --processing_batch ${processing_batch}: no run of the samplesheet is in this processing_batch (batches: ${batch_samples.keySet().sort().join(', ')})")
+    }
+    def forced = processing_batch?.toString()
+
+    def outdir = aggregationOutdir()
+    def batches_dir = "${outdir}/aggregation_inputs/batches"
+    def done = batch_samples.keySet().findAll { b -> largeScaleBatchDone(batches_dir, b, batch_samples[b], outdir) }.sort()
+    // the batch given with --processing_batch is processed again, so its task directories are kept for -resume
+    if (params.large_scale_cleanup) {
+        done.findAll { b -> b != forced }.each { b -> cleanupLargeScaleBatch(batches_dir, b) }
+    }
+    def pending = batch_samples.keySet().findAll { b -> !(b in done) }
+        .sort { a, b -> batch_rows[a].size() <=> batch_rows[b].size() ?: a <=> b }
+    def batch = forced ?: (pending ? pending.first() : null)
+
+    log.info("--large_scale: ${batch_samples.size()} processing batches, ${done.size()} done${done ? " (${done.join(', ')})" : ''}, ${pending.size()} to do${pending ? " (${pending.join(', ')})" : ''}")
+    if (batch == null) {
+        log.info("--large_scale: all the batches are done: making the tables of all the samples")
+        return [aggregate: true, batch: null, samples: batch_samples.values().flatten().sort()]
+    }
+    log.info("--large_scale: processing batch ${batch} (${batch_samples[batch].size()} samples, ${batch_rows[batch].size()} runs)")
+    // the trace of this run, whose task directories are deleted once the batch is done (again, if it was done before);
+    // the tables of all the samples, if made before, are out of date
+    file(batches_dir).mkdirs()
+    file("${batches_dir}/${batch}.traces").append("${largeScaleTraceFile()}\t${workflow.workDir.toAbsolutePath().normalize()}\n")
+    def cleaned = file("${batches_dir}/${batch}.cleaned")
+    if (cleaned.exists()) {
+        cleaned.delete()
+    }
+    def aggregated = file("${outdir}/aggregation_inputs/aggregated.json")
+    if (aggregated.exists()) {
+        aggregated.delete()
+    }
+    return [aggregate: false, batch: batch, samples: batch_samples[batch]]
+}
+
+//
+// The trace file of this run, as set in nextflow.config
+//
+def largeScaleTraceFile() {
+    return "${aggregationOutdir()}/pipeline_info/execution_trace_${params.trace_report_suffix}.txt".toString()
+}
+
+//
+// Whether a batch is done (--large_scale): its record exists, was written with this --outdir (an error otherwise), and
+// has the samples that the batch has now
+//
+def largeScaleBatchDone(batches_dir, batch, samples, outdir) {
+    def record_file = file("${batches_dir}/${batch}.json")
+    if (!record_file.exists()) {
+        return false
+    }
+    def record = new groovy.json.JsonSlurper().parseText(record_file.text)
+    if (!record.outdir || !sameOutdir(record.outdir.toString(), outdir)) {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale: batch ${batch} was processed with another --outdir (${record.outdir}) than this one (${outdir}), according to ${record_file}: all the runs must use the same --outdir")
+    }
+    if (record.samples.collect { sample -> sample.toString() }.sort() != samples) {
+        log.warn("--large_scale: the samples of batch ${batch} changed since it was processed: it is processed again")
+        return false
+    }
+    return true
+}
+
+//
+// The task directories listed in a trace (its workdir column), of the form <work_dir>/xx/<hash>, but those of UNTAR
+//
+def taskDirsOfTrace(trace_path, work_dir) {
+    def trace = file(trace_path)
+    if (!trace.exists()) {
+        log.warn("--large_scale: trace ${trace_path} not found, its task directories are not deleted")
+        return []
+    }
+    def lines = trace.readLines()
+    def header = lines ? lines.first().split('\t', -1).toList() : []
+    if (!('workdir' in header)) {
+        log.warn("--large_scale: trace ${trace_path} has no workdir column, its task directories are not deleted")
+        return []
+    }
+    def prefix = "${work_dir}/".toString()
+    return lines.drop(1)
+        // each task as a map of its columns
+        .collect { line -> [header, line.split('\t', -1).toList()].transpose().collectEntries() }
+        .findAll { task -> task.workdir && !(task.name ==~ /(.*:)?UNTAR( .*)?/) }
+        .collect { task -> task.workdir }
+        .findAll { dir -> dir.startsWith(prefix) && dir.substring(prefix.length()) ==~ /[0-9a-f]{2}\/[0-9a-f]{30}/ }
+}
+
+//
+// Delete the task directories of a batch done (--large_scale), once: those of the traces of all the runs that processed
+// it. The file <batch>.cleaned records that it was done
+//
+def cleanupLargeScaleBatch(batches_dir, batch) {
+    def marker = file("${batches_dir}/${batch}.cleaned")
+    def traces = file("${batches_dir}/${batch}.traces")
+    if (marker.exists() || !traces.exists()) {
+        return
+    }
+    def dirs = traces.readLines()
+        .findAll { line -> line.trim() }
+        .collectMany { line ->
+            def (trace_path, work_dir) = line.split('\t', -1).toList()
+            work_dir ? taskDirsOfTrace(trace_path, work_dir) : []
+        }
+        .unique()
+        .collect { dir -> file(dir) }
+        .findAll { dir -> dir.exists() }
+    log.info("--large_scale: batch ${batch} is done: deleting its ${dirs.size()} task directories")
+    dirs.each { dir -> dir.deleteDir() }
+    marker.text = "${dirs.size()} task directories deleted on ${java.time.OffsetDateTime.now()}\n"
+}
+
+//
+// Record the run of a --large_scale plan that succeeded (PIPELINE_COMPLETION): the batch processed is done
+// (aggregation_inputs/batches/<batch>.json, with the samples it had), or the tables of all the samples are made
+// (aggregation_inputs/aggregated.json)
+//
+def recordLargeScaleRun(plan) {
+    def outdir = aggregationOutdir()
+    def record = [
+        outdir: outdir,
+        samples: plan.samples,
+        run_name: workflow.runName,
+        session_id: workflow.sessionId.toString(),
+        completed: java.time.OffsetDateTime.now().toString(),
+    ]
+    if (plan.aggregate) {
+        file("${outdir}/aggregation_inputs/aggregated.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(record)) + '\n'
+        log.info("--large_scale: the tables of all the samples are made: nothing left to do")
+    }
+    else {
+        file("${outdir}/aggregation_inputs/batches").mkdirs()
+        file("${outdir}/aggregation_inputs/batches/${plan.batch}.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([batch: plan.batch] + record)) + '\n'
+        log.info("--large_scale: batch ${plan.batch} is done: run the pipeline again for the next batch, or the tables of all the samples once all the batches are done")
+    }
+}
+
+//
+// A row of the samplesheet (samplesheetToList: [ meta, run_accession, instrument_platform, fastq_1, fastq_2,
+// processing_batch ], in the order of assets/schema_input.json) as a map. The empty values are [] (nf-schema): the
+// processing_batch is then null, and a string otherwise (the integers are converted)
+//
+def samplesheetRow(row) {
+    def (meta, run_accession, instrument_platform, fastq_1, fastq_2, processing_batch) = row
+    return [
+        meta: meta,
+        run_accession: run_accession,
+        instrument_platform: instrument_platform,
+        fastq_1: fastq_1,
+        fastq_2: fastq_2,
+        processing_batch: processing_batch == null || processing_batch == [] ? null : processing_batch.toString(),
+    ]
+}
+
+//
+// Select the runs of a processing batch (the processing_batch column of the samplesheet), all if batch is null, and drop
+// the column: rows [ meta, run_accession, instrument_platform, fastq_1, fastq_2, processing_batch ] ->
+// [ meta, run_accession, instrument_platform, fastq_1, fastq_2 ]. All the runs of a sample must be in the same batch
+// (they are merged, and the tables of a sample are made from all of them)
+//
+def selectProcessingBatch(rows, batch) {
+    def named_rows = rows.collect { row -> samplesheetRow(row) }
+    def split = named_rows.groupBy { row -> row.meta.id }
+        .collectEntries { sample, sample_rows -> [sample, sample_rows.collect { row -> row.processing_batch }.unique()] }
+        .findAll { _sample, batches -> batches.size() > 1 }
+    if (split) {
+        def shown = split.collect { sample, batches -> "${sample} (${batches.collect { b -> b ?: 'none' }.join(', ')})" }
+        error("[zellerlab/flexprofiler] ERROR: all the runs of a sample must be in the same processing_batch of the samplesheet: ${shown.take(20).join('; ')}")
+    }
+    def selected = named_rows
+    if (batch != null) {
+        selected = named_rows.findAll { row -> row.processing_batch == batch.toString() }
+        if (!selected) {
+            def batches = named_rows.collect { row -> row.processing_batch }.unique().findAll { b -> b != null }.sort()
+            error("[zellerlab/flexprofiler] ERROR: --processing_batch ${batch}: no run of the samplesheet is in this processing_batch (batches: ${batches ? batches.join(', ') : 'none, the column is empty or missing'})")
+        }
+    }
+    return selected.collect { row -> [row.meta, row.run_accession, row.instrument_platform, row.fastq_1, row.fastq_2] }
 }
 
 //

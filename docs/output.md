@@ -29,6 +29,7 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
 - [Bracken](#bracken) - Re-estimation of the Kraken2 reads at the species (or another) rank, with a merged table of reads
 - [IDTAXA](#idtaxa) - Taxonomic classification of the amplicon reads, with merged tables per rank
 - [Read counts](#read-counts) - Per-run read counts after each preprocessing step and for each profiler and database
+- [Aggregation inputs](#aggregation-inputs) - Per-sample manifests of the profiles and read counts, and the batches done, of a dataset processed in batches (`--large_scale`)
 - [MultiQC](#multiqc) - Aggregate report describing results and QC from the whole pipeline
 - [Pipeline information](#pipeline-information) - Report metrics generated during the workflow execution
 
@@ -427,6 +428,25 @@ With paired-end reads, the same holds for each pair: a pair with both mates alig
 The counts are parsed from the logs of the tools. There is one row per sample and run (columns `sample` and `run_accession`): with `--perform_runmerging`, the runs of a sample with more than one run are summed into its merged run (`merged_WGS` or `merged_AMPLICON`), and a sample with a single run keeps its `run_accession`. The table is also in the MultiQC report, in the section Read counts. The first four columns summarise the others, and are always present (`NA` when their step was not run). Each other column is the count of one step, and is present whenever its step was run: the Falco or FastQC columns unless `--skip_preprocessing_qc` or `--skip_postprocessing_qc`, the pair repair columns with `--perform_repair_pe_order` (repair.sh), the short-read QC columns with `--perform_shortread_qc` (fastp), the long-read QC columns with `--perform_longread_qc` (vsearch and BBDuk), the PathSeq-T2T columns with `--pathseq_t2t`, the pairs retained by host removal only with `--perform_shortread_hostremoval`, the amplicon columns only for `AMPLICON` runs, and one column per profiler and database.
 
 The plot (`read_counts.png` and `.pdf`, and the section Read counts plot of the MultiQC report, an interactive line graph) has the steps on the x axis, in the order of the columns, and the reads on the y axis, with a dot per count and a line joining the counts of each sample and run. It shows the columns counting each mate: not the summary columns, which repeat those of the steps, nor those ending in `_pairs`. A step without a count for a run is skipped by its line. The legend of the PNG and PDF is drawn only for up to 30 runs.
+
+With `--large_scale`, the runs of the batches make no table: the run after the last batch makes it from the logs published by them (see [Aggregation inputs](#aggregation-inputs)).
+
+### Aggregation inputs
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `aggregation_inputs/` (`--large_scale`)
+  - `profiles/<sample>.jsonl`: the profiles of the sample, one JSON object per line for each profile (or list of profiles, for gqlib) emitted by a profiler: `meta` (its meta map), `paths` (the paths of the files under the output directory, where they are published) and `list` (whether the profiler emits a list of files) and `outdir` (the output directory of the run, absolute).
+  - `read_counts/<sample>.jsonl`: the read count logs of the sample, one JSON object per line with the columns of the manifest of the read counts: `file` (the name of the log in `logs/`), `sample`, `run_accession`, `kind` and `db_name`, and `outdir` (the output directory of the run, absolute).
+  - `read_counts/logs/`: the logs of the steps, named as in the manifests (a hash of their path in the work directory, then their name).
+  - `batches/<batch>.json`: the record of a batch done, written when the run processing it succeeds: the output directory, the samples of the batch, and the name, session and end of the run.
+  - `batches/<batch>.traces`: the traces of the runs that processed the batch, with their work directory, one per line (written when each run starts), whose task directories are deleted once the batch is done; `batches/<batch>.cleaned` records that they were.
+  - `aggregated.json`: written when the tables of all the samples are made, by the run after the last batch (removed when a batch is processed again).
+
+</details>
+
+For a large dataset processed one batch at a time (`--large_scale`, profile `zellerlab_large_scale`), whose runs make no table across the samples. When all the batches are done, the next run reads the manifests of all the samples of the samplesheet, from its `--outdir`, which must be the same as that of the runs of the batches (a manifest recording another output directory is an error), to make the merged profiles (as `--run_profile_standardisation`) and the read counts table of all the samples, without processing any sample. The manifests of a sample are written when its batch finishes.
 
 | Column                      | Unit                                     | Source                                                                                                     |
 | --------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |

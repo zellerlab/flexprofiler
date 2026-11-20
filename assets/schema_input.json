@@ -43,6 +43,11 @@
                 "format": "file-path",
                 "pattern": "^\\S+\\.f(ast)?q\\.gz$",
                 "errorMessage": "Gzipped FastQ file for reads 2 cannot contain spaces and must have extension '.fq.gz' or '.fastq.gz'. If not applicable, leave it empty."
+            },
+            "processing_batch": {
+                "type": ["string", "integer"],
+                "pattern": "^[^\\s]+$",
+                "errorMessage": "Processing batch cannot contain spaces. It is optional: it names the batch of the run, processed alone with --processing_batch."
             }
         },
         "required": ["sample", "run_accession", "instrument_platform", "fastq_1"]

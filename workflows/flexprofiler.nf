@@ -27,6 +27,10 @@ include { STANDARDISATION_PROFILES      } from '../subworkflows/local/standardis
 include { READ_COUNTING                 } from '../subworkflows/local/read_counting'
 include { MULTIQC_REPORTING             } from '../subworkflows/local/multiqc_reporting'
 include { publishFiles                  } from '../subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
+include { profileDirectory              } from '../subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
+include { toJsonValue                   } from '../subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
+include { aggregationOutdir             } from '../subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
+include { readCountLabel                } from '../subworkflows/local/utils_zellerlab_flexprofiler_pipeline'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -231,27 +235,83 @@ workflow FLEXPROFILER {
         SUBWORKFLOW: READ COUNTS
     */
 
-    // the read counts after each step, from the logs of the steps, with the tool in meta.tool
-    READ_COUNTING(
-        ch_repair_read_count_logs
-            .mix(READS_QC.out.read_count_logs)
-            .mix(SHORTREAD_PREPROCESSING.out.read_count_logs)
-            .mix(LONGREAD_PREPROCESSING.out.read_count_logs)
-            .mix(WGS_PREPROCESSING.out.read_count_logs)
-            .mix(AMPLICON_PREPROCESSING.out.read_count_logs)
-            .mix(PATHSEQ_T2T.out.read_count_logs)
-            .mix(PROFILING.out.read_count_logs)
-    )
+    // the logs of the steps, with the tool in meta.tool
+    ch_read_count_logs = ch_repair_read_count_logs
+        .mix(READS_QC.out.read_count_logs)
+        .mix(SHORTREAD_PREPROCESSING.out.read_count_logs)
+        .mix(LONGREAD_PREPROCESSING.out.read_count_logs)
+        .mix(WGS_PREPROCESSING.out.read_count_logs)
+        .mix(AMPLICON_PREPROCESSING.out.read_count_logs)
+        .mix(PATHSEQ_T2T.out.read_count_logs)
+        .mix(PROFILING.out.read_count_logs)
+
+    // the read counts after each step: not in the --large_scale runs, each of one processing batch, whose logs are
+    // published with their manifests instead (AGGREGATION INPUTS below): the run after the last batch makes the table of
+    // all the batches (AGGREGATE_PUBLISHED)
+    if (!params.large_scale) {
+        READ_COUNTING(ch_read_count_logs)
+        ch_read_counts_mqc = READ_COUNTING.out.mqc
+        ch_read_counts_published = READ_COUNTING.out.published
+    }
+    else {
+        ch_read_counts_mqc = channel.empty()
+        ch_read_counts_published = channel.empty()
+    }
 
     /*
         SUBWORKFLOW: PROFILING STANDARDISATION
     */
-    if (params.run_profile_standardisation) {
+    // not in the --large_scale runs, each of one processing batch: the run after the last batch merges the profiles of
+    // all the batches (AGGREGATE_PUBLISHED)
+    if (params.run_profile_standardisation && !params.large_scale) {
         STANDARDISATION_PROFILES(PROFILING.out.profiles, ch_final_dbs)
         ch_merged_profiles_published = STANDARDISATION_PROFILES.out.published
     }
     else {
         ch_merged_profiles_published = channel.empty()
+    }
+
+    /*
+        AGGREGATION INPUTS
+    */
+
+    // --large_scale: per sample, the manifests from which AGGREGATE_PUBLISHED makes the tables of all the samples, as
+    // STANDARDISATION_PROFILES and READ_COUNTING do in a run of all of them, one JSON object per line, each with the
+    // output directory, which AGGREGATE_PUBLISHED checks against its own:
+    // - of its profiles: their meta map, their paths under the output directory (where PROFILING publishes them), and
+    //   whether the profiler emits a list of files
+    // - of its read count logs: the row of the read counts manifest (readCountLabel); the logs are published under their
+    //   unique names
+    if (params.large_scale) {
+        def outdir = aggregationOutdir()
+        ch_profile_manifests_published = PROFILING.out.profiles
+            .map { meta, profiles ->
+                def files = profiles instanceof List ? profiles : [profiles]
+                def entry = [
+                    meta: toJsonValue(meta),
+                    paths: files.collect { profile -> "${profileDirectory(meta)}/${profile.name}".toString() },
+                    list: profiles instanceof List,
+                    outdir: outdir,
+                ]
+                [meta.id, groovy.json.JsonOutput.toJson(entry)]
+            }
+            // sorted, so that the manifest of a sample is the same in every run
+            .collectFile(newLine: true, sort: true) { sample, line -> ["${sample}.jsonl", line] }
+            .map { manifest -> [manifest, 'aggregation_inputs/profiles/'] }
+        ch_read_count_labels = ch_read_count_logs.map { meta, log_file -> [readCountLabel(meta, log_file), log_file] }
+        ch_read_count_manifests_published = ch_read_count_labels
+            .map { label, log_file -> [log_file, "aggregation_inputs/read_counts/logs/${label.file}"] }
+            .mix(
+                ch_read_count_labels
+                    .map { label, _log_file -> [label.sample, groovy.json.JsonOutput.toJson(toJsonValue(label + [outdir: outdir]))] }
+                    // sorted, so that the manifest of a sample is the same in every run
+                    .collectFile(newLine: true, sort: true) { sample, line -> ["${sample}.jsonl", line] }
+                    .map { manifest -> [manifest, 'aggregation_inputs/read_counts/'] }
+            )
+    }
+    else {
+        ch_profile_manifests_published = channel.empty()
+        ch_read_count_manifests_published = channel.empty()
     }
 
     /*
@@ -264,9 +324,9 @@ workflow FLEXPROFILER {
     ch_multiqc_files = ch_multiqc_files.mix(WGS_PREPROCESSING.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
 
     ch_multiqc_files = ch_multiqc_files.mix(PROFILING.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
-    ch_multiqc_files = ch_multiqc_files.mix(READ_COUNTING.out.mqc)
+    ch_multiqc_files = ch_multiqc_files.mix(ch_read_counts_mqc)
 
-    if (params.run_profile_standardisation) {
+    if (params.run_profile_standardisation && !params.large_scale) {
         ch_multiqc_files = ch_multiqc_files.mix(STANDARDISATION_PROFILES.out.mqc.collect { _meta, report -> report }.ifEmpty([]))
     }
 
@@ -286,7 +346,9 @@ workflow FLEXPROFILER {
         READS_QC.out.published,
         PROFILING.out.published,
         ch_merged_profiles_published,
-        READ_COUNTING.out.published,
+        ch_profile_manifests_published,
+        ch_read_count_manifests_published,
+        ch_read_counts_published,
         MULTIQC_REPORTING.out.published,
     )
     // the analysis-ready reads of the amplicon runs: [ file, target ], which can be input files
