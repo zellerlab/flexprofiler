@@ -40,16 +40,7 @@ A run of thousands of samples needs a work directory as large as all the interme
 
    All the runs must use the same `--outdir` (an error otherwise) and the same profilers. If the samples of a batch change in the samplesheet, the batch is processed again. The runs are on the same launch directory, one at a time.
 
-   To run them all in one job, repeat the command until the tables are made, e.g. in [this script](../utils/run_shark.sh), in place of its last line (`OUTDIR` being the `outdir` of the params file; a run processing a batch removes the `aggregated.json` of an earlier aggregation):
-
-   ```bash
-   while true; do
-       nextflow run $PIPELINE -r $VERSION -resume -params-file $PARAMS -profile $PROFILE -w $WORKDIR || exit 1
-       [ -e "$OUTDIR/aggregation_inputs/aggregated.json" ] && break
-   done
-   ```
-
-   Without `exec`, `scancel --batch --signal=TERM` does not reach Nextflow: stop such a job with `scancel <job id>` and cancel the `nf-*` jobs left (see above).
+   On SHARK, copy [this script](../utils/run_shark_large_scale.sh), set it up as `run_shark.sh` (and `OUTDIR` to the `outdir` of the params file), and submit it with `sbatch run_shark_large_scale.sh`: it runs the pipeline again and again in one job until the tables are made (`aggregation_inputs/aggregated.json`, which a run processing a batch removes if an earlier aggregation made it), stopping at the first run that fails; submitted again, it resumes. Stop it with `scancel --batch --signal=TERM <job id>`: the script passes the signal on to Nextflow, which cancels its tasks. On another cluster, the loop of the script (with the trap) is all that is needed around the `nextflow run` command.
 
 `zellerlab_large_scale` turns on `--run_profile_standardisation` (with `--large_scale` it is an error to turn it off, as the run after the last batch always merges the profiles), skips the QC reports and MultiQC (as `zellerlab_minimal`), and adds the work directory of each task to the trace, which the cleanup reads. A database given as a `.tar.gz` is untarred again in each batch (its UNTAR task is not deleted, but cached only within the batch): give the databases untarred.
 
