@@ -541,28 +541,53 @@ def cleanupLargeScaleBatch(batches_dir, batch) {
         .collect { dir -> file(dir) }
         .findAll { dir -> dir.exists() }
     log.info("--large_scale: batch ${batch} is done: deleting its ${dirs.size()} task directories")
-    dirs.each { dir -> deleteTaskDir(dir) }
-    marker.text = "${dirs.size()} task directories deleted on ${java.time.OffsetDateTime.now()}\n"
+    def deleted = dirs.count { dir -> deleteTaskDir(dir) }
+    if (deleted < dirs.size()) {
+        log.warn("--large_scale: batch ${batch}: ${dirs.size() - deleted} of its ${dirs.size()} task directories were not deleted (see the warnings above)")
+    }
+    marker.text = "${deleted} task directories deleted on ${java.time.OffsetDateTime.now()}\n"
 }
 
 //
-// Delete a task directory without following the symlinks in it. Its inputs are symlinks, e.g. to a database or index
-// directory outside the work directory, which must not be touched: Path.deleteDir() follows the symlinks to directories
-// and deletes what is in them (it emptied the shared host index), `rm -rf` removes the symlinks themselves. The task
-// directory itself must be a real directory (not a symlink)
+// Delete a task directory, without following the symlinks in it, if it really is a task directory of the work
+// directory of this run (the real path of -w, however the trace got the task directory). Returns whether it was
+// deleted. The checks are on the
+// filesystem, not on the path as given (from a trace), so that nothing outside the work directory can be deleted:
+// - its real path (all symlinks resolved) is <work_root>/xx/<30 hex characters>: none of its components is a symlink
+//   (e.g. an xx directory linked elsewhere), and it is not in another work directory
+// - it is a directory with a .command.run, as every Nextflow task directory
+// The inputs of a task are symlinks, e.g. to a database or index directory outside the work directory, which must not
+// be touched: Path.deleteDir() follows the symlinks to directories and deletes what is in them (it emptied the shared
+// host index), `rm -rf` removes the symlinks themselves
 //
 def deleteTaskDir(dir) {
-    def path = java.nio.file.Paths.get(dir.toString())
-    if (java.nio.file.Files.isSymbolicLink(path) || !java.nio.file.Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
-        log.warn("--large_scale: ${dir} is not a directory (or is a symlink): not deleted")
-        return
+    def work_root = java.nio.file.Paths.get(workflow.workDir.toString()).toRealPath()
+    def path = java.nio.file.Paths.get(dir.toString()).toAbsolutePath().normalize()
+    def skip = { reason ->
+        log.warn("--large_scale: ${path} not deleted: ${reason}")
+        return false
     }
-    def command = ['rm', '-rf', '--', path.toString()]
+    if (!java.nio.file.Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+        return skip.call('not a directory, or a symlink')
+    }
+    def real = path.toRealPath()
+    if (real != path) {
+        return skip.call("its path goes through a symlink (real path: ${real})")
+    }
+    if (real.nameCount < 2 || real.parent.parent != work_root
+        || !(real.parent.fileName.toString() ==~ /[0-9a-f]{2}/) || !(real.fileName.toString() ==~ /[0-9a-f]{30}/)) {
+        return skip.call("not a task directory of the work directory of this run (${work_root})")
+    }
+    if (!java.nio.file.Files.isRegularFile(real.resolve('.command.run'), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+        return skip.call('no .command.run: not a Nextflow task directory')
+    }
+    def command = ['rm', '-rf', '--', real.toString()]
     def process = new ProcessBuilder(command).redirectErrorStream(true).start()
     def output = process.inputStream.text.trim()
     if (process.waitFor() != 0) {
         error("[zellerlab/flexprofiler] ERROR: --large_scale: `${command.join(' ')}` failed (exit status ${process.exitValue()}): ${output}")
     }
+    return true
 }
 
 //
