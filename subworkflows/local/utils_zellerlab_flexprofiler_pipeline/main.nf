@@ -618,6 +618,13 @@ def recordLargeScaleRun(plan) {
             log.info("--large_scale: the tables of all the samples are made: nothing left to do")
             return
         }
+        // the batch is done only if all the files the aggregation will need are published: once it is recorded, the
+        // next run deletes its task directories, and they could no longer be published again
+        def unpublished = largeScaleUnpublished(plan.samples)
+        if (unpublished) {
+            log.error("--large_scale: batch ${plan.batch} is NOT recorded as done, and no next run was submitted: ${unpublished.size()} files listed by its manifests are not in ${outdir}, e.g. ${unpublished.take(5).join(', ')}. Its task directories are kept: fix the publishing, and run the pipeline again (it resumes, from the cache)")
+            return
+        }
         def batches_dir = "${outdir}/aggregation_inputs/batches"
         file(batches_dir).mkdirs()
         file("${batches_dir}/${plan.batch}.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([batch: plan.batch] + record)) + '\n'
@@ -635,6 +642,21 @@ def recordLargeScaleRun(plan) {
         log.error("--large_scale: the run succeeded, but ${what} could NOT be recorded as done (${e.message ?: e}), and no next run was submitted: run the pipeline again (it resumes, from the cache). See .nextflow.log for the stack trace")
         log.debug("--large_scale: recording the run failed", e)
     }
+}
+
+//
+// --large_scale: the files listed by the manifests of these samples (aggregation_inputs/profiles/ and read_counts/,
+// read by readAggregationManifests, as the aggregation will) that are not in the output directory: the profiles (paths
+// relative to the output directory, where PROFILING publishes them) and the read count logs (published under
+// aggregation_inputs/read_counts/logs/). A sample without its manifests is an error (readAggregationManifests)
+//
+def largeScaleUnpublished(samples) {
+    def outdir = aggregationOutdir()
+    def profiles = readAggregationManifests('profiles', samples)
+        .collectMany { entry -> entry.paths.collect { path -> "${outdir}/${path}".toString() } }
+    def logs = readAggregationManifests('read_counts', samples)
+        .collect { entry -> "${outdir}/aggregation_inputs/read_counts/logs/${entry.file}".toString() }
+    return (profiles + logs).unique().findAll { path -> !file(path).isFile() }
 }
 
 //
