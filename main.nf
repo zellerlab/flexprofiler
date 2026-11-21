@@ -118,6 +118,7 @@ params {
     run_profile_standardisation:     Boolean
     large_scale:                     Boolean
     large_scale_cleanup:             Boolean
+    large_scale_slurm_resubmit:      Boolean
 }
 
 /*

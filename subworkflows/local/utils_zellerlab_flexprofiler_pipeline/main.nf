@@ -207,8 +207,9 @@ workflow PIPELINE_COMPLETION {
 
         completionSummary(monochrome_logs)
 
-        // --large_scale: the batch processed, or the aggregation, is recorded as done only if the run succeeded
-        if (large_scale_plan && workflow.success) {
+        // --large_scale: the batch processed, or the aggregation, is recorded as done only if the run succeeded (checked
+        // in recordLargeScaleRun: `workflow` is null in the onComplete closure, its delegate being the script binding)
+        if (large_scale_plan) {
             recordLargeScaleRun(large_scale_plan)
         }
     }
@@ -303,6 +304,11 @@ def readCountColumns() {
 // profiler logs, and are left empty for the other steps
 //
 def readCountLabel(meta, log_file) {
+    // a step emits one log per [ meta ]: more than one file means that the glob of its output matched another file in
+    // its task directory (e.g. a file written there by hand into a cached task, found again by -resume)
+    if (!(log_file instanceof Path)) {
+        error("[zellerlab/flexprofiler] ERROR: read counts: the ${meta.tool} log of ${meta.id} ${meta.run_accession} is not one file but ${log_file}: remove from the task directory the files that are not outputs of the step, and run again")
+    }
     def run = params.perform_runmerging && meta.is_multirun ? "merged_${meta.library_strategy}" : meta.run_accession
     def label = [
         file: "${log_file.toString().md5()}_${log_file.name}".toString(),
@@ -389,9 +395,13 @@ def readAggregationManifests(kind, ids) {
 //   batches, are kept
 // - the batch processed is --processing_batch if given, else the batch not done with the fewest runs (then by name);
 //   when all the batches are done, the run makes the tables of all the samples instead (AGGREGATE_PUBLISHED)
-// Returns [ aggregate: whether to aggregate, batch: the batch to process (null to aggregate), samples: its samples ]
+// - with --large_scale_slurm_resubmit, the run that succeeds submits the sbatch script of its job again, for the next
+//   batch (resubmitLargeScaleRun): the script is found here (largeScaleJobScript), before the batch is processed
+// Returns [ aggregate: whether to aggregate, batch: the batch to process (null to aggregate), samples: its samples,
+//   forced: whether the batch is --processing_batch, resubmit: the script to submit again (--large_scale_slurm_resubmit) ]
 //
 def largeScalePlan(input, processing_batch) {
+    def resubmit = params.large_scale_slurm_resubmit ? largeScaleJobScript() : null
     if (!input || !params.outdir) {
         error("[zellerlab/flexprofiler] ERROR: --large_scale needs --input and --outdir")
     }
@@ -430,7 +440,7 @@ def largeScalePlan(input, processing_batch) {
     log.info("--large_scale: ${batch_samples.size()} processing batches, ${done.size()} done${done ? " (${done.join(', ')})" : ''}, ${pending.size()} to do${pending ? " (${pending.join(', ')})" : ''}")
     if (batch == null) {
         log.info("--large_scale: all the batches are done: making the tables of all the samples")
-        return [aggregate: true, batch: null, samples: batch_samples.values().flatten().sort()]
+        return [aggregate: true, batch: null, samples: batch_samples.values().flatten().sort(), forced: false, resubmit: resubmit]
     }
     log.info("--large_scale: processing batch ${batch} (${batch_samples[batch].size()} samples, ${batch_rows[batch].size()} runs)")
     // the trace of this run, whose task directories are deleted once the batch is done (again, if it was done before);
@@ -445,7 +455,7 @@ def largeScalePlan(input, processing_batch) {
     if (aggregated.exists()) {
         aggregated.delete()
     }
-    return [aggregate: false, batch: batch, samples: batch_samples[batch]]
+    return [aggregate: false, batch: batch, samples: batch_samples[batch], forced: forced != null, resubmit: resubmit]
 }
 
 //
@@ -526,25 +536,104 @@ def cleanupLargeScaleBatch(batches_dir, batch) {
 //
 // Record the run of a --large_scale plan that succeeded (PIPELINE_COMPLETION): the batch processed is done
 // (aggregation_inputs/batches/<batch>.json, with the samples it had), or the tables of all the samples are made
-// (aggregation_inputs/aggregated.json)
+// (aggregation_inputs/aggregated.json). Then, with --large_scale_slurm_resubmit, the next run is submitted if there is
+// one: the next batch, or the tables of all the samples. The record of a batch is read back first as the next run will
+// (largeScaleBatchDone): if it would not be taken as done, the next run would process the same batch again, and the
+// chain would never end, so none is submitted. An error here does not make the run fail (it is in onComplete): it is
+// logged, with what to do, and the chain ends
 //
 def recordLargeScaleRun(plan) {
-    def outdir = aggregationOutdir()
-    def record = [
-        outdir: outdir,
-        samples: plan.samples,
-        run_name: workflow.runName,
-        session_id: workflow.sessionId.toString(),
-        completed: java.time.OffsetDateTime.now().toString(),
-    ]
-    if (plan.aggregate) {
-        file("${outdir}/aggregation_inputs/aggregated.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(record)) + '\n'
-        log.info("--large_scale: the tables of all the samples are made: nothing left to do")
+    if (!workflow.success) {
+        return
     }
-    else {
-        file("${outdir}/aggregation_inputs/batches").mkdirs()
-        file("${outdir}/aggregation_inputs/batches/${plan.batch}.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([batch: plan.batch] + record)) + '\n'
+    def what = plan.aggregate ? 'the tables of all the samples' : "batch ${plan.batch}"
+    try {
+        def outdir = aggregationOutdir()
+        def record = [
+            outdir: outdir,
+            samples: plan.samples,
+            run_name: workflow.runName,
+            session_id: workflow.sessionId.toString(),
+            completed: java.time.OffsetDateTime.now().toString(),
+        ]
+        if (plan.aggregate) {
+            file("${outdir}/aggregation_inputs/aggregated.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(record)) + '\n'
+            log.info("--large_scale: the tables of all the samples are made: nothing left to do")
+            return
+        }
+        def batches_dir = "${outdir}/aggregation_inputs/batches"
+        file(batches_dir).mkdirs()
+        file("${batches_dir}/${plan.batch}.json").text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([batch: plan.batch] + record)) + '\n'
+        if (!largeScaleBatchDone(batches_dir, plan.batch, plan.samples, outdir)) {
+            log.error("--large_scale: batch ${plan.batch} was recorded (${batches_dir}/${plan.batch}.json), but its record is not read back as done: the next run would process it again. No next run submitted: please report this as a bug")
+            return
+        }
         log.info("--large_scale: batch ${plan.batch} is done: run the pipeline again for the next batch, or the tables of all the samples once all the batches are done")
+        // a batch given with --processing_batch is processed in every run: running again would not move on
+        if (plan.resubmit && !plan.forced) {
+            resubmitLargeScaleRun(plan.resubmit)
+        }
+    }
+    catch (Exception e) {
+        log.error("--large_scale: the run succeeded, but ${what} could NOT be recorded as done (${e.message ?: e}), and no next run was submitted: run the pipeline again (it resumes, from the cache). See .nextflow.log for the stack trace")
+        log.debug("--large_scale: recording the run failed", e)
+    }
+}
+
+//
+// --large_scale_slurm_resubmit: the sbatch script of the SLURM job running the pipeline (the Command of the job, an absolute
+// path, as given to sbatch). An error if the executor is not slurm, if not run in a SLURM job, or if the script is not
+// found
+//
+def largeScaleJobScript() {
+    def executor = workflow.session.config.navigate('process.executor') ?: 'local'
+    if (executor != 'slurm') {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale_slurm_resubmit submits the next run as a SLURM job, and needs the slurm executor (process.executor is ${executor}): use a SLURM profile (e.g. zellerlab_shark), or --large_scale_slurm_resubmit false")
+    }
+    def job_id = System.getenv('SLURM_JOB_ID')
+    if (!job_id) {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale_slurm_resubmit submits the sbatch script of the job running the pipeline again: the pipeline must be run in a SLURM job (no SLURM_JOB_ID)")
+    }
+    def command = ['scontrol', 'show', 'job', '-o', job_id]
+    def output = ''
+    try {
+        def process = new ProcessBuilder(command).redirectErrorStream(true).start()
+        output = process.inputStream.text
+        process.waitFor()
+    }
+    catch (Exception e) {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale_slurm_resubmit: `${command.join(' ')}` failed: ${e.message}")
+    }
+    def matcher = output =~ /(?:^|\s)Command=(\S+)/
+    def script = matcher.find() ? new File(matcher.group(1)) : null
+    if (!script || !script.isAbsolute() || !script.isFile()) {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale_slurm_resubmit: no sbatch script found for job ${job_id} (`${command.join(' ')}`: ${output.trim()}): submit the pipeline with `sbatch <script>`")
+    }
+    log.info("--large_scale_slurm_resubmit: the next run will be submitted with ${script}")
+    return script.toString()
+}
+
+//
+// --large_scale_slurm_resubmit: submit the next run, from the launch directory, as a SLURM job that starts once this one has
+// ended with exit status 0 (afterok: the Nextflow session is closed, and its lock on the launch directory released). If
+// this job is cancelled or fails instead, the next one never starts, and SLURM removes it (--kill-on-invalid-dep). A
+// failed submission ends the chain: submit the script again to resume
+//
+def resubmitLargeScaleRun(script) {
+    def job_id = System.getenv('SLURM_JOB_ID')
+    def command = ['sbatch', "--dependency=afterok:${job_id}".toString(), '--kill-on-invalid-dep=yes', script.toString()]
+    try {
+        def process = new ProcessBuilder(command).directory(workflow.launchDir.toFile()).redirectErrorStream(true).start()
+        def output = process.inputStream.text.trim()
+        if (process.waitFor() == 0) {
+            log.info("--large_scale_slurm_resubmit: next run submitted, to start after job ${job_id}: ${output}")
+        }
+        else {
+            log.error("--large_scale_slurm_resubmit: `${command.join(' ')}` failed (exit status ${process.exitValue()}): ${output}. Submit it again to process the next batch")
+        }
+    }
+    catch (Exception e) {
+        log.error("--large_scale_slurm_resubmit: `${command.join(' ')}` failed: ${e.message}. Submit it again to process the next batch")
     }
 }
 

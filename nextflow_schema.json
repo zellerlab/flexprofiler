@@ -516,6 +516,12 @@
                     "fa_icon": "fas fa-broom",
                     "description": "With --large_scale, delete the task directories of the processing batches done",
                     "help_text": "At the start of each --large_scale run, the task directories of the batches done (listed in the traces of the runs that processed them, with the cached tasks: the profile zellerlab_large_scale adds the work directory to the trace) are deleted, once per batch, so that the work directory holds the intermediate files of one batch at most. The UNTAR tasks, shared by the batches, are kept. Turn it off to keep them, e.g. to check the intermediate files."
+                },
+                "large_scale_slurm_resubmit": {
+                    "type": "boolean",
+                    "fa_icon": "fas fa-redo",
+                    "description": "With --large_scale on SLURM (ignored without it; set by the profile zellerlab_shark), each run that processes a batch submits the sbatch script of its job again, until the tables of all the samples are made",
+                    "help_text": "The script is that of the SLURM job running the pipeline (`scontrol show job $SLURM_JOB_ID`, found at the start of the run: an error if the executor is not slurm, or if the pipeline is not run in a job submitted with `sbatch <script>`). A run that succeeds and leaves work to do (the next batch, or the tables of all the samples) submits `sbatch --dependency=afterok:$SLURM_JOB_ID --kill-on-invalid-dep=yes <script>` from the launch directory: the next run starts once this job has ended successfully. Cancelling the running job stops the chain (the next job, if already submitted, is removed by SLURM). Not with --processing_batch, which every run would process again. Options given to sbatch on the command line are not passed on: put them in the #SBATCH lines of the script."
                 }
             },
             "fa_icon": "fas fa-chart-line"
