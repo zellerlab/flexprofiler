@@ -2,11 +2,16 @@
 # sbatch wrapper for the Nextflow head job (the launchers put its directory first in PATH).
 #
 # When the SLURM controller is overloaded, sbatch can fail with "Socket timed out on send/recv operation" although
-# the job was submitted. Nextflow then runs sbatch again for the same task (executor.retry), and two jobs run at once
-# in the same work directory, writing the same files. This wrapper runs the real sbatch and, when it times out, looks
-# for a job of the user submitted from the current directory (Nextflow runs `sbatch .command.run` in the work
-# directory of the task) since this call started: if there is one, it prints its id as sbatch would, so that Nextflow
-# takes that job as the submitted one; if there is none, it fails as sbatch did, and Nextflow submits again.
+# the job was submitted: the controller can register it minutes later. Running sbatch again would then start a second
+# job in the same work directory, so the job is submitted only once: the profiles zellerlab_shark and zellerlab_alice
+# set executor.retry.maxAttempts = 1, so that Nextflow never runs sbatch again for a task.
+#
+# This wrapper runs the real sbatch once. If it succeeds, or fails for another reason, its output and exit status are
+# returned as they are. If it times out, the wrapper checks with squeue and sacct for a job of the user submitted
+# from the current directory (Nextflow runs `sbatch .command.run` in the work directory of the task) since this call
+# started, waiting 1 min before the first check and doubling the wait before each of the next ones (6 checks, 63 min
+# in all). If one is found, its id is printed as sbatch would, and Nextflow takes it as the submitted job. If none is
+# found, the wrapper fails, and so does the task and the pipeline.
 
 set -u
 
@@ -25,15 +30,13 @@ if [[ -z "$real_sbatch" ]]; then
     exit 127
 fi
 
-# jobs submitted up to this many seconds before the call are taken as submitted by it. The start time of the call is
-# read from the clock of this node, the submit time of the job from the clock of the SLURM controller (in whole
-# seconds): if the controller's clock is behind, the job looks submitted before the call, and without this margin it
-# would be missed and submitted again. The margin is kept small so that older jobs from the same work directory (e.g.
-# of an earlier run) are never taken for the job of this call
+# jobs submitted up to this many seconds before the call are taken as submitted by it: the start of the call is read
+# from the clock of this node, the submit time of the job from the clock of the SLURM controller, which can be behind
 SKEW=60
-# how long to look for the job after a timeout: ATTEMPTS checks, WAIT seconds apart
-ATTEMPTS=6
-WAIT=10
+# checks for the job after a timeout: CHECKS of them, the first FIRST_WAIT seconds after the timeout, then with the
+# wait doubled each time
+CHECKS=6
+FIRST_WAIT=60
 
 start=$(date +%s)
 output=$("$real_sbatch" "$@" 2>&1)
@@ -46,8 +49,9 @@ fi
 dir=$(pwd -P)
 since=$((start - SKEW))
 
-# ids of the jobs of the user submitted from $dir since $since, with squeue (queued and running) and sacct (finished)
-find_jobs() {
+# id of the job of the user submitted from $dir since $since, from squeue (queued and running) and sacct (finished);
+# nothing if there is none or if squeue and sacct failed
+find_job() {
     {
         squeue -u "$USER" -h -o '%i|%V|%Z' 2>/dev/null
         sacct -u "$USER" -X -n -P -S "$(date -d "@$since" +%Y-%m-%dT%H:%M:%S)" -o JobID,Submit,WorkDir 2>/dev/null
@@ -55,23 +59,21 @@ find_jobs() {
         [[ "$id" =~ ^[0-9]+$ && "$workdir" == "$dir" ]] || continue
         submitted=$(date -d "$submit" +%s 2>/dev/null) || continue
         [[ $submitted -ge $since ]] && echo "$id"
-    done | sort -un
+    done | sort -n | head -n 1
 }
 
-for ((i = 1; i <= ATTEMPTS; i++)); do
-    sleep "$WAIT"
-    mapfile -t jobs < <(find_jobs)
-    if [[ ${#jobs[@]} -gt 0 ]]; then
-        # one job per work directory: any other (from an earlier timed-out call) is cancelled
-        for extra in "${jobs[@]:1}"; do
-            scancel "$extra" 2>/dev/null
-            echo "sbatch wrapper: cancelled job $extra, a second job submitted from $dir" >&2
-        done
-        echo "sbatch wrapper: sbatch timed out, but job ${jobs[0]} was submitted from $dir" >&2
-        echo "Submitted batch job ${jobs[0]}"
+delay=$FIRST_WAIT
+for ((i = 1; i <= CHECKS; i++)); do
+    sleep "$delay"
+    job=$(find_job)
+    if [[ -n "$job" ]]; then
+        echo "sbatch wrapper: sbatch timed out, but job $job was submitted from $dir" >&2
+        echo "Submitted batch job $job"
         exit 0
     fi
+    delay=$((delay * 2))
 done
 
 printf '%s\n' "$output"
-exit $status
+echo "sbatch wrapper: sbatch timed out and no job submitted from $dir was found in $CHECKS checks over $(($(date +%s) - start)) s" >&2
+exit 1
