@@ -391,8 +391,8 @@ def readAggregationManifests(kind, ids) {
 // - the task directories of the batches done are deleted (--large_scale_cleanup), once per batch: those listed in the
 //   traces of all the runs that processed it (aggregation_inputs/batches/<batch>.traces, recorded when each run
 //   starts, so also those of the runs that failed or were killed). The traces of the earlier runs are complete, unlike
-//   that of the current run, which is why this is done here and not when a run ends. The UNTAR tasks, shared by the
-//   batches, are kept
+//   that of the current run, which is why this is done here and not when a run ends. The tasks that prepare a
+//   database or reference, shared by the batches, are kept (largeScaleSharedTask)
 // - the batch processed is --processing_batch if given, else the batch not done with the fewest runs (then by name);
 //   when all the batches are done, the run makes the tables of all the samples instead (AGGREGATE_PUBLISHED)
 // - with --large_scale_slurm_resubmit, the run that succeeds submits the sbatch script of its job again, for the next
@@ -486,7 +486,19 @@ def largeScaleBatchDone(batches_dir, batch, samples, outdir) {
 }
 
 //
-// The task directories listed in a trace (its workdir column), of the form <work_dir>/xx/<hash>, but those of UNTAR
+// The tasks of a --large_scale run kept by the cleanup: those that prepare a database or reference, the same in all the
+// batches, which the next batches reuse from their task directories (-resume): the databases untarred (UNTAR), and the
+// indexes built when not given, of the host genome (BOWTIE2_BUILD, --shortread_hostremoval_index) and of the
+// PathSeq-T2T references (BWA_INDEX_GRCH38, BWA_INDEX_T2T). The task name is as in the trace: the process, with its
+// workflow path, and its tag in parentheses
+//
+def largeScaleSharedTask(name) {
+    return name ==~ /(.*:)?(UNTAR|BOWTIE2_BUILD|BWA_INDEX_GRCH38|BWA_INDEX_T2T)( .*)?/
+}
+
+//
+// The task directories listed in a trace (its workdir column), of the form <work_dir>/xx/<hash>, but those of the tasks
+// shared by the batches (largeScaleSharedTask)
 //
 def taskDirsOfTrace(trace_path, work_dir) {
     def trace = file(trace_path)
@@ -504,7 +516,7 @@ def taskDirsOfTrace(trace_path, work_dir) {
     return lines.drop(1)
         // each task as a map of its columns
         .collect { line -> [header, line.split('\t', -1).toList()].transpose().collectEntries() }
-        .findAll { task -> task.workdir && !(task.name ==~ /(.*:)?UNTAR( .*)?/) }
+        .findAll { task -> task.workdir && !largeScaleSharedTask(task.name) }
         .collect { task -> task.workdir }
         .findAll { dir -> dir.startsWith(prefix) && dir.substring(prefix.length()) ==~ /[0-9a-f]{2}\/[0-9a-f]{30}/ }
 }
@@ -529,8 +541,28 @@ def cleanupLargeScaleBatch(batches_dir, batch) {
         .collect { dir -> file(dir) }
         .findAll { dir -> dir.exists() }
     log.info("--large_scale: batch ${batch} is done: deleting its ${dirs.size()} task directories")
-    dirs.each { dir -> dir.deleteDir() }
+    dirs.each { dir -> deleteTaskDir(dir) }
     marker.text = "${dirs.size()} task directories deleted on ${java.time.OffsetDateTime.now()}\n"
+}
+
+//
+// Delete a task directory without following the symlinks in it. Its inputs are symlinks, e.g. to a database or index
+// directory outside the work directory, which must not be touched: Path.deleteDir() follows the symlinks to directories
+// and deletes what is in them (it emptied the shared host index), `rm -rf` removes the symlinks themselves. The task
+// directory itself must be a real directory (not a symlink)
+//
+def deleteTaskDir(dir) {
+    def path = java.nio.file.Paths.get(dir.toString())
+    if (java.nio.file.Files.isSymbolicLink(path) || !java.nio.file.Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+        log.warn("--large_scale: ${dir} is not a directory (or is a symlink): not deleted")
+        return
+    }
+    def command = ['rm', '-rf', '--', path.toString()]
+    def process = new ProcessBuilder(command).redirectErrorStream(true).start()
+    def output = process.inputStream.text.trim()
+    if (process.waitFor() != 0) {
+        error("[zellerlab/flexprofiler] ERROR: --large_scale: `${command.join(' ')}` failed (exit status ${process.exitValue()}): ${output}")
+    }
 }
 
 //

@@ -515,7 +515,7 @@
                     "default": true,
                     "fa_icon": "fas fa-broom",
                     "description": "With --large_scale, delete the task directories of the processing batches done",
-                    "help_text": "At the start of each --large_scale run, the task directories of the batches done (listed in the traces of the runs that processed them, with the cached tasks: the profile zellerlab_large_scale adds the work directory to the trace) are deleted, once per batch, so that the work directory holds the intermediate files of one batch at most. The UNTAR tasks, shared by the batches, are kept. Turn it off to keep them, e.g. to check the intermediate files."
+                    "help_text": "At the start of each --large_scale run, the task directories of the batches done (listed in the traces of the runs that processed them, with the cached tasks: the profile zellerlab_large_scale adds the work directory to the trace) are deleted, once per batch, so that the work directory holds the intermediate files of one batch at most. The tasks that prepare a database or reference, shared by the batches, are kept: UNTAR, and the indexes built when not given (BOWTIE2_BUILD, BWA_INDEX_GRCH38, BWA_INDEX_T2T). Turn it off to keep them, e.g. to check the intermediate files."
                 },
                 "large_scale_slurm_resubmit": {
                     "type": "boolean",
